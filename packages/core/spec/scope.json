@@ -1,0 +1,27 @@
+{
+  "id": "0176",
+  "summary": "Authors Learnosity-compatible assessment items from natural-language descriptions.",
+  "in_scope": [
+    "Multiple-choice (MCQ) items",
+    "Short-text and long-text response items",
+    "Cloze (fill-in-the-blank) items with text, dropdown, association, or formula blanks",
+    "Choice matrix, ordering, and classification items",
+    "NGN/NCLEX bowtie items",
+    "Token-highlight (hot text) items: highlight listed tokens within a passage",
+    "Math fill-in items with equivalence-based scoring",
+    "Spreadsheet-based assessment items",
+    "Concept-web assessment items",
+    "Custom items that embed interactive content authored in another Graffiticode dialect",
+    "Item-level metadata: tags, NGSS/CCSS/custom standards, DOK, difficulty",
+    "Question-level metadata: per-distractor rationale, notes, acknowledgements",
+    "Save-to-itembank for persistence vs. preview-only items"
+  ],
+  "out_of_scope": [
+    "Assessment items for any platform other than Learnosity (e.g. Kahoot, Quizizz, Google Forms, Edulastic, OpenAssessments, Canvas Quizzes, Moodle, plain HTML quiz pages) — L0176 emits Learnosity-shaped JSON only",
+    "Activity-level assembly (timed tests, sections, branching) — use Learnosity Activities API",
+    "Delivery configuration (proctoring, time limits, attempt caps, accommodations)",
+    "Learner-side analytics (responses, mastery, reporting) — Learnosity Data / Reports APIs",
+    "Host-app embedding (React mounts, Canvas LTI) — handled by the host runtime",
+    "Raw Learnosity JSON patches — describe items in natural language; emit JSON, don't author it by hand"
+  ]
+}

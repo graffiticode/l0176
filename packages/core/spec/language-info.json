@@ -1,0 +1,82 @@
+{
+  "id": "0176",
+  "description": "Authors Learnosity-compatible assessment items from natural language. Supports multiple-choice, cloze/fill-in-the-blank, short-text, essay, math fill-in, choice matrix, ordering, classification, NGN/NCLEX bow-tie, token-highlight (hot text), and custom items that embed a separately deployed Graffiticode-language interaction (e.g. an L0166 spreadsheet) and can read content from an upstream pipeline task. Describe the stem, correct answer, distractors, scoring, and tags — L0176 emits a valid Learnosity item JSON.",
+  "supported_item_types": [
+    "mcq",
+    "shorttext",
+    "longtext",
+    "plaintext",
+    "clozetext",
+    "clozeassociation",
+    "clozedropdown",
+    "clozeformula",
+    "choicematrix",
+    "orderlist",
+    "classification",
+    "bowtie",
+    "hot-text",
+    "custom"
+  ],
+  "example_prompts": [
+    {
+      "prompt": "Create a 4-option MCQ on the function of mitochondria. One correct answer. Distractors should match common misconceptions. Tag with NGSS MS-LS1-2. Difficulty: medium.",
+      "produces": "mcq",
+      "notes": "Names the item type explicitly, specifies distractor intent, and tags the standard — removes three rounds of guessing for the backend."
+    },
+    {
+      "prompt": "Write a cloze item with three dropdowns about the stages of mitosis in order: prophase, metaphase, anaphase. Show the stem above a sentence with blanks.",
+      "produces": "clozedropdown",
+      "notes": "Specifies interaction count (three dropdowns) up front so the backend does not have to infer the blank count from the sentence."
+    },
+    {
+      "prompt": "Short-text item asking students to define 'allele' in one sentence. Exact match on 'a variant of a gene'.",
+      "produces": "shorttext",
+      "notes": "Exact-match scoring is the default, but stating it lets the backend skip rubric inference; a single canonical answer prevents ambiguous grading."
+    },
+    {
+      "prompt": "Solve for x: 2x + 3 = 11. Show the stem, and accept any expression equivalent to 4 as the answer.",
+      "produces": "clozeformula",
+      "notes": "Says 'equivalent to' explicitly — triggers equivalence scoring rather than string match, which matters for math answers."
+    },
+    {
+      "prompt": "Order these historical events from earliest to latest: signing of the Magna Carta, fall of Constantinople, American Declaration of Independence, French Revolution.",
+      "produces": "orderlist",
+      "notes": "Names the ordering criterion (earliest to latest) — otherwise the backend has to guess whether it is chronology, alphabet, or magnitude."
+    },
+    {
+      "prompt": "Classification item: sort these animals into 'Mammals' and 'Reptiles' — dog, snake, cat, lizard.",
+      "produces": "classification",
+      "notes": "Provides the category labels and the items in one sentence; the backend creates the bucket mapping without guessing taxonomy."
+    },
+    {
+      "prompt": "Create a 4-option MCQ on the function of mitochondria. Distractors should match common organelle misconceptions, and add a one-line rationale per distractor explaining the misconception. Tag with NGSS MS-LS1-2, difficulty medium, DOK 2.",
+      "produces": "mcq",
+      "notes": "Exercises both item-level metadata (NGSS, difficulty, DOK — faceted in the Author Site filter rail) and question-level metadata (per-option distractor rationale shown in the Author Site review pane)."
+    },
+    {
+      "prompt": "Create a bow-tie for a 65-year-old with chest pain and diaphoresis. Actions: give aspirin, give nitro, call cardiology, obtain 12-lead ECG. Conditions: myocardial infarction, pulmonary embolism, pericarditis. Monitor: ST segment changes, blood pressure, troponin, respiratory rate. Correct actions: give aspirin, obtain 12-lead ECG. Correct condition: myocardial infarction. Correct monitors: ST segment changes, troponin.",
+      "produces": "bowtie",
+      "notes": "NGN/NCLEX bow-tie: three source pools drop into a 2-1-2 layout (2 actions on the left, 1 condition in the center, 2 parameters to monitor on the right). The backend rejects inputs that don't satisfy the 2-1-2 shape or whose correct answers aren't in the matching pool."
+    },
+    {
+      "prompt": "Hot text item: 'Highlight the verbs.' Passage: 'The cat runs then jumps high.' Correct tokens to highlight: runs, jumps. Also make 'cat' and 'high' clickable as distractors. Let them pick at most two.",
+      "produces": "hot-text",
+      "notes": "Token-highlight (hot text): only the listed tokens are clickable. valid-response holds the correct tokens, distractors the clickable wrong ones; the backend wraps each whole-word occurrence in a clickable span and scores correct tokens by position. Matching is case-insensitive; a repeated correct word counts at every occurrence. 'at most two' sets max-selection."
+    },
+    {
+      "prompt": "Hot text item: 'Highlight the sentence that states an opinion.' Passage: 'The sky is blue. I think blue is the most beautiful color. Water boils at 100 degrees.' Correct sentence to highlight: 'I think blue is the most beautiful color.' Make the other two sentences clickable distractors.",
+      "produces": "hot-text",
+      "notes": "Sentence-level hot text: a clickable token can be a whole sentence, not just a word. List the full sentence including its end punctuation as the valid-response token (and the other sentences as distractors); the backend wraps the entire sentence as one clickable span."
+    },
+    {
+      "prompt": "Hot text item: 'Highlight the paragraph that summarizes the passage.' Passage has three paragraphs separated by blank lines: 'Dogs are loyal animals. They have lived alongside humans for thousands of years.' / 'Cats are independent pets. They groom themselves and hunt small prey.' / 'In short, both dogs and cats make wonderful companions for different reasons.' Correct paragraph: the third one. Make the first two paragraphs clickable distractors.",
+      "produces": "hot-text",
+      "notes": "Paragraph-level hot text: a clickable token can be a whole paragraph. List the full paragraph text as the valid-response token (and the other paragraphs as distractors); the backend wraps each entire paragraph as one clickable span."
+    },
+    {
+      "prompt": "Create a spreadsheet question. Embed the L0166 spreadsheet as the interaction. Stem: 'Use the spreadsheet below to compute the column totals for the first quarter.'",
+      "produces": "custom",
+      "notes": "Embedded interaction: emits a `custom` question with `lang \"0166\"` whose `data:` reads the upstream pipeline task via the base-language `data {}` primitive. The pipeline edge (which L0166 producer feeds this consumer) is wired in the console; L0176 source does not reference task IDs. Scoring is the L0166 widget's own `scorer.js` — no `valid-response` is emitted. `save-to-itembank` produces a snapshot frozen at compile time."
+    }
+  ]
+}
