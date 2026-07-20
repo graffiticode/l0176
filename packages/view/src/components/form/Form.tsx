@@ -8,23 +8,7 @@
 import "../../index.css";
 import { useEffect, useRef, useState } from "react";
 import type { FormProps, CompileError } from "@graffiticode/l0000-view";
-
-// A content key that is stable across re-signs of the same assessment. The host
-// (@graffiticode/l0000-view) fetches POST /compile through SWR with
-// revalidateOnFocus, and each compile returns a freshly *signed* request (new
-// signature / session_id / user_id / timestamp every call). That gives `request`
-// a new object identity on every window focus or reconnect even though the
-// assessment is unchanged. Learnosity's Questions/Items API cannot be
-// re-initialized on already-mounted DOM — a second init corrupts its internal
-// state and throws "Cannot read properties of undefined (reading
-// 'triggerBufferedEvents')". Keying init on the content (response ids + item
-// reference + type), never on the volatile signing envelope, lets us init once.
-function contentKey(type: string | undefined, request: any): string {
-  const questions = request?.questions ?? request?.request?.questions ?? [];
-  const responseIds = questions.map((q: any) => q?.response_id ?? q?.reference);
-  const itemRef = request?.request?.reference ?? request?.reference;
-  return JSON.stringify([type ?? null, responseIds, itemRef ?? null]);
-}
+import { contentKey } from "./contentKey";
 
 function renderErrors(errors: CompileError[]) {
   return (
