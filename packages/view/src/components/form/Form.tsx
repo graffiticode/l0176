@@ -6,8 +6,25 @@
 // @graffiticode/l0000-view) owns the iframe postMessage/onload protocol, so this
 // Form no longer posts to the parent itself.
 import "../../index.css";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormProps, CompileError } from "@graffiticode/l0000-view";
+
+// A content key that is stable across re-signs of the same assessment. The host
+// (@graffiticode/l0000-view) fetches POST /compile through SWR with
+// revalidateOnFocus, and each compile returns a freshly *signed* request (new
+// signature / session_id / user_id / timestamp every call). That gives `request`
+// a new object identity on every window focus or reconnect even though the
+// assessment is unchanged. Learnosity's Questions/Items API cannot be
+// re-initialized on already-mounted DOM — a second init corrupts its internal
+// state and throws "Cannot read properties of undefined (reading
+// 'triggerBufferedEvents')". Keying init on the content (response ids + item
+// reference + type), never on the volatile signing envelope, lets us init once.
+function contentKey(type: string | undefined, request: any): string {
+  const questions = request?.questions ?? request?.request?.questions ?? [];
+  const responseIds = questions.map((q: any) => q?.response_id ?? q?.reference);
+  const itemRef = request?.request?.reference ?? request?.reference;
+  return JSON.stringify([type ?? null, responseIds, itemRef ?? null]);
+}
 
 function renderErrors(errors: CompileError[]) {
   return (
@@ -29,6 +46,10 @@ export const Form = ({ state }: FormProps) => {
   const hasErrors = errors.length > 0;
   const { type, request } = state.data || {};
   const [scriptLoaded, setScriptLoaded] = useState(false);
+  // The content key of the assessment currently mounted into Learnosity. Guards
+  // against the host's re-signed-request churn re-initializing the SDK (see
+  // contentKey above).
+  const initedContentRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (hasErrors) return;
@@ -56,6 +77,11 @@ export const Form = ({ state }: FormProps) => {
   useEffect(() => {
     if (!scriptLoaded) return;
     if (hasErrors) return;
+    // Skip re-initialization when only the signing envelope changed (host
+    // re-signs on focus/reconnect via SWR — see contentKey above). Re-init on
+    // the same mounted DOM throws Learnosity's "triggerBufferedEvents" error.
+    const key = contentKey(type, request);
+    if (initedContentRef.current === key) return;
     const LearnosityApp =
       type === "questions" ? (window as any).LearnosityApp :
       type === "author" ? (window as any).LearnosityAuthor :
@@ -76,6 +102,9 @@ export const Form = ({ state }: FormProps) => {
           return;
         }
       }
+      // Mark inited only once we actually call init (after the DOM is ready), so
+      // a deferred/retried run doesn't get skipped by the guard above.
+      initedContentRef.current = key;
       LearnosityApp.init(request, {
         readyListener() {
           // Assessment is interactive. The shared View posts onload to the
@@ -87,7 +116,7 @@ export const Form = ({ state }: FormProps) => {
       });
     };
     requestAnimationFrame(run);
-  }, [scriptLoaded, request, hasErrors]);
+  }, [scriptLoaded, request, hasErrors, type]);
 
   if (hasErrors) {
     return renderErrors(errors);
