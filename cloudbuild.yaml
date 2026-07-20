@@ -27,7 +27,15 @@ steps:
         --labels=commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID,gcb-trigger-id=$_TRIGGER_ID
       - '--region=$_DEPLOY_REGION'
       - '--quiet'
-      - '--set-env-vars=AUTH_URL=$_AUTH_URL'
+      # AUTH_URL + LEARNOSITY_KEY are non-secret env vars (the consumer key ships
+      # in every browser-delivered signed request). The Learnosity signing
+      # secret is pulled from Secret Manager. Both must be set on every deploy —
+      # --set-env-vars/--set-secrets replace the service's full env/secret sets,
+      # so omitting them here would drop the credentials and the compiler's
+      # request signing (signForRender) would silently no-op, leaving a blank
+      # form. Mirrors the l0158 service config.
+      - '--set-env-vars=AUTH_URL=$_AUTH_URL,LEARNOSITY_KEY=$_LEARNOSITY_KEY'
+      - '--set-secrets=LEARNOSITY_SECRET=learnosity-secret:latest'
       - '--allow-unauthenticated'
     id: Deploy
     entrypoint: gcloud
@@ -41,6 +49,10 @@ options:
 substitutions:
   _DEPLOY_REGION: us-central1
   _AUTH_URL: https://auth.graffiticode.org
+  # Learnosity consumer key (non-secret; delivered to the browser in every signed
+  # request). The paired signing secret is the Secret Manager secret
+  # `learnosity-secret`, wired via --set-secrets above.
+  _LEARNOSITY_KEY: UsF4dy1YxZd4JIyq
 
 tags:
   - l0176
