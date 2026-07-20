@@ -339,13 +339,23 @@ export class Transformer extends BaseTransformer {
           resume([...err, `Error: save-to-itembank requires set-var "learnosity-key" and "learnosity-secret"; item bank writes are not permitted with the default credentials.`], undefined);
           return;
         }
-        const itemsResult = await createItems({
-          items,
-          id: options["lrn-id"],
-          saveToItembank,
-          key: creds.key,
-          secret: creds.secret,
-        });
+        let itemsResult;
+        try {
+          itemsResult = await createItems({
+            items,
+            id: options["lrn-id"],
+            saveToItembank,
+            key: creds.key,
+            secret: creds.secret,
+          });
+        } catch (e: any) {
+          // A failed item-bank write (e.g. Learnosity Data API rejects the
+          // signed request) must surface as a compile error, not an unhandled
+          // rejection: an uncaught throw here never calls resume, so the compile
+          // never resolves and the embedding view hangs on "Loading…" forever.
+          resume([...err, `Error: ${String((e && e.message) || e)}`], undefined);
+          return;
+        }
         const continuation = toPlainObject(v1);
         const val = { ...continuation, ...itemsResult };
         resume(err, val);
@@ -403,12 +413,21 @@ export class Transformer extends BaseTransformer {
           resume([...err, `Error: save-to-itembank requires set-var "learnosity-key" and "learnosity-secret"; item bank writes are not permitted with the default credentials.`], {});
           return;
         }
-        const questionsResult = await createQuestions(questions, {
-          id: options["lrn-id"],
-          saveToItembank,
-          key: creds.key,
-          secret: creds.secret,
-        });
+        let questionsResult;
+        try {
+          questionsResult = await createQuestions(questions, {
+            id: options["lrn-id"],
+            saveToItembank,
+            key: creds.key,
+            secret: creds.secret,
+          });
+        } catch (e: any) {
+          // A failed item-bank write must surface as a compile error rather than
+          // an unhandled rejection (which would leave resume uncalled and hang
+          // the embedding view on "Loading…"). See the matching guard in ITEMS.
+          resume([...err, `Error: ${String((e && e.message) || e)}`], {});
+          return;
+        }
         const continuation = toPlainObject(v1);
         const val = { ...continuation, ...questionsResult };
         resume(err, val);
