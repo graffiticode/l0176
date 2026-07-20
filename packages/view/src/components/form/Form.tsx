@@ -2,11 +2,9 @@
 // L0176's Form: renders a Learnosity assessment by dynamically loading the
 // matching Learnosity browser SDK (questions / author / items) and mounting the
 // signed request. Ported from L0158's Form.tsx, adapted to the shared View's
-// FormProps contract (state.data / state.errors). The shared View (from
-// @graffiticode/l0000-view) drives the generic postMessage protocol, but this
-// Form also posts its own onload to the parent once Learnosity is interactive
-// (see the readyListener below) — matching L0158, so the container reveals the
-// form only after it has actually painted.
+// FormProps contract (state.data / state.errors) — the View (from
+// @graffiticode/l0000-view) owns the iframe postMessage/onload protocol, so this
+// Form no longer posts to the parent itself.
 import "../../index.css";
 import { useEffect, useRef, useState } from "react";
 import type { FormProps, CompileError } from "@graffiticode/l0000-view";
@@ -32,16 +30,6 @@ export const Form = ({ state }: FormProps) => {
   const hasErrors = errors.length > 0;
   const { type, request } = state.data || {};
   const [scriptLoaded, setScriptLoaded] = useState(false);
-  // Where to report readiness. The container (console FormIFrame) embeds us with
-  // an `origin` query param and keeps a loading spinner up until it receives an
-  // onload/data-updated message. The shared View posts onload on *mount*, before
-  // Learnosity has painted; we additionally post it from Learnosity's
-  // readyListener (as L0158's Form did) so the parent learns the assessment is
-  // actually interactive, carrying the final compiled data.
-  const targetOrigin =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("origin")
-      : null;
   // The content key of the assessment currently mounted into Learnosity. Guards
   // against the host's re-signed-request churn re-initializing the SDK (see
   // contentKey above).
@@ -103,12 +91,8 @@ export const Form = ({ state }: FormProps) => {
       initedContentRef.current = key;
       LearnosityApp.init(request, {
         readyListener() {
-          // Assessment is interactive — tell the embedding container it can
-          // reveal the form (matches L0158's Form: post onload from here rather
-          // than relying solely on the shared View's mount-time onload).
-          if (targetOrigin && window.parent !== window) {
-            window.parent.postMessage({ type: "onload", data: state.data }, targetOrigin);
-          }
+          // Assessment is interactive. The shared View posts onload to the
+          // parent iframe on data-ready, so nothing to do here.
         },
         errorListener(err: any) {
           console.error("Learnosity error", type, err);
