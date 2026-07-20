@@ -48,11 +48,6 @@ export const buildCreateQuestions = ({
     }
   }
   const batchId = id || "0";
-  // Internal/Data API shape: {type, reference, data}. This is the item-bank
-  // (Data API) question format used by the `set` write below, and it is also the
-  // record shape the ITEM/ITEMS path consumes (items.ts unwraps it into flat
-  // inline questions for rendering). The top-level `questions` render path must
-  // flatten it too — see buildInitQuestions below.
   const questions = data.map((question: any, index: number) => {
     const reference = `artcompiler-${question.type}-${batchId}-${index}`;
     const data = fixVariableRefs(question);
@@ -116,26 +111,11 @@ export const buildInitQuestions = ({
     domain,
     user_id,
   };
-  // Flatten the internal {type, reference, data} question records into the flat
-  // Questions API shape (response_id + type + fields at the top level), matching
-  // the items path (items.ts). Learnosity's Questions API renders by response_id
-  // and reads fields at the top level; signing the wrapped envelope directly
-  // yields questions with no response_id and fields buried under `.data`, which
-  // the browser SDK can't render (fails with an undefined-facade
-  // "triggerBufferedEvents" error).
-  const renderData = {
-    ...data,
-    questions: (data.questions ?? []).map((q: any) => (
-      q && q.data && q.reference !== undefined
-        ? { response_id: q.reference, ...q.data }
-        : q
-    )),
-  };
   const signedRequest = sdk.init(
     "questions",
     consumer,
     optSecret ?? secret,
-    renderData,
+    data,
   );
   return signedRequest;
 };

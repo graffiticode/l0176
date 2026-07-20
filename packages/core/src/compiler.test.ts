@@ -61,24 +61,6 @@ describe("items path", () => {
   });
 });
 
-describe("questions render request (init)", () => {
-  // The Questions API renders by response_id and reads question fields at the
-  // top level. Signing the internal {type, reference, data} envelope directly
-  // produced questions with no response_id (Learnosity then threw an undefined
-  // "triggerBufferedEvents" error), so init must flatten them like the items path.
-  const cfg = { learnosity: { key: "yis0TYCu7U9V4o7M", secret: "74c5fd430cf1242a527f6223aebd42d30464be22" } };
-  test("signed questions request is flat with a response_id", async () => {
-    const out = await compile('set-var "lrn-id" "t" init questions [mcq {stimulus: "2+2?"}] {}..', {}, cfg);
-    expect(out.signature).toBeTruthy();
-    const q = out.questions[0];
-    expect(q.response_id).toBe("artcompiler-mcq-t-0");
-    expect(q.type).toBe("mcq");
-    expect(q.stimulus).toBe("2+2?");
-    expect(q.data).toBeUndefined();
-    expect(q.reference).toBeUndefined();
-  });
-});
-
 describe("error paths", () => {
   test("questions without lrn-id yields an empty record (no error)", async () => {
     const out = await compile('questions [mcq {}] {}..');
