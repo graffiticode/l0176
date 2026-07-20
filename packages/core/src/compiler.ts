@@ -82,6 +82,51 @@ function resolveCredentials(options: any): any {
   return { key: cfg.key, secret: cfg.secret, fromOptions: false };
 }
 
+// Sign the compiled Learnosity activity so the view can hand `request` straight
+// to LearnosityApp.init. The compile produces the unsigned `{ type, data }`
+// activity (createItems/createQuestions/createAuthor); the browser SDK needs a
+// *signed* request. L0158 did this signing in a second, client-triggered
+// `init data {}` compile pass (its own View issued it after the cached
+// compile); L0176 renders through the shared @graffiticode/l0000-view, which
+// issues a single POST /compile and hands the result to the Form verbatim, so
+// we fold the signing into the compile output here.
+//
+// Signing is pure (no network) and runs after the full transform, so it never
+// duplicates a save-to-itembank write. Each signing stamps a fresh
+// user_id / signature, so the compile output's `request` changes on every
+// (re)compile even when the assessment is unchanged — that churn is why the
+// Form keys its one-time Learnosity init on the stable question content rather
+// than object identity (see packages/view/src/components/form/contentKey.ts).
+async function signForRender(plain: any, options: any): Promise<any> {
+  // Only sign Learnosity render output: a `{ type, data }` activity that has
+  // not already been signed. Leaves bare/non-Learnosity values untouched.
+  if (!plain || typeof plain !== "object" || !plain.type || plain.request) {
+    return plain;
+  }
+  const creds = resolveCredentials(options);
+  if (creds.error || !creds.key || !creds.secret) {
+    // No usable credentials (e.g. a verification dry run without injected
+    // secrets): leave the unsigned activity as-is rather than throwing.
+    return plain;
+  }
+  const credArgs = { key: creds.key, secret: creds.secret };
+  let request;
+  switch (plain.type) {
+  case "questions":
+    request = await initQuestions(plain, credArgs);
+    break;
+  case "items":
+    request = await initItems(plain, credArgs);
+    break;
+  case "author":
+    request = await initAuthor(plain, credArgs);
+    break;
+  default:
+    return plain;
+  }
+  return { ...plain, request };
+}
+
 export class Checker extends BaseChecker {
   [key: string]: any;
 
@@ -420,7 +465,14 @@ export class Transformer extends BaseTransformer {
     this.visit(node.elts[0], options, async (e0: any, v0: any) => {
       const err = e0;
       const val = v0.pop();
-      resume(err, val);
+      // Don't sign a failed compile — `val` is undefined/partial on error.
+      if (err && err.length > 0) {
+        resume(err, val);
+        return;
+      }
+      // Attach the signed Learnosity `request` (see signForRender).
+      const signed = await signForRender(val, options);
+      resume(err, signed);
     });
   }
 }
