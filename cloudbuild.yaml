@@ -28,14 +28,22 @@ steps:
       - '--region=$_DEPLOY_REGION'
       - '--quiet'
       # AUTH_URL + LEARNOSITY_KEY are non-secret env vars (the consumer key ships
-      # in every browser-delivered signed request). The Learnosity signing
-      # secret is pulled from Secret Manager. Both must be set on every deploy —
-      # --set-env-vars/--set-secrets replace the service's full env/secret sets,
-      # so omitting them here would drop the credentials and the compiler's
-      # request signing (signForRender) would silently no-op, leaving a blank
-      # form. Mirrors the l0158 service config.
+      # in every browser-delivered signed request). The Learnosity signing secret
+      # and GRAFFITICODE_SECRET_KEY are pulled from Secret Manager. All must be
+      # set on every deploy — --set-env-vars/--set-secrets replace the service's
+      # full env/secret sets, so omitting any would drop it. Mirrors l0158.
+      #
+      # GRAFFITICODE_SECRET_KEY is the key get-val-private uses to decrypt
+      # console-supplied secrets (e.g. a program-provided learnosity-secret that
+      # gates save-to-itembank writes). Without it, decrypt() returns the raw
+      # ciphertext and the Data API write is signed with garbage → Learnosity
+      # 41003 "signatures do not match". Its value MUST match the console's key
+      # (project graffiticode-app) and MUST NEVER CHANGE, or previously-encrypted
+      # values become undecryptable — propagate it with
+      # console/scripts/set-compiler-secret.sh 0176 (creates the secret in
+      # project graffiticode + grants the runtime SA access), never by hand.
       - '--set-env-vars=AUTH_URL=$_AUTH_URL,LEARNOSITY_KEY=$_LEARNOSITY_KEY'
-      - '--set-secrets=LEARNOSITY_SECRET=learnosity-secret:latest'
+      - '--set-secrets=LEARNOSITY_SECRET=learnosity-secret:latest,GRAFFITICODE_SECRET_KEY=GRAFFITICODE_SECRET_KEY:latest'
       - '--allow-unauthenticated'
     id: Deploy
     entrypoint: gcloud
