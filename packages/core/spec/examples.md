@@ -236,3 +236,20 @@ whole paragraphs.
 152. Create a hot text question asking "Highlight the paragraph that summarizes the passage." with the passage "Dogs are loyal animals. They have lived alongside humans for thousands of years.\n\nCats are independent pets. They groom themselves and hunt small prey.\n\nIn short, both dogs and cats make wonderful companions for different reasons." where the paragraph "In short, both dogs and cats make wonderful companions for different reasons." is correct and the first two paragraphs are distractors.
 153. Create a token highlight question asking "Click the paragraph that describes the problem." with the passage "Our town's library closes at five o'clock every day. Many students finish school and arrive only after it has shut.\n\nOne solution is to keep the library open until eight in the evening. Volunteers could staff the extra hours.\n\nWith longer hours, more students would have a quiet place to study." where the first paragraph is correct and the other two paragraphs are distractors.
 154. Create a hot text question asking "Highlight each paragraph that gives a reason to exercise." with the passage "Regular exercise strengthens the heart and improves circulation.\n\nSome people prefer to exercise in the morning, while others prefer the evening.\n\nExercise also lifts your mood by releasing endorphins." where the paragraphs "Regular exercise strengthens the heart and improves circulation." and "Exercise also lifts your mood by releasing endorphins." are correct and the middle paragraph is a distractor.
+
+## Category 17: Partial Credit (155–162)
+
+These items chain `partial-credit true`, which emits Learnosity's
+`partialMatch` scoring type — the learner earns a fraction of the point per
+correct response instead of needing every response right. It applies only to
+types with more than one scorable response, and on `mcq` it requires
+`multiple-responses true`.
+
+155. Create a multiple choice question asking "Select all the prime numbers." with options "2", "4", "7", "9" where 2 and 7 are correct, allowing multiple responses, and give partial credit for each correct selection.
+156. Create a multiple choice question asking "Which of these are mammals?" with options "Dolphin", "Shark", "Bat", "Eagle" where Dolphin and Bat are correct, allowing multiple responses, scoring each correct answer separately.
+157. Create a choice matrix question asking "Mark each statement true or false." with rows "Water boils at 100°C", "The sun orbits the Earth", "Sound travels faster in water than in air" and columns "True" and "False" where the answers are True, False, True, awarding partial credit per row.
+158. Create a cloze text question with the template "The capital of France is {{response}} and the capital of Japan is {{response}}." where the answers are "Paris" and "Tokyo", giving partial credit for each blank filled correctly.
+159. Create a cloze dropdown question asking students to complete "A {{response}} has {{response}} sides." with dropdown choices "triangle/square" and "three/four" where the answers are "triangle" and "three", with partial credit per blank.
+160. Create an order list question asking "Put these events in chronological order." with the items "Declaration of Independence", "Civil War", "World War I", "Moon landing" in that correct order, with partial credit.
+161. Create a classification question asking "Sort these animals by class." with categories "Mammals" and "Reptiles" and items "dog", "snake", "cat", "lizard", giving partial credit per correctly placed item.
+162. Create a hot text question asking "Highlight the verbs." with the passage "The cat runs then jumps high." where "runs" and "jumps" are correct and "cat" and "high" are distractors, scoring each correct token separately.

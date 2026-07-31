@@ -43,6 +43,7 @@ const additions = {
   "is-math": { tk: 1, name: "IS_MATH", cls: "function", length: 2, arity: 2 },
   "shuffle-options": { tk: 1, name: "SHUFFLE_OPTIONS", cls: "function", length: 2, arity: 2 },
   "multiple-responses": { tk: 1, name: "MULTIPLE_RESPONSES", cls: "function", length: 2, arity: 2 },
+  "partial-credit": { tk: 1, name: "PARTIAL_CREDIT", cls: "function", length: 2, arity: 2 },
   "case-sensitive": { tk: 1, name: "CASE_SENSITIVE", cls: "function", length: 2, arity: 2 },
   "max-length": { tk: 1, name: "MAX_LENGTH", cls: "function", length: 2, arity: 2 },
   "max-word-count": { tk: 1, name: "MAX_WORD_COUNT", cls: "function", length: 2, arity: 2 },

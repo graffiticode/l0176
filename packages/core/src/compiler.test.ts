@@ -41,6 +41,32 @@ describe("questions path", () => {
     });
   });
 
+  test("partial-credit switches a multi-response mcq to partialMatch scoring", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [mcq {stimulus: "Pick two", options: ["a", "b", "c"], valid_response: [0, 1], multiple_responses: true, partial_credit: true}] {}..');
+    const d = out.data.questions[0].data;
+    expect(d.validation).toEqual({
+      scoring_type: "partialMatch",
+      valid_response: { score: 1, value: ["0", "1"] },
+    });
+    // The attribute picks a scoring mode; it is not itself a Learnosity field.
+    expect(d.partial_credit).toBeUndefined();
+  });
+
+  test("partial-credit chains as an attribute keyword", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [mcq options ["a", "b", "c"] valid-response [0, 1] multiple-responses true partial-credit true {}] {}..');
+    expect(out.data.questions[0].data.validation.scoring_type).toBe("partialMatch");
+  });
+
+  test("partial-credit false leaves scoring exact", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [mcq {valid_response: [0], partial_credit: false}] {}..');
+    expect(out.data.questions[0].data.validation.scoring_type).toBe("exactMatch");
+  });
+
+  test("partial-credit applies to the multi-blank cloze types", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [clozetext {valid_response: ["a", "b"], partial_credit: true}] {}..');
+    expect(out.data.questions[0].data.validation.scoring_type).toBe("partialMatch");
+  });
+
   test("hot-text marks tokens and scores correct spans by document order", async () => {
     const out = await compile('set-var "lrn-id" "t" questions [hot-text {passage: "The cat runs and jumps.", valid_response: ["runs", "jumps"], distractors: ["cat"]}] {}..');
     const d = out.data.questions[0].data;
@@ -70,6 +96,18 @@ describe("error paths", () => {
   test("bowtie with wrong 2-1-2 counts errors", async () => {
     await expect(
       compile('set-var "lrn-id" "t" questions [bowtie {column_titles: ["A", "C", "P"], possible_responses: [["a1", "a2"], ["c1"], ["p1", "p2"]], valid_response: [["a1"], ["c1"], ["p1"]]}] {}..'),
+    ).rejects.toBeTruthy();
+  });
+
+  test("partial-credit on a single-response mcq errors", async () => {
+    await expect(
+      compile('set-var "lrn-id" "t" questions [mcq {valid_response: [0], partial_credit: true}] {}..'),
+    ).rejects.toBeTruthy();
+  });
+
+  test("partial-credit on an all-or-nothing type errors", async () => {
+    await expect(
+      compile('set-var "lrn-id" "t" questions [shorttext {valid_response: "a", partial_credit: true}] {}..'),
     ).rejects.toBeTruthy();
   });
 

@@ -44,6 +44,11 @@
       "notes": "Names the ordering criterion (earliest to latest) — otherwise the backend has to guess whether it is chronology, alphabet, or magnitude."
     },
     {
+      "prompt": "Multi-select MCQ: 'Select all the prime numbers.' Options: 2, 4, 7, 9. Correct: 2 and 7. Give partial credit for each correct selection.",
+      "produces": "mcq",
+      "notes": "Asking for partial credit emits `partial-credit true`, switching the question from all-or-nothing (`exactMatch`) to Learnosity's `partialMatch` scoring — a fraction of the point per correct response. It applies only to types with more than one scorable response (multi-select mcq, choicematrix, the cloze family, orderlist, classification, hot-text), and on mcq it requires multiple responses."
+    },
+    {
       "prompt": "Classification item: sort these animals into 'Mammals' and 'Reptiles' — dog, snake, cat, lizard.",
       "produces": "classification",
       "notes": "Provides the category labels and the items in one sentence; the backend creates the bucket mapping without guessing taxonomy."

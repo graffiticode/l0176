@@ -87,6 +87,38 @@ function withDefaults(type: string, attrs: any) {
   return { ...defaults, ...attrs };
 }
 
+// Learnosity scores a question either all-or-nothing (`exactMatch`) or awards a
+// fraction of the score per correct response (`partialMatch`). `partial-credit`
+// picks between them. The score stays 1 either way, so a partial-credit question
+// awards a fraction of that single point per correct response rather than
+// changing the question's total worth.
+//
+// Only types with more than one scorable response accept it — the rest are
+// all-or-nothing by construction, and silently ignoring the attribute there
+// would emit a question that scores differently than the author asked for.
+const PARTIAL_CREDIT_TYPES = new Set([
+  "mcq",
+  "choicematrix",
+  "clozetext",
+  "clozeassociation",
+  "clozedropdown",
+  "orderlist",
+  "classification",
+  "tokenhighlight",
+]);
+
+function scoringType(type: string, partialCredit: any) {
+  if (!partialCredit) {
+    return "exactMatch";
+  }
+  if (!PARTIAL_CREDIT_TYPES.has(type)) {
+    throw new Error(
+      `${type}: partial-credit is not supported — Learnosity scores this type all-or-nothing.`
+    );
+  }
+  return "partialMatch";
+}
+
 // Translate a DSL question-level metadata list into a Learnosity question
 // metadata object. Input is an array of tagged entries ({kind, value}) where
 // kind is one of "acknowledgements" | "distractor_rationale".
@@ -128,9 +160,15 @@ export function buildMcq(attrs: any) {
     multiple_responses,
     instant_feedback,
     shuffle_options,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("mcq", attrs);
+  if (partial_credit && !multiple_responses) {
+    throw new Error(
+      "mcq: partial-credit requires multiple-responses true — a single-response mcq is all-or-nothing."
+    );
+  }
   const question: any = {
     type: "mcq",
     stimulus,
@@ -148,7 +186,7 @@ export function buildMcq(attrs: any) {
   }
   if (valid_response != null) {
     question.validation = {
-      scoring_type: "exactMatch",
+      scoring_type: scoringType("mcq", partial_credit),
       valid_response: {
         score: 1,
         value: valid_response.map(String),
@@ -166,6 +204,7 @@ export function buildShorttext(attrs: any) {
     case_sensitive,
     instant_feedback,
     placeholder,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("shorttext", attrs);
@@ -188,7 +227,7 @@ export function buildShorttext(attrs: any) {
   }
   if (valid_response != null) {
     question.validation = {
-      scoring_type: "exactMatch",
+      scoring_type: scoringType("shorttext", partial_credit),
       valid_response: {
         score: 1,
         value: valid_response,
@@ -203,9 +242,12 @@ export function buildLongtext(attrs: any) {
     stimulus,
     max_length,
     placeholder,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("longtext", attrs);
+  // Unscored type — reject partial-credit rather than let it reach the output.
+  scoringType("longtext", partial_credit);
   const question: any = {
     type: "longtextV2",
     stimulus,
@@ -225,9 +267,12 @@ export function buildPlaintext(attrs: any) {
     stimulus,
     max_length,
     placeholder,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("plaintext", attrs);
+  // Unscored type — reject partial-credit rather than let it reach the output.
+  scoringType("plaintext", partial_credit);
   const question: any = {
     type: "plaintext",
     stimulus,
@@ -248,6 +293,7 @@ export function buildClozetext(attrs: any) {
     valid_response,
     case_sensitive,
     instant_feedback,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("clozetext", attrs);
@@ -264,7 +310,7 @@ export function buildClozetext(attrs: any) {
   }
   if (valid_response != null) {
     question.validation = {
-      scoring_type: "exactMatch",
+      scoring_type: scoringType("clozetext", partial_credit),
       valid_response: {
         score: 1,
         value: valid_response,
@@ -280,6 +326,7 @@ export function buildClozeassociation(attrs: any) {
     possible_responses,
     valid_response,
     instant_feedback,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("clozeassociation", attrs);
@@ -294,7 +341,7 @@ export function buildClozeassociation(attrs: any) {
   }
   if (valid_response != null) {
     question.validation = {
-      scoring_type: "exactMatch",
+      scoring_type: scoringType("clozeassociation", partial_credit),
       valid_response: {
         score: 1,
         value: valid_response,
@@ -310,6 +357,7 @@ export function buildClozedropdown(attrs: any) {
     possible_responses,
     valid_response,
     instant_feedback,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("clozedropdown", attrs);
@@ -324,7 +372,7 @@ export function buildClozedropdown(attrs: any) {
   }
   if (valid_response != null) {
     question.validation = {
-      scoring_type: "exactMatch",
+      scoring_type: scoringType("clozedropdown", partial_credit),
       valid_response: {
         score: 1,
         value: valid_response,
@@ -340,6 +388,7 @@ export function buildClozeformula(attrs: any) {
     valid_response,
     method,
     instant_feedback,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("clozeformula", attrs);
@@ -359,7 +408,7 @@ export function buildClozeformula(attrs: any) {
   if (valid_response != null) {
     const values = Array.isArray(valid_response) ? valid_response : [valid_response];
     question.validation = {
-      scoring_type: "exactMatch",
+      scoring_type: scoringType("clozeformula", partial_credit),
       valid_response: {
         score: 1,
         value: values.map((v: any) => [{
@@ -386,6 +435,7 @@ export function buildChoicematrix(attrs: any) {
     valid_response,
     instant_feedback,
     shuffle_options,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("choicematrix", attrs);
@@ -404,7 +454,7 @@ export function buildChoicematrix(attrs: any) {
   }
   if (valid_response != null) {
     question.validation = {
-      scoring_type: "exactMatch",
+      scoring_type: scoringType("choicematrix", partial_credit),
       valid_response: {
         score: 1,
         value: valid_response,
@@ -420,6 +470,7 @@ export function buildOrderlist(attrs: any) {
     list,
     valid_response,
     instant_feedback,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("orderlist", attrs);
@@ -434,7 +485,7 @@ export function buildOrderlist(attrs: any) {
   }
   if (valid_response != null) {
     question.validation = {
-      scoring_type: "exactMatch",
+      scoring_type: scoringType("orderlist", partial_credit),
       valid_response: {
         score: 1,
         value: valid_response,
@@ -451,6 +502,7 @@ export function buildClassification(attrs: any) {
     possible_responses,
     valid_response,
     instant_feedback,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("classification", attrs);
@@ -469,7 +521,7 @@ export function buildClassification(attrs: any) {
   }
   if (valid_response != null) {
     question.validation = {
-      scoring_type: "exactMatch",
+      scoring_type: scoringType("classification", partial_credit),
       valid_response: {
         score: 1,
         value: valid_response,
@@ -499,9 +551,12 @@ export function buildBowtie(attrs: any) {
     column_titles,
     possible_responses,
     valid_response,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("bowtie", attrs);
+
+  scoringType("bowtie", partial_credit);
 
   ensureArrayOfLength(column_titles, 3, "column-titles");
   ensureArrayOfLength(possible_responses, 3, "possible-responses");
@@ -572,7 +627,10 @@ export function buildBowtie(attrs: any) {
 }
 
 export function buildCustom(attrs: any) {
-  const { lang, data, ...rest } = attrs || {};
+  const { lang, data, partial_credit, ...rest } = attrs || {};
+  // The embedded language owns its own scoring — reject partial-credit here
+  // rather than pass it through into the custom question's JSON.
+  scoringType("custom", partial_credit);
   if (typeof lang !== "string" || lang.length === 0) {
     throw new Error('custom requires lang to be a non-empty string (e.g. lang "0166").');
   }
@@ -657,6 +715,7 @@ export function buildHotText(attrs: any) {
     valid_response,
     distractors,
     max_selection,
+    partial_credit,
     metadata,
     ...rest
   } = withDefaults("tokenhighlight", attrs);
@@ -672,7 +731,7 @@ export function buildHotText(attrs: any) {
     question.max_selection = max_selection;
   }
   question.validation = {
-    scoring_type: "exactMatch",
+    scoring_type: scoringType("tokenhighlight", partial_credit),
     valid_response: {
       score: 1,
       value,
@@ -712,6 +771,7 @@ export const attributeFields: Record<string, any> = {
   IS_MATH: { field: "is_math", valueType: "boolean" },
   SHUFFLE_OPTIONS: { field: "shuffle_options", valueType: "boolean" },
   MULTIPLE_RESPONSES: { field: "multiple_responses", valueType: "boolean" },
+  PARTIAL_CREDIT: { field: "partial_credit", valueType: "boolean" },
   CASE_SENSITIVE: { field: "case_sensitive", valueType: "boolean" },
   MAX_LENGTH: { field: "max_length", valueType: "number" },
   MAX_WORD_COUNT: { field: "max_length", valueType: "number" },
@@ -748,18 +808,18 @@ export const metadataMembers: Record<string, { kind: string }> = {
 
 // Which attributes are valid for each question type
 export const validAttributes: Record<string, string[]> = {
-  MCQ: ["stimulus", "options", "valid_response", "instant_feedback", "is_math", "shuffle_options", "multiple_responses", "metadata"],
+  MCQ: ["stimulus", "options", "valid_response", "instant_feedback", "is_math", "shuffle_options", "multiple_responses", "partial_credit", "metadata"],
   SHORTTEXT: ["stimulus", "valid_response", "instant_feedback", "is_math", "case_sensitive", "max_length", "placeholder", "metadata"],
   LONGTEXT: ["stimulus", "is_math", "max_length", "placeholder", "metadata"],
   PLAINTEXT: ["stimulus", "is_math", "max_length", "placeholder", "metadata"],
-  CLOZETEXT: ["stimulus", "valid_response", "instant_feedback", "is_math", "case_sensitive", "metadata"],
-  CLOZEASSOCIATION: ["stimulus", "possible_responses", "valid_response", "instant_feedback", "is_math", "metadata"],
-  CLOZEDROPDOWN: ["stimulus", "possible_responses", "valid_response", "instant_feedback", "is_math", "metadata"],
+  CLOZETEXT: ["stimulus", "valid_response", "instant_feedback", "is_math", "case_sensitive", "partial_credit", "metadata"],
+  CLOZEASSOCIATION: ["stimulus", "possible_responses", "valid_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
+  CLOZEDROPDOWN: ["stimulus", "possible_responses", "valid_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
   CLOZEFORMULA: ["stimulus", "valid_response", "instant_feedback", "is_math", "method", "metadata"],
-  CHOICEMATRIX: ["stimulus", "rows", "columns", "valid_response", "instant_feedback", "is_math", "shuffle_options", "metadata"],
-  ORDERLIST: ["stimulus", "list", "valid_response", "instant_feedback", "is_math", "metadata"],
-  CLASSIFICATION: ["stimulus", "categories", "possible_responses", "valid_response", "instant_feedback", "is_math", "metadata"],
+  CHOICEMATRIX: ["stimulus", "rows", "columns", "valid_response", "instant_feedback", "is_math", "shuffle_options", "partial_credit", "metadata"],
+  ORDERLIST: ["stimulus", "list", "valid_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
+  CLASSIFICATION: ["stimulus", "categories", "possible_responses", "valid_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
   BOWTIE: ["stimulus", "column_titles", "possible_responses", "valid_response", "is_math", "metadata"],
-  HOT_TEXT: ["stimulus", "passage", "valid_response", "distractors", "max_selection", "metadata"],
-  TOKEN_HIGHLIGHT: ["stimulus", "passage", "valid_response", "distractors", "max_selection", "metadata"],
+  HOT_TEXT: ["stimulus", "passage", "valid_response", "distractors", "max_selection", "partial_credit", "metadata"],
+  TOKEN_HIGHLIGHT: ["stimulus", "passage", "valid_response", "distractors", "max_selection", "partial_credit", "metadata"],
 };

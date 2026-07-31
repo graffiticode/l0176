@@ -44,7 +44,7 @@ Say this to get that:
 - **Distractors** — incorrect options in an MCQ; request "distractors that match common misconceptions" rather than just "wrong answers".
 - **Valid response** — the correct answer(s). For MCQ, pass either the option text or the option index.
 - **Rubric** — triggers manual-scoring mode on `longtext` / `plaintext`. Describe point values per criterion.
-- **Exact match / partial credit** — picks the scoring model; default is exact match.
+- **Exact match / partial credit** — picks the scoring model; default is exact match. Ask for "partial credit" (or "score each correct answer separately") on a multi-select MCQ, choice matrix, cloze, order list, classification, or hot-text item and L0176 emits `partial-credit true`, awarding a fraction of the point per correct response instead of requiring every response to be right. Single-answer types are all-or-nothing and reject it.
 - **Shared stimulus** — a passage, image, or diagram attached once to a group of items. Describe it once at the top of the request.
 - **Tags / standards** — NGSS, CCSS, Bloom's level — mention them by their conventional names (e.g., "NGSS MS-LS1-2", "CCSS 6.NS.A.1") and L0176 attaches them at the item level so the Learnosity Author Site can filter on them.
 - **Difficulty / DOK** — describe difficulty in plain English ("medium", "hard") or numerically (1–5); for Depth of Knowledge use the integer 1–4. Both attach at the item level.

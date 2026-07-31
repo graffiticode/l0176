@@ -386,9 +386,37 @@ mcq
 ```
 
 Common attributes: `stimulus`, `options`, `valid-response`, `instant-feedback`,
-`is-math`, `shuffle-options`, `multiple-responses`, `case-sensitive`,
-`max-length`, `max-word-count`, `placeholder`, `possible-responses`, `rows`,
-`columns`, `list`, `categories`, `method`.
+`is-math`, `shuffle-options`, `multiple-responses`, `partial-credit`,
+`case-sensitive`, `max-length`, `max-word-count`, `placeholder`,
+`possible-responses`, `rows`, `columns`, `list`, `categories`, `method`.
+
+### Partial Credit
+
+Scored questions default to all-or-nothing scoring (`exactMatch`). When the
+request asks for partial credit — "give partial credit", "score each correct
+answer separately", "award points per correct selection" — chain
+`partial-credit true`:
+
+```
+mcq
+  stimulus "Select all the prime numbers."
+  options ["2", "4", "7", "9"]
+  valid-response [0, 2]
+  multiple-responses true
+  partial-credit true
+  {}
+```
+
+This emits Learnosity's `partialMatch` scoring type, which awards a fraction of
+the score per correct response. The question's total score stays 1.
+
+Only emit it for types with more than one scorable response: `mcq`,
+`choicematrix`, `clozetext`, `clozeassociation`, `clozedropdown`, `orderlist`,
+`classification`, `hot-text` / `token-highlight`. On any other type — including
+`shorttext`, `clozeformula`, `bowtie`, `longtext`, `plaintext`, `custom` — it is
+a compile error. On `mcq` it also requires `multiple-responses true`; if the
+request asks for partial credit on a single-answer MCQ, either the item is
+really multi-select (set both) or partial credit does not apply (omit it).
 
 ### Save to Item Bank vs. Preview
 

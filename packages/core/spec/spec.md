@@ -62,6 +62,7 @@ of attributes for a question type. The chain terminates with `{}`.
 | `is-math` | boolean | `is_math` | All types (enables MathJax for LaTeX) |
 | `shuffle-options` | boolean | `shuffle_options` | mcq, choicematrix |
 | `multiple-responses` | boolean | `multiple_responses` | mcq |
+| `partial-credit` | boolean | `validation.scoring_type` | mcq (with `multiple-responses`), choicematrix, clozetext, clozeassociation, clozedropdown, orderlist, classification, hot-text |
 | `case-sensitive` | boolean | `case_sensitive` | shorttext, clozetext |
 | `max-length` | number | `max_length` | shorttext |
 | `max-word-count` | number | `max_word_count` | longtext, plaintext |
@@ -80,6 +81,32 @@ of attributes for a question type. The chain terminates with `{}`.
 | `model` | record or string | `data` (JSON-stringified) | custom |
 | `metadata` | list | `metadata` / `tags` | item, all question types |
 | `save-to-itembank` | boolean | — (compiler flag) | items chain |
+
+#### Partial Credit
+
+Scored questions default to Learnosity's `exactMatch` scoring: the learner must
+get every response right to earn the point. `partial-credit true` switches the
+question to `partialMatch`, which awards a fraction of the score for each
+correct response. The score itself stays `1`, so partial credit changes how the
+point is divided, not what the question is worth.
+
+```
+mcq
+  stimulus "Select all the prime numbers."
+  options ["2", "4", "7", "9"]
+  valid-response [0, 2]
+  multiple-responses true
+  partial-credit true
+  {}
+```
+
+Only types with more than one scorable response accept it: `mcq`,
+`choicematrix`, `clozetext`, `clozeassociation`, `clozedropdown`, `orderlist`,
+`classification`, and `hot-text` / `token-highlight`. Anywhere else — including
+`shorttext`, `clozeformula`, `bowtie`, and the unscored `longtext` / `plaintext`
+— it is a compile error rather than a silently ignored attribute. On `mcq` it
+additionally requires `multiple-responses true`; a single-response mcq is
+all-or-nothing by construction.
 
 #### Metadata Member Constructors
 
