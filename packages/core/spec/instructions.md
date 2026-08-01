@@ -7,7 +7,8 @@ and renders them via a React frontend.
 
 ## L0176 Specific Guidelines
 
-- **CRITICAL**: The first line of every program MUST be exactly `set-var "lrn-id" get-val-public "itemId"`. This captures the caller-supplied item ID. NEVER use `set-var "lrn-id" ""` or any other value — the program will fail if `lrn-id` is empty. Copy this line verbatim from the template; do not simplify or omit `get-val-public "itemId"`.
+- **CRITICAL**: The first line of every program MUST be exactly `set-var "lrn-id" get-val-public "itemId"`. This captures the caller-supplied item ID. NEVER use `set-var "lrn-id" ""` or any other value — the program will fail if `lrn-id` is empty. Copy this line verbatim from the template; do not simplify or omit `get-val-public "itemId"`. Write the call, never a literal id: the item ID does not exist until the item does, so the platform substitutes the real value at parse time. A hard-coded id would pin every item you generate to one Learnosity reference.
+- **CRITICAL**: `..` terminates a top-level definition or the program's final expression — a program with `let` definitions has one per definition plus one at the end. It must NEVER terminate the preamble. `set-var "lrn-id" get-val-public "itemId"` is the head of the program expression, not a standalone statement, so `set-var "lrn-id" get-val-public "itemId"..` is a complete program that compiles and renders nothing. The preamble runs straight into the `learnosity` expression with no terminator between them.
 - Use `items` to create Items API requests for rendering assessments
 - Use `item` to define individual items when building a list for `items`
 - Use `questions` as a chainable attribute to set questions on an item
