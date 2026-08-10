@@ -36,7 +36,12 @@
     {
       "prompt": "Solve for x: 2x + 3 = 11. Show the stem, and accept any expression equivalent to 4 as the answer.",
       "produces": "clozeformula",
-      "notes": "Says 'equivalent to' explicitly — triggers equivalence scoring rather than string match, which matters for math answers."
+      "notes": "Math answers are always compared as expressions, never as text, so notation is free under every method (1/2, 1 / 2 and \\frac{1}{2} are one answer). Saying 'any expression equivalent to' picks equivSymbolic — the whole equivalence class — instead of the default syntactic comparison."
+    },
+    {
+      "prompt": "Math fill-in: 'Simplify 4/8 to lowest terms.' Accept 1/2, 0.5, or 2/4 as correct, but not 4/8.",
+      "produces": "clozeformula",
+      "notes": "Naming which answers count describes an explicit set, not an equivalence class — no equivalence method produces that split, since equivSymbolic on 1/2 would also accept 4/8. The accepted expressions are nested in one valid-response entry (one entry per blank); the first becomes Learnosity's valid_response and the rest become alt_responses."
     },
     {
       "prompt": "Order these historical events from earliest to latest: signing of the Magna Carta, fall of Constantinople, American Declaration of Independence, French Revolution.",

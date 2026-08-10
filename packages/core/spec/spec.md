@@ -79,6 +79,7 @@ of attributes for a question type. The chain terminates with `{}`.
 | `lang` | string | — (URL/`custom_type` synthesis) | custom |
 | `model` | record or string | `data` (JSON-stringified) | custom |
 | `metadata` | list | `metadata` / `tags` | item, all question types |
+| `params` | record[] | `dynamic_content_data` | item chain |
 | `save-to-itembank` | boolean | — (compiler flag) | items chain |
 
 #### Partial Credit
@@ -362,8 +363,11 @@ clozedropdown
 
 ### clozeformula
 
-Creates a fill-in-the-blank question for math/formula input.
-The `method` attribute controls how the answer is validated.
+Creates a fill-in-the-blank question for math/formula input. The response is
+parsed as a math expression; `method` selects which property of that expression
+is compared to `valid-response` — its syntactic form (`equivLiteral`), its
+symbolic equivalence (`equivSymbolic`), its numeric value (`equivValue`), or a
+structural property such as being simplified (`isSimplified`).
 
 ```
 clozeformula
@@ -375,6 +379,33 @@ clozeformula
 
 Supported methods: `equivLiteral`, `equivSymbolic`, `equivValue`,
 `isSimplified`, `isFactorised`, `isExpanded`, `stringMatch`, `isUnit`.
+The compiler passes the method through verbatim and does not check it against
+this list.
+
+#### Accepted answers per blank
+
+`valid-response` is positional: one entry per `{{response}}` blank. An entry is
+either a bare value — that blank's only accepted expression — or a list of the
+expressions that blank accepts:
+
+```
+clozeformula
+  stimulus "Simplify 4/8 to lowest terms: {{response}}"
+  valid-response [["1/2", "0.5", "2/4"]]
+  method "equivLiteral"
+  {}
+```
+
+The first expression of every blank forms Learnosity's `valid_response`; each
+remaining combination becomes an entry in `alt_responses`, so
+`valid-response [["2x", "x*2"], ["5"]]` emits one `valid_response`
+(`2x`, `5`) and one alternative (`x*2`, `5`). The number of combinations —
+the product of the per-blank counts — is capped at 25; beyond that the compiler
+errors rather than emit an unwieldy `alt_responses`.
+
+Because the method already absorbs notational variation (under `equivLiteral`,
+`1/2`, `1 / 2` and `\frac{1}{2}` are one expression), a list is only needed for
+genuinely different expressions.
 
 ### choicematrix
 

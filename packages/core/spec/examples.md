@@ -253,3 +253,19 @@ types with more than one scorable response, and on `mcq` it requires
 160. Create an order list question asking "Put these events in chronological order." with the items "Declaration of Independence", "Civil War", "World War I", "Moon landing" in that correct order, with partial credit.
 161. Create a classification question asking "Sort these animals by class." with categories "Mammals" and "Reptiles" and items "dog", "snake", "cat", "lizard", giving partial credit per correctly placed item.
 162. Create a token highlight question asking "Highlight the verbs." with the passage "The cat runs then jumps high." where "runs" and "jumps" are correct and "cat" and "high" are distractors, scoring each correct token separately.
+
+## Category 18: Several Accepted Math Answers (163–168)
+
+A math response is compared as an *expression*, so notation never needs
+enumerating — under any method `1/2`, `1 / 2`, and `\frac{1}{2}` are one answer.
+Naming which answers count describes an explicit set instead, which no
+equivalence method produces: `equivSymbolic` on `1/2` would also accept `4/8`.
+These requests list the accepted expressions per blank; the first becomes the
+Learnosity `valid_response` and the rest become `alt_responses`.
+
+163. Create a cloze formula question asking "Simplify 4/8 to lowest terms: {{response}}" that accepts "1/2", "0.5", or "2/4" as correct, but not "4/8", using equivLiteral method.
+164. Create a cloze formula question asking "What fraction of the circle is shaded? {{response}}" that accepts "3/4" or "0.75" using equivLiteral method.
+165. Create a cloze formula question asking "Write the slope of the line: {{response}}" that accepts "-2" or "-2/1" using equivLiteral method.
+166. Create a cloze formula question asking "Factor completely: x² - 4 = {{response}}" that accepts "(x-2)(x+2)" or "(x+2)(x-2)" using equivLiteral method.
+167. Create a cloze formula question with two blanks asking "Give the value of x and its decimal form: x = {{response}}, or {{response}} as a decimal" where the first blank accepts "1/4" or "2/8" and the second accepts "0.25", using equivLiteral method.
+168. Create a cloze formula question asking "Express 2 × 2 × 2 in exponential form: {{response}}" that accepts "2^3" or "2³" using equivLiteral method.

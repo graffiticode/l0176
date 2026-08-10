@@ -382,6 +382,26 @@ export function buildClozedropdown(attrs: any) {
   return attachQuestionMetadata(question, metadata);
 }
 
+// Learnosity scores a clozeformula against one answer *set* — `valid_response.value`
+// is indexed by blank, so N entries mean N blanks, not N accepted answers for one
+// blank. Accepting several answers for the same blank is what `alt_responses` is
+// for: each entry is a complete alternative set covering every blank. Hence the
+// two shapes of a `valid-response` entry: a bare string is that blank's only answer
+// (unchanged), and a nested list is the answers that blank accepts. Note the
+// equivalence method already absorbs notational variation — under equivLiteral
+// "1/2", "1 / 2" and "\frac{1}{2}" are one expression — so a list is only needed
+// for genuinely different expressions (1/2 vs 0.5 vs 2/4).
+const ALT_RESPONSE_LIMIT = 25;
+
+// Every combination of one accepted answer per blank, primary combination first
+// (that one becomes valid_response; the rest become alt_responses).
+function answerCombinations(blanks: string[][]) {
+  return blanks.reduce(
+    (acc: any[][], answers: string[]) => acc.flatMap((combo) => answers.map((a) => [...combo, a])),
+    [[]],
+  );
+}
+
 export function buildClozeformula(attrs: any) {
   const {
     stimulus,
@@ -406,23 +426,43 @@ export function buildClozeformula(attrs: any) {
     question.instant_feedback = instant_feedback;
   }
   if (valid_response != null) {
-    const values = Array.isArray(valid_response) ? valid_response : [valid_response];
+    const rule = (v: any) => [{
+      method: mathMethod,
+      value: v,
+      options: {
+        ignoreOrder: false,
+        setDecimalSeparator: ".",
+        setThousandsSeparator: [],
+        inverseResult: false,
+      },
+    }];
+    const entries = Array.isArray(valid_response) ? valid_response : [valid_response];
+    const blanks: string[][] = entries.map((e: any) => (Array.isArray(e) ? e : [e]));
+    for (const answers of blanks) {
+      if (answers.length === 0) {
+        throw new Error("clozeformula: a valid-response entry is an empty list — give the blank at least one accepted answer.");
+      }
+    }
+    const combinations = answerCombinations(blanks);
+    if (combinations.length > ALT_RESPONSE_LIMIT) {
+      throw new Error(
+        `clozeformula: ${combinations.length} accepted answer combinations exceeds the limit of ${ALT_RESPONSE_LIMIT} — list fewer alternatives per blank, or use equivSymbolic/equivValue to accept the whole equivalence class instead of enumerating it.`
+      );
+    }
+    const [primary, ...alternatives] = combinations;
     question.validation = {
       scoring_type: scoringType("clozeformula", partial_credit),
       valid_response: {
         score: 1,
-        value: values.map((v: any) => [{
-          method: mathMethod,
-          value: v,
-          options: {
-            ignoreOrder: false,
-            setDecimalSeparator: ".",
-            setThousandsSeparator: [],
-            inverseResult: false,
-          },
-        }]),
+        value: primary.map(rule),
       },
     };
+    if (alternatives.length > 0) {
+      question.validation.alt_responses = alternatives.map((combo: any[]) => ({
+        score: 1,
+        value: combo.map(rule),
+      }));
+    }
   }
   return attachQuestionMetadata(question, metadata);
 }

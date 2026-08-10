@@ -106,7 +106,10 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     {}
   ```
 
-- `clozeformula` — Fill-in-the-blank with math/formula input:
+- `clozeformula` — Fill-in-the-blank with math/formula input. One
+  `valid-response` entry per `{{response}}` blank; nest a list to let a blank
+  accept several expressions. `method` picks how the response is compared — see
+  Scoring math responses:
   ```
   clozeformula
     stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\) {{response}}"
@@ -246,56 +249,66 @@ clozeformula
 
 ### Scoring math responses (`method`)
 
-`method` decides how a student's typed response is compared to `valid-response`.
-The choice is not cosmetic — it decides which responses are marked correct, and
-the wrong choice silently rejects answers that should score.
+The response a student types is parsed as a **math expression**, never compared as
+a string. `method` decides which property of that expression is compared to
+`valid-response`. The choice is not cosmetic — it decides which responses are
+marked correct, and the wrong choice silently rejects answers that should score.
 
-- **`equivLiteral`** — matches the response *literally* against each entry in
-  `valid-response`. Nothing is inferred: `0.5` does not match `"1/2"`. **Every
-  spelling you intend to accept must be listed.**
-- **`equivSymbolic`** — accepts any response symbolically equivalent to a listed
-  value, so equivalent forms need not be enumerated.
-- **`equivValue`** — accepts any response with the same math value as a listed value.
+- **`equivLiteral`** — compares the expression *syntactically*. Notation and
+  whitespace are free: against `"1/2"` a student typing `1 / 2` or
+  `\\(\\frac{1}{2}\\)` is correct, because those are one expression written three
+  ways. A *different* expression is not: `0.5` and `2/4` each fail against
+  `"1/2"`. **Every expression you intend to accept must be listed** — but its
+  notational variants need not be.
+- **`equivSymbolic`** — accepts any expression symbolically equivalent to a listed
+  one, so equivalent forms need not be enumerated.
+- **`equivValue`** — accepts any expression with the same math value as a listed one.
+- **`isSimplified`** — accepts the response only if it is in simplified form.
+  Use it when simplifying *is* the skill being assessed.
 
-**Rule: if the request names the forms to accept, enumerate every one of them.**
-A request that says "1/2, 0.5, and 2/4 are all accepted" states three accepted
-responses. Under `equivLiteral`, listing only `"1/2"` marks the other two wrong —
-the item compiles, renders, and scores real students incorrectly, and nothing in
-the toolchain will warn you.
+**Rule: if the request names the expressions to accept, enumerate every one of
+them.** A request that says "1/2, 0.5, and 2/4 are all accepted" states three
+accepted expressions. Under `equivLiteral`, listing only `"1/2"` marks the other
+two wrong — the item compiles, renders, and scores real students incorrectly, and
+nothing in the toolchain will warn you.
 
-**An equivalence method accepts the whole equivalence class, and you cannot
-shrink it by listing exclusions.** `equivSymbolic` on `"1/2"` accepts `0.5`,
-`2/4`, `4/8`, `8/16`, `16/32`, … — every equal form, without limit.
-`invalid-response` removes named responses one at a time, so it can never carve
-a finite accepted set out of an infinite one: excluding `"4/8"` still leaves
-`8/16` and every other unsimplified form scoring as correct.
-
-So a request that lists which spellings count — "1/2, 0.5, and 2/4 are accepted,
-4/8 is not" — is describing an explicit set, not a mathematical class. `2/4` is
-in and `4/8` is out; no equivalence rule produces that split. **Use
-`equivLiteral` and list exactly the accepted spellings:**
+To let one blank accept several expressions, **nest them in a list**. A
+`valid-response` entry is positional — one per `{{response}}` blank — so a bare
+string is that blank's only accepted expression, and a nested list is every
+expression it accepts:
 
 ```
 clozeformula
   stimulus "Simplify \\(\\frac{4}{8}\\) to lowest terms: {{response}}"
-  valid-response ["1/2", "0.5", "2/4"]
+  valid-response [["1/2", "0.5", "2/4"]]
   method "equivLiteral"
   {}
 ```
 
+Flat entries still mean one blank each — `valid-response ["11", "5"]` is a
+two-blank item, not one blank accepting `11` or `5`. The two forms mix:
+`valid-response [["2x", "x*2"], ["5"]]` is two blanks whose first accepts either
+expression.
+
+**An equivalence method accepts the whole equivalence class, and you cannot
+shrink it.** `equivSymbolic` on `"1/2"` accepts `0.5`, `2/4`, `4/8`, `8/16`,
+`16/32`, … — every equal form, without limit. So a request that lists which
+expressions count — "1/2, 0.5, and 2/4 are accepted, 4/8 is not" — is describing
+an explicit set, not a mathematical class. `2/4` is in and `4/8` is out; no
+equivalence rule produces that split. Use `equivLiteral` and list the accepted
+expressions.
+
 Reach for `equivSymbolic` / `equivValue` only when the request genuinely means
 *any* equivalent response — "accept any correct form", "however they write it" —
-where the student is not being assessed on the form of the answer. Use
-`invalid-response` for a specific wrong response worth catching (a common
-misconception typed exactly), not to fence off a family of forms.
+where the student is not being assessed on the form of the answer.
 
 Choose by what the request specifies:
 
 | the request says | method | why |
 |---|---|---|
-| these spellings are accepted | `equivLiteral` + every spelling listed | the accepted set is a list, not a class |
+| these expressions are accepted | `equivLiteral` + every one listed | the accepted set is a list, not a class |
 | any equivalent form | `equivSymbolic` / `equivValue` | the class *is* the accepted set |
-| any equivalent form, except this typed answer | equivalence + `invalid-response` | one named exclusion, not a family |
+| it must be simplified | `isSimplified` | the form of the answer is the skill |
 
 ### Metadata
 

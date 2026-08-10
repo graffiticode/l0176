@@ -91,6 +91,48 @@ describe("questions path", () => {
   });
 });
 
+// `valid-response` on clozeformula is positional — one entry per {{response}} blank.
+// A nested entry lists the expressions that blank accepts; the extras become
+// Learnosity alt_responses, which is the only way to accept a finite set of answers.
+describe("clozeformula accepted answers", () => {
+  const answers = (o: any) => o.value.map((blank: any) => blank[0].value);
+
+  test("flat entries stay one blank each", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [clozeformula stimulus "a {{response}} b {{response}}" valid-response ["11", "5"] {}] {}..');
+    const v = out.data.questions[0].data.validation;
+    expect(answers(v.valid_response)).toEqual(["11", "5"]);
+    expect(v.alt_responses).toBeUndefined();
+  });
+
+  test("a nested entry accepts several expressions in one blank", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [clozeformula stimulus "S {{response}}" valid-response [["1/2", "0.5", "2/4"]] method "equivLiteral" {}] {}..');
+    const v = out.data.questions[0].data.validation;
+    expect(answers(v.valid_response)).toEqual(["1/2"]);
+    expect(v.alt_responses.map(answers)).toEqual([["0.5"], ["2/4"]]);
+    expect(v.alt_responses[0].score).toBe(1);
+    expect(v.alt_responses[0].value[0][0].method).toBe("equivLiteral");
+  });
+
+  test("alternates in one blank pair with every other blank's answer", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [clozeformula stimulus "a {{response}} b {{response}}" valid-response [["2x", "x*2"], ["5"]] {}] {}..');
+    const v = out.data.questions[0].data.validation;
+    expect(answers(v.valid_response)).toEqual(["2x", "5"]);
+    expect(v.alt_responses.map(answers)).toEqual([["x*2", "5"]]);
+  });
+
+  test("too many combinations is a compile error, not an unwieldy alt_responses", async () => {
+    await expect(
+      compile('set-var "lrn-id" "t" questions [clozeformula valid-response [["a", "b", "c", "d"], ["e", "f", "g"], ["h", "i", "j"]] {}] {}..')
+    ).rejects.toMatchObject([{ message: expect.stringContaining("36 accepted answer combinations") }]);
+  });
+
+  test("an empty accepted-answer list is a compile error", async () => {
+    await expect(
+      compile('set-var "lrn-id" "t" questions [clozeformula valid-response [[]] {}] {}..')
+    ).rejects.toMatchObject([{ message: expect.stringContaining("empty list") }]);
+  });
+});
+
 describe("items path", () => {
   test("items renders inline questions under a questions envelope", async () => {
     const out = await compile('set-var "lrn-id" "item-1" items [item questions [mcq {}] {}] {}..');
