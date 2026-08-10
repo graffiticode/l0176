@@ -655,7 +655,7 @@ function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Token highlight (hot-text). Tokens are explicitly listed: `valid_response`
+// Token highlight. Tokens are explicitly listed: `valid_response`
 // holds the correct clickable tokens and `distractors` the clickable-but-wrong
 // ones. Only listed tokens are clickable, so tokenization is always "custom":
 // we wrap each whole-word occurrence of a listed token in
@@ -664,25 +664,25 @@ function escapeRegExp(s: string) {
 // when correct, scored — at every occurrence.
 function markTokens(passage: any, validResponse: any, distractors: any) {
   if (typeof passage !== "string" || passage.length === 0) {
-    throw new Error("hot-text requires a non-empty passage string.");
+    throw new Error("token-highlight requires a non-empty passage string.");
   }
   const correct = Array.isArray(validResponse) ? validResponse : (validResponse == null ? [] : [validResponse]);
   const wrong = Array.isArray(distractors) ? distractors : (distractors == null ? [] : [distractors]);
   const clickable = [...correct, ...wrong];
   for (const t of clickable) {
     if (typeof t !== "string" || t.length === 0) {
-      throw new Error("hot-text: valid-response and distractors must be non-empty strings.");
+      throw new Error("token-highlight: valid-response and distractors must be non-empty strings.");
     }
   }
   if (correct.length === 0) {
-    throw new Error("hot-text requires at least one correct token in valid-response.");
+    throw new Error("token-highlight requires at least one correct token in valid-response.");
   }
   // Matching is case-insensitive so a sentence-initial capital still matches a
   // lowercase token (valid-response "run" matches "Run" starting a sentence).
   const correctSet = new Set(correct.map((s: any) => s.toLowerCase()));
   for (const d of wrong) {
     if (correctSet.has(d.toLowerCase())) {
-      throw new Error(`hot-text: "${d}" is listed in both valid-response and distractors.`);
+      throw new Error(`token-highlight: "${d}" is listed in both valid-response and distractors.`);
     }
   }
   // Match whole-word occurrences of any clickable token, longest first so a
@@ -702,13 +702,13 @@ function markTokens(passage: any, validResponse: any, distractors: any) {
   });
   for (const t of clickable) {
     if (!found.has(t.toLowerCase())) {
-      throw new Error(`hot-text: token "${t}" was not found in the passage.`);
+      throw new Error(`token-highlight: token "${t}" was not found in the passage.`);
     }
   }
   return { template, value: value.sort((a, b) => a - b) };
 }
 
-export function buildHotText(attrs: any) {
+export function buildTokenHighlight(attrs: any) {
   const {
     stimulus,
     passage,
@@ -755,10 +755,7 @@ export const questionTypeBuilders: Record<string, (attrs: any) => any> = {
   CLASSIFICATION: buildClassification,
   BOWTIE: buildBowtie,
   CUSTOM: buildCustom,
-  // hot-text and token-highlight are synonyms: two AST names, one builder
-  // (mirrors the MAX_LENGTH/MAX_WORD_COUNT field-alias precedent below).
-  HOT_TEXT: buildHotText,
-  TOKEN_HIGHLIGHT: buildHotText,
+  TOKEN_HIGHLIGHT: buildTokenHighlight,
 };
 
 // Registry mapping AST names to attribute field names and expected types
@@ -820,6 +817,5 @@ export const validAttributes: Record<string, string[]> = {
   ORDERLIST: ["stimulus", "list", "valid_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
   CLASSIFICATION: ["stimulus", "categories", "possible_responses", "valid_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
   BOWTIE: ["stimulus", "column_titles", "possible_responses", "valid_response", "is_math", "metadata"],
-  HOT_TEXT: ["stimulus", "passage", "valid_response", "distractors", "max_selection", "partial_credit", "metadata"],
   TOKEN_HIGHLIGHT: ["stimulus", "passage", "valid_response", "distractors", "max_selection", "partial_credit", "metadata"],
 };

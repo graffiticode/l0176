@@ -1,7 +1,8 @@
 // Emits L0176's public static assets into dist/static/. As a child of L0000, L0176 merges
 // inherited content from its parent:
-//   - lexicon.json: the merged lexicon (base + L0176) — already merged in src/lexicon.ts.
-//     (the legacy lexicon.js request path is aliased to it by the API server.)
+//   - lexicon.json: the merged lexicon (base + L0176) — already merged in src/lexicon.ts,
+//     minus the deprecated alias words (the legacy lexicon.js request path is aliased to
+//     it by the API server.)
 //   - instructions.md: parent (L0000) instructions concatenated with L0176's.
 // The rest (spec.html, language-info.json, scope.json, schema.json, template.gc,
 // usage-guide.md) are L0176's own.
@@ -16,7 +17,7 @@ import {
 } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
-import { lexicon } from "../dist/lexicon.js";
+import { lexicon, deprecatedWords } from "../dist/lexicon.js";
 
 const require = createRequire(import.meta.url);
 const specMarkdown = require("spec-md");
@@ -30,9 +31,14 @@ mkdirSync(outDir, { recursive: true });
 
 // 1. lexicon — merged (base + L0176) as plain JSON in lexicon.json. No lexicon.js is written:
 //    the API server aliases the legacy lexicon.js request path to this file (see app.ts).
+//    Deprecated alias words are dropped: the compiler still accepts them so already-saved
+//    sources compile, but the published vocabulary advertises only the current spelling.
+const publicLexicon = Object.fromEntries(
+  Object.entries(lexicon).filter(([word]) => !deprecatedWords.includes(word)),
+);
 writeFileSync(
   join(outDir, "lexicon.json"),
-  `${JSON.stringify(lexicon, null, 2)}\n`,
+  `${JSON.stringify(publicLexicon, null, 2)}\n`,
 );
 // Remove any stale lexicon.js left by an earlier build — the asset is JSON-only now.
 rmSync(join(outDir, "lexicon.js"), { force: true });

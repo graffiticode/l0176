@@ -1,6 +1,6 @@
 {
   "id": "0176",
-  "description": "Authors Learnosity-compatible assessment items from natural language. Supports multiple-choice, cloze/fill-in-the-blank, short-text, essay, math fill-in, choice matrix, ordering, classification, NGN/NCLEX bow-tie, token-highlight (hot text), and custom items that embed a separately deployed Graffiticode-language interaction (e.g. an L0166 spreadsheet) and can read content from an upstream pipeline task. Describe the stem, correct answer, distractors, scoring, and tags — L0176 emits a valid Learnosity item JSON.",
+  "description": "Authors Learnosity-compatible assessment items from natural language. Supports multiple-choice, cloze/fill-in-the-blank, short-text, essay, math fill-in, choice matrix, ordering, classification, NGN/NCLEX bow-tie, token-highlight, and custom items that embed a separately deployed Graffiticode-language interaction (e.g. an L0166 spreadsheet) and can read content from an upstream pipeline task. Describe the stem, correct answer, distractors, scoring, and tags — L0176 emits a valid Learnosity item JSON.",
   "supported_item_types": [
     "mcq",
     "shorttext",
@@ -14,7 +14,7 @@
     "orderlist",
     "classification",
     "bowtie",
-    "hot-text",
+    "token-highlight",
     "custom"
   ],
   "example_prompts": [
@@ -46,7 +46,7 @@
     {
       "prompt": "Multi-select MCQ: 'Select all the prime numbers.' Options: 2, 4, 7, 9. Correct: 2 and 7. Give partial credit for each correct selection.",
       "produces": "mcq",
-      "notes": "Asking for partial credit emits `partial-credit true`, switching the question from all-or-nothing (`exactMatch`) to Learnosity's `partialMatch` scoring — a fraction of the point per correct response. It applies only to types with more than one scorable response (multi-select mcq, choicematrix, the cloze family, orderlist, classification, hot-text), and on mcq it requires multiple responses."
+      "notes": "Asking for partial credit emits `partial-credit true`, switching the question from all-or-nothing (`exactMatch`) to Learnosity's `partialMatch` scoring — a fraction of the point per correct response. It applies only to types with more than one scorable response (multi-select mcq, choicematrix, the cloze family, orderlist, classification, token-highlight), and on mcq it requires multiple responses."
     },
     {
       "prompt": "Classification item: sort these animals into 'Mammals' and 'Reptiles' — dog, snake, cat, lizard.",
@@ -64,19 +64,19 @@
       "notes": "NGN/NCLEX bow-tie: three source pools drop into a 2-1-2 layout (2 actions on the left, 1 condition in the center, 2 parameters to monitor on the right). The backend rejects inputs that don't satisfy the 2-1-2 shape or whose correct answers aren't in the matching pool."
     },
     {
-      "prompt": "Hot text item: 'Highlight the verbs.' Passage: 'The cat runs then jumps high.' Correct tokens to highlight: runs, jumps. Also make 'cat' and 'high' clickable as distractors. Let them pick at most two.",
-      "produces": "hot-text",
-      "notes": "Token-highlight (hot text): only the listed tokens are clickable. valid-response holds the correct tokens, distractors the clickable wrong ones; the backend wraps each whole-word occurrence in a clickable span and scores correct tokens by position. Matching is case-insensitive; a repeated correct word counts at every occurrence. 'at most two' sets max-selection."
+      "prompt": "Token highlight item: 'Highlight the verbs.' Passage: 'The cat runs then jumps high.' Correct tokens to highlight: runs, jumps. Also make 'cat' and 'high' clickable as distractors. Let them pick at most two.",
+      "produces": "token-highlight",
+      "notes": "Token highlight: only the listed tokens are clickable. valid-response holds the correct tokens, distractors the clickable wrong ones; the backend wraps each whole-word occurrence in a clickable span and scores correct tokens by position. Matching is case-insensitive; a repeated correct word counts at every occurrence. 'at most two' sets max-selection."
     },
     {
-      "prompt": "Hot text item: 'Highlight the sentence that states an opinion.' Passage: 'The sky is blue. I think blue is the most beautiful color. Water boils at 100 degrees.' Correct sentence to highlight: 'I think blue is the most beautiful color.' Make the other two sentences clickable distractors.",
-      "produces": "hot-text",
-      "notes": "Sentence-level hot text: a clickable token can be a whole sentence, not just a word. List the full sentence including its end punctuation as the valid-response token (and the other sentences as distractors); the backend wraps the entire sentence as one clickable span."
+      "prompt": "Token highlight item: 'Highlight the sentence that states an opinion.' Passage: 'The sky is blue. I think blue is the most beautiful color. Water boils at 100 degrees.' Correct sentence to highlight: 'I think blue is the most beautiful color.' Make the other two sentences clickable distractors.",
+      "produces": "token-highlight",
+      "notes": "Sentence-level token highlight: a clickable token can be a whole sentence, not just a word. List the full sentence including its end punctuation as the valid-response token (and the other sentences as distractors); the backend wraps the entire sentence as one clickable span."
     },
     {
-      "prompt": "Hot text item: 'Highlight the paragraph that summarizes the passage.' Passage has three paragraphs separated by blank lines: 'Dogs are loyal animals. They have lived alongside humans for thousands of years.' / 'Cats are independent pets. They groom themselves and hunt small prey.' / 'In short, both dogs and cats make wonderful companions for different reasons.' Correct paragraph: the third one. Make the first two paragraphs clickable distractors.",
-      "produces": "hot-text",
-      "notes": "Paragraph-level hot text: a clickable token can be a whole paragraph. List the full paragraph text as the valid-response token (and the other paragraphs as distractors); the backend wraps each entire paragraph as one clickable span."
+      "prompt": "Token highlight item: 'Highlight the paragraph that summarizes the passage.' Passage has three paragraphs separated by blank lines: 'Dogs are loyal animals. They have lived alongside humans for thousands of years.' / 'Cats are independent pets. They groom themselves and hunt small prey.' / 'In short, both dogs and cats make wonderful companions for different reasons.' Correct paragraph: the third one. Make the first two paragraphs clickable distractors.",
+      "produces": "token-highlight",
+      "notes": "Paragraph-level token highlight: a clickable token can be a whole paragraph. List the full paragraph text as the valid-response token (and the other paragraphs as distractors); the backend wraps each entire paragraph as one clickable span."
     },
     {
       "prompt": "Create a spreadsheet question. Embed the L0166 spreadsheet as the interaction. Stem: 'Use the spreadsheet below to compute the column totals for the first quarter.'",

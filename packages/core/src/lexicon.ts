@@ -30,9 +30,6 @@ const additions = {
   classification: { tk: 1, name: "CLASSIFICATION", cls: "function", length: 1, arity: 1 },
   bowtie: { tk: 1, name: "BOWTIE", cls: "function", length: 1, arity: 1 },
   custom: { tk: 1, name: "CUSTOM", cls: "function", length: 1, arity: 1 },
-  // hot-text and token-highlight are synonyms for the Learnosity tokenhighlight
-  // widget; both resolve to the same builder via questionTypeBuilders.
-  "hot-text": { tk: 1, name: "HOT_TEXT", cls: "function", length: 1, arity: 1 },
   "token-highlight": { tk: 1, name: "TOKEN_HIGHLIGHT", cls: "function", length: 1, arity: 1 },
 
   // Attribute keywords (arity 2)
@@ -77,4 +74,24 @@ const additions = {
   "difficulty-level": { tk: 1, name: "DIFFICULTY_LEVEL", cls: "function", length: 1, arity: 1 },
 };
 
-export const lexicon = { ...base, ...additions };
+// Retired spellings. They still lex — a source saved before the rename must keep
+// compiling — but each maps onto the current keyword's AST name, so there is one
+// node type and one builder downstream. They are stripped from the published
+// lexicon.json (see tools/build-static.js), so nothing advertises them: no
+// autocomplete entry, no spec row, no generator prompt. Removing one is a
+// breaking change for already-saved sources.
+const deprecatedAliases: Record<string, string> = {
+  "hot-text": "token-highlight", // renamed to match the Learnosity widget name
+};
+
+const aliasEntries = Object.fromEntries(
+  Object.entries(deprecatedAliases).map(([alias, current]) => [
+    alias,
+    (additions as Record<string, any>)[current],
+  ]),
+);
+
+// The alias words, for build-static.js to filter out of the public lexicon.json.
+export const deprecatedWords = Object.keys(deprecatedAliases);
+
+export const lexicon = { ...base, ...additions, ...aliasEntries };

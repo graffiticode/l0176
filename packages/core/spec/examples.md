@@ -211,12 +211,12 @@ precedence over a hardwired `params` table on the same item.)
 141. Create a multiple choice question with a dynamic table asking "Is {{a}} + {{b}} equal to {{claimed}}?" with options "True" and "False" where False is correct, and add a one-line distractor rationale per option. Rows: {a: 7, b: 8, claimed: 14}, {a: 9, b: 6, claimed: 16}, {a: 12, b: 5, claimed: 18}.
 142. Create a cloze formula question with a dynamic table asking "Simplify {{a}}x + {{b}}x = {{response}}" with rows {a: 3, b: 4, ans: "7x"}, {a: 5, b: 2, ans: "7x"}, {a: 6, b: 9, ans: "15x"}, with the correct answer {{ans}} using equivSymbolic, tagged with CCSS 7.EE.A.1, difficulty medium, DOK 2.
 
-## Category 16: Token Highlight — Hot Text (143–154)
+## Category 16: Token Highlight (143–154)
 
-Each hot-text item names a passage, the correct tokens to highlight, and the
-clickable distractors. Only the listed tokens are clickable; matching is
+Each token-highlight item names a passage, the correct tokens to highlight, and
+the clickable distractors. Only the listed tokens are clickable; matching is
 case-insensitive and whole-word, and a repeated correct token counts at every
-occurrence. `token-highlight` is a synonym for `hot-text`.
+occurrence.
 
 A clickable token can be a whole sentence or a whole paragraph, not just a
 single word: list the full sentence (including its end punctuation) or the full
@@ -224,18 +224,18 @@ paragraph text as a correct token or distractor, and the entire span becomes one
 clickable unit. Examples 149–151 highlight whole sentences; 152–154 highlight
 whole paragraphs.
 
-143. Create a hot text question asking "Highlight the verbs." with the passage "The cat runs then jumps high." where "runs" and "jumps" are correct and "cat" and "high" are clickable distractors.
+143. Create a token highlight question asking "Highlight the verbs." with the passage "The cat runs then jumps high." where "runs" and "jumps" are correct and "cat" and "high" are clickable distractors.
 144. Create a token highlight question asking "Click the two nouns." with the passage "A small dog chased the red ball across the yard." where "dog" and "ball" are correct, and "small", "red", and "yard" are distractors.
-145. Create a hot text question asking "Highlight every word spelled incorrectly." with the passage "She recieved a seperate letter in the libary." where "recieved", "seperate", and "libary" are correct and "letter" is a distractor.
-146. Create a hot text question asking "Select the adjectives." with the passage "The bright sun warmed the cold sand on the quiet beach." where "bright", "cold", and "quiet" are correct and "sun", "sand", and "beach" are distractors, and let the student pick at most three.
-147. Create a hot text question asking "Highlight the sentence's subject and verb." with the passage "The energetic puppy barked loudly at the mail carrier." where "puppy" and "barked" are correct and "energetic", "loudly", and "carrier" are distractors.
-148. Create a hot text question asking "Click each time the word 'run' appears." with the passage "I run to school, then run back, and run again at night." where every "run" is correct and "school" and "night" are distractors.
-149. Create a hot text question asking "Highlight the sentence that states an opinion." with the passage "The sky is blue. I think blue is the most beautiful color. Water boils at 100 degrees." where the sentence "I think blue is the most beautiful color." is correct and the sentences "The sky is blue." and "Water boils at 100 degrees." are distractors.
+145. Create a token highlight question asking "Highlight every word spelled incorrectly." with the passage "She recieved a seperate letter in the libary." where "recieved", "seperate", and "libary" are correct and "letter" is a distractor.
+146. Create a token highlight question asking "Select the adjectives." with the passage "The bright sun warmed the cold sand on the quiet beach." where "bright", "cold", and "quiet" are correct and "sun", "sand", and "beach" are distractors, and let the student pick at most three.
+147. Create a token highlight question asking "Highlight the sentence's subject and verb." with the passage "The energetic puppy barked loudly at the mail carrier." where "puppy" and "barked" are correct and "energetic", "loudly", and "carrier" are distractors.
+148. Create a token highlight question asking "Click each time the word 'run' appears." with the passage "I run to school, then run back, and run again at night." where every "run" is correct and "school" and "night" are distractors.
+149. Create a token highlight question asking "Highlight the sentence that states an opinion." with the passage "The sky is blue. I think blue is the most beautiful color. Water boils at 100 degrees." where the sentence "I think blue is the most beautiful color." is correct and the sentences "The sky is blue." and "Water boils at 100 degrees." are distractors.
 150. Create a token highlight question asking "Click the topic sentence." with the passage "Recycling helps the environment in many ways. It reduces the amount of trash sent to landfills. It also saves energy and raw materials." where the sentence "Recycling helps the environment in many ways." is correct and the other two sentences are distractors.
-151. Create a hot text question asking "Highlight every sentence written in the past tense." with the passage "The team practices every morning. They won the championship last spring. The coach praised their effort." where the sentences "They won the championship last spring." and "The coach praised their effort." are correct and "The team practices every morning." is a distractor, and let the student pick at most two.
-152. Create a hot text question asking "Highlight the paragraph that summarizes the passage." with the passage "Dogs are loyal animals. They have lived alongside humans for thousands of years.\n\nCats are independent pets. They groom themselves and hunt small prey.\n\nIn short, both dogs and cats make wonderful companions for different reasons." where the paragraph "In short, both dogs and cats make wonderful companions for different reasons." is correct and the first two paragraphs are distractors.
+151. Create a token highlight question asking "Highlight every sentence written in the past tense." with the passage "The team practices every morning. They won the championship last spring. The coach praised their effort." where the sentences "They won the championship last spring." and "The coach praised their effort." are correct and "The team practices every morning." is a distractor, and let the student pick at most two.
+152. Create a token highlight question asking "Highlight the paragraph that summarizes the passage." with the passage "Dogs are loyal animals. They have lived alongside humans for thousands of years.\n\nCats are independent pets. They groom themselves and hunt small prey.\n\nIn short, both dogs and cats make wonderful companions for different reasons." where the paragraph "In short, both dogs and cats make wonderful companions for different reasons." is correct and the first two paragraphs are distractors.
 153. Create a token highlight question asking "Click the paragraph that describes the problem." with the passage "Our town's library closes at five o'clock every day. Many students finish school and arrive only after it has shut.\n\nOne solution is to keep the library open until eight in the evening. Volunteers could staff the extra hours.\n\nWith longer hours, more students would have a quiet place to study." where the first paragraph is correct and the other two paragraphs are distractors.
-154. Create a hot text question asking "Highlight each paragraph that gives a reason to exercise." with the passage "Regular exercise strengthens the heart and improves circulation.\n\nSome people prefer to exercise in the morning, while others prefer the evening.\n\nExercise also lifts your mood by releasing endorphins." where the paragraphs "Regular exercise strengthens the heart and improves circulation." and "Exercise also lifts your mood by releasing endorphins." are correct and the middle paragraph is a distractor.
+154. Create a token highlight question asking "Highlight each paragraph that gives a reason to exercise." with the passage "Regular exercise strengthens the heart and improves circulation.\n\nSome people prefer to exercise in the morning, while others prefer the evening.\n\nExercise also lifts your mood by releasing endorphins." where the paragraphs "Regular exercise strengthens the heart and improves circulation." and "Exercise also lifts your mood by releasing endorphins." are correct and the middle paragraph is a distractor.
 
 ## Category 17: Partial Credit (155–162)
 
@@ -252,4 +252,4 @@ types with more than one scorable response, and on `mcq` it requires
 159. Create a cloze dropdown question asking students to complete "A {{response}} has {{response}} sides." with dropdown choices "triangle/square" and "three/four" where the answers are "triangle" and "three", with partial credit per blank.
 160. Create an order list question asking "Put these events in chronological order." with the items "Declaration of Independence", "Civil War", "World War I", "Moon landing" in that correct order, with partial credit.
 161. Create a classification question asking "Sort these animals by class." with categories "Mammals" and "Reptiles" and items "dog", "snake", "cat", "lizard", giving partial credit per correctly placed item.
-162. Create a hot text question asking "Highlight the verbs." with the passage "The cat runs then jumps high." where "runs" and "jumps" are correct and "cat" and "high" are distractors, scoring each correct token separately.
+162. Create a token highlight question asking "Highlight the verbs." with the passage "The cat runs then jumps high." where "runs" and "jumps" are correct and "cat" and "high" are distractors, scoring each correct token separately.

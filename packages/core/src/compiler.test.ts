@@ -3,7 +3,7 @@
 // Learnosity output directly.
 import { describe, test, expect } from "vitest";
 import { parser } from "@graffiticode/parser";
-import { compiler, lexicon } from "./index.js";
+import { compiler, lexicon, deprecatedWords } from "./index.js";
 
 async function compile(src: string, data: any = {}, config: any = {}): Promise<any> {
   const code = await parser.parse(176, src, lexicon);
@@ -67,13 +67,27 @@ describe("questions path", () => {
     expect(out.data.questions[0].data.validation.scoring_type).toBe("partialMatch");
   });
 
-  test("hot-text marks tokens and scores correct spans by document order", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [hot-text {passage: "The cat runs and jumps.", valid_response: ["runs", "jumps"], distractors: ["cat"]}] {}..');
+  test("token-highlight marks tokens and scores correct spans by document order", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [token-highlight {passage: "The cat runs and jumps.", valid_response: ["runs", "jumps"], distractors: ["cat"]}] {}..');
     const d = out.data.questions[0].data;
     expect(d.type).toBe("tokenhighlight");
     expect(d.template).toContain('<span class="lrn_token">runs</span>');
     // cat is token 0, runs token 1, jumps token 2 → correct spans [1, 2]
     expect(d.validation.valid_response.value).toEqual([1, 2]);
+  });
+
+  // `hot-text` was renamed to `token-highlight` and dropped from every public surface,
+  // but sources saved under the old spelling must keep compiling identically.
+  test("the deprecated hot-text alias still compiles as token-highlight", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [hot-text {passage: "The cat runs and jumps.", valid_response: ["runs", "jumps"], distractors: ["cat"]}] {}..');
+    const d = out.data.questions[0].data;
+    expect(d.type).toBe("tokenhighlight");
+    expect(d.validation.valid_response.value).toEqual([1, 2]);
+  });
+
+  test("the deprecated alias is absent from the published lexicon", async () => {
+    expect(lexicon["hot-text"]).toBeDefined(); // still lexes
+    expect(deprecatedWords).toContain("hot-text"); // but is stripped from lexicon.json
   });
 });
 

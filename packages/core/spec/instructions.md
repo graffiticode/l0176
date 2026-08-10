@@ -37,7 +37,7 @@ provide a higher-level interface with sensible defaults:
 - `orderlist` — Drag items into correct order
 - `classification` — Sort items into categories
 - `bowtie` — NGN/NCLEX bow-tie: 2-1-2 drag-and-drop (actions, condition, monitor)
-- `hot-text` — Highlight tokens in a passage (synonym: `token-highlight`). List correct tokens with `valid-response` and clickable wrong ones with `distractors`
+- `token-highlight` — Highlight tokens in a passage. List correct tokens with `valid-response` and clickable wrong ones with `distractors`
 - `custom` — Embed a separately deployed Graffiticode-language interaction (e.g. an L0166 spreadsheet). Set the interaction payload with the chained `model` attribute (preferred); see Pipeline Composition
 
 Each function takes a record built from chainable attribute keywords.
@@ -168,7 +168,7 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     {}
   ```
 
-- `hot-text` — Highlight tokens in a passage (synonym: `token-highlight`).
+- `token-highlight` — Highlight tokens in a passage.
   List the correct clickable tokens with `valid-response` and the
   clickable-but-wrong ones with `distractors`; only listed tokens are
   clickable. The compiler wraps each whole-word occurrence in
@@ -178,7 +178,7 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   token not present in the passage, or one listed in both `valid-response` and
   `distractors`, is rejected at compile time:
   ```
-  hot-text
+  token-highlight
     stimulus "Highlight the verbs."
     passage "The cat runs then jumps high."
     valid-response ["runs", "jumps"]
@@ -413,7 +413,7 @@ the score per correct response. The question's total score stays 1.
 
 Only emit it for types with more than one scorable response: `mcq`,
 `choicematrix`, `clozetext`, `clozeassociation`, `clozedropdown`, `orderlist`,
-`classification`, `hot-text` / `token-highlight`. On any other type — including
+`classification`, `token-highlight`. On any other type — including
 `shorttext`, `clozeformula`, `bowtie`, `longtext`, `plaintext`, `custom` — it is
 a compile error. On `mcq` it also requires `multiple-responses true`; if the
 request asks for partial credit on a single-answer MCQ, either the item is

@@ -41,7 +41,7 @@ faithful, byte-compatible port of L0158. It's an npm-workspaces monorepo with th
 - **`packages/core/`** — `@graffiticode/l0176`: the language itself. Pure TypeScript.
   - `src/lexicon.ts`: merges L0000's base lexicon with L0176's Learnosity vocabulary
     (`init`, `learnosity`, `items`, `item`, `questions`, `author`; the question-type keywords
-    `mcq`/`shorttext`/`clozetext`/`choicematrix`/`bowtie`/`hot-text`/… ; attribute keywords
+    `mcq`/`shorttext`/`clozetext`/`choicematrix`/`bowtie`/`token-highlight`/… ; attribute keywords
     `stimulus`/`options`/`valid-response`/`save-to-itembank`/`metadata`/… ; and metadata
     member constructors `tags`/`notes`/`difficulty-level`/…)
   - `src/compiler.ts`: `Checker`/`Transformer` extending L0000's; hand-written block handlers
@@ -98,7 +98,7 @@ learnosity items [item questions [mcq {}] {}] {}..
 
 - **Question types (arity 1):** `mcq`, `shorttext`, `longtext`, `plaintext`, `clozetext`,
   `clozeassociation`, `clozedropdown`, `clozeformula`, `choicematrix`, `orderlist`,
-  `classification`, `bowtie`, `custom`, `hot-text` (= `token-highlight`).
+  `classification`, `bowtie`, `custom`, `token-highlight`.
 - **Attributes (arity 2):** `stimulus`, `options`, `valid-response`, `possible-responses`,
   `rows`, `columns`, `list`, `categories`, `column-titles`, `passage`, `distractors`,
   `method`, `metadata`, `id`, `save-to-itembank`, and more.

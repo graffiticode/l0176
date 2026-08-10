@@ -19,7 +19,7 @@ learnosity items [item questions [mcq {}] {}] {}..
 L0176 adds on top of the L0000 base lexicon:
 
 - **Block keywords:** `init`, `learnosity`, `items`, `item`, `questions`, `author`, `features`, `layout`.
-- **Question types (arity 1):** `mcq`, `shorttext`, `longtext`, `plaintext`, `clozetext`, `clozeassociation`, `clozedropdown`, `clozeformula`, `choicematrix`, `orderlist`, `classification`, `bowtie`, `custom`, `hot-text` (= `token-highlight`).
+- **Question types (arity 1):** `mcq`, `shorttext`, `longtext`, `plaintext`, `clozetext`, `clozeassociation`, `clozedropdown`, `clozeformula`, `choicematrix`, `orderlist`, `classification`, `bowtie`, `custom`, `token-highlight`.
 - **Attributes (arity 2):** `stimulus`, `options`, `valid-response`, `possible-responses`, `rows`, `columns`, `list`, `categories`, `column-titles`, `passage`, `distractors`, `method`, `metadata`, `id`, `save-to-itembank`, and more.
 - **Metadata members (arity 1):** `tags`, `notes`, `distractor-rationale`, `acknowledgements`, `description`, `source`, `difficulty-level`.
 

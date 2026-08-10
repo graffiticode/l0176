@@ -44,8 +44,7 @@ complete renderable question.
 | `orderlist` | 1 | `orderlist` | Drag items into correct order |
 | `classification` | 1 | `classification` | Sort items into categories |
 | `bowtie` | 1 | `bowtie` | NGN/NCLEX bow-tie: 2-1-2 drag-and-drop |
-| `hot-text` | 1 | `tokenhighlight` | Highlight tokens in a passage (synonym: `token-highlight`) |
-| `token-highlight` | 1 | `tokenhighlight` | Synonym for `hot-text` |
+| `token-highlight` | 1 | `tokenhighlight` | Highlight tokens in a passage |
 | `custom` | 1 | `custom` | Embed a separately deployed Graffiticode-language interaction |
 
 ### Attribute Keywords
@@ -62,7 +61,7 @@ of attributes for a question type. The chain terminates with `{}`.
 | `is-math` | boolean | `is_math` | All types (enables MathJax for LaTeX) |
 | `shuffle-options` | boolean | `shuffle_options` | mcq, choicematrix |
 | `multiple-responses` | boolean | `multiple_responses` | mcq |
-| `partial-credit` | boolean | `validation.scoring_type` | mcq (with `multiple-responses`), choicematrix, clozetext, clozeassociation, clozedropdown, orderlist, classification, hot-text |
+| `partial-credit` | boolean | `validation.scoring_type` | mcq (with `multiple-responses`), choicematrix, clozetext, clozeassociation, clozedropdown, orderlist, classification, token-highlight |
 | `case-sensitive` | boolean | `case_sensitive` | shorttext, clozetext |
 | `max-length` | number | `max_length` | shorttext |
 | `max-word-count` | number | `max_word_count` | longtext, plaintext |
@@ -73,9 +72,9 @@ of attributes for a question type. The chain terminates with `{}`.
 | `list` | string[] | `list` | orderlist |
 | `categories` | string[] | `ui_style.column_titles` | classification |
 | `column-titles` | string[] | `ui_style.column_titles` + `possible_response_groups[].title` | bowtie |
-| `passage` | string | `template` (with `lrn_token` spans injected) | hot-text |
-| `distractors` | string[] | — (clickable tokens only, not scored) | hot-text |
-| `max-selection` | number | `max_selection` | hot-text |
+| `passage` | string | `template` (with `lrn_token` spans injected) | token-highlight |
+| `distractors` | string[] | — (clickable tokens only, not scored) | token-highlight |
+| `max-selection` | number | `max_selection` | token-highlight |
 | `method` | string | `validation method` | clozeformula |
 | `lang` | string | — (URL/`custom_type` synthesis) | custom |
 | `model` | record or string | `data` (JSON-stringified) | custom |
@@ -102,7 +101,7 @@ mcq
 
 Only types with more than one scorable response accept it: `mcq`,
 `choicematrix`, `clozetext`, `clozeassociation`, `clozedropdown`, `orderlist`,
-`classification`, and `hot-text` / `token-highlight`. Anywhere else — including
+`classification`, and `token-highlight`. Anywhere else — including
 `shorttext`, `clozeformula`, `bowtie`, and the unscored `longtext` / `plaintext`
 — it is a compile error rather than a silently ignored attribute. On `mcq` it
 additionally requires `multiple-responses true`; a single-response mcq is
@@ -446,19 +445,19 @@ exactly two entries in the first and third lists and one in the middle,
 every entry must appear in the matching pool, and no list may contain
 duplicates.
 
-### hot-text
+### token-highlight
 
 Creates a token-highlight question: the learner clicks tokens in a `passage`
-to select them. `token-highlight` is an exact synonym. Clickable tokens are
-listed explicitly — `valid-response` holds the correct tokens and
-`distractors` the clickable-but-incorrect ones. The compiler wraps each
+to select them. Clickable tokens are listed explicitly — `valid-response`
+holds the correct tokens and `distractors` the clickable-but-incorrect
+ones. The compiler wraps each
 whole-word occurrence of a listed token in `<span class="lrn_token">` (so only
 listed tokens are clickable; everything else is plain text) and emits
 `tokenization: "custom"`. Correct tokens are scored by their span index in
 document order.
 
 ```
-hot-text
+token-highlight
   stimulus "Highlight the verbs."
   passage "The cat runs then jumps high."
   valid-response ["runs", "jumps"]
