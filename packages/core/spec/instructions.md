@@ -263,15 +263,19 @@ responses. Under `equivLiteral`, listing only `"1/2"` marks the other two wrong 
 the item compiles, renders, and scores real students incorrectly, and nothing in
 the toolchain will warn you.
 
-**Rejecting a form that is equivalent but still wrong.** Asks like "…but `4/8`
-unsimplified is not accepted" cannot be expressed by the method alone: an
-equivalence method accepts `4/8` precisely because it *is* equivalent. Author the
-exclusion with `invalid-response`.
+**An equivalence method accepts the whole equivalence class, and you cannot
+shrink it by listing exclusions.** `equivSymbolic` on `"1/2"` accepts `0.5`,
+`2/4`, `4/8`, `8/16`, `16/32`, … — every equal form, without limit.
+`invalid-response` removes named responses one at a time, so it can never carve
+a finite accepted set out of an infinite one: excluding `"4/8"` still leaves
+`8/16` and every other unsimplified form scoring as correct.
 
-Both of these satisfy "accept 1/2, 0.5, and 2/4 reduced; reject 4/8":
+So a request that lists which spellings count — "1/2, 0.5, and 2/4 are accepted,
+4/8 is not" — is describing an explicit set, not a mathematical class. `2/4` is
+in and `4/8` is out; no equivalence rule produces that split. **Use
+`equivLiteral` and list exactly the accepted spellings:**
 
 ```
-/* Enumerate every accepted spelling. */
 clozeformula
   stimulus "Simplify \\(\\frac{4}{8}\\) to lowest terms: {{response}}"
   valid-response ["1/2", "0.5", "2/4"]
@@ -279,20 +283,19 @@ clozeformula
   {}
 ```
 
-```
-/* Accept by equivalence, exclude the form that must still be wrong. */
-clozeformula
-  stimulus "Simplify \\(\\frac{4}{8}\\) to lowest terms: {{response}}"
-  valid-response ["1/2"]
-  invalid-response ["4/8"]
-  method "equivSymbolic"
-  {}
-```
+Reach for `equivSymbolic` / `equivValue` only when the request genuinely means
+*any* equivalent response — "accept any correct form", "however they write it" —
+where the student is not being assessed on the form of the answer. Use
+`invalid-response` for a specific wrong response worth catching (a common
+misconception typed exactly), not to fence off a family of forms.
 
-Choose by what the request specifies: a **named list** of acceptable answers →
-`equivLiteral` with all of them listed; **"any equivalent form"** →
-`equivSymbolic` / `equivValue`, plus `invalid-response` for anything that must
-still be marked wrong.
+Choose by what the request specifies:
+
+| the request says | method | why |
+|---|---|---|
+| these spellings are accepted | `equivLiteral` + every spelling listed | the accepted set is a list, not a class |
+| any equivalent form | `equivSymbolic` / `equivValue` | the class *is* the accepted set |
+| any equivalent form, except this typed answer | equivalence + `invalid-response` | one named exclusion, not a family |
 
 ### Metadata
 
