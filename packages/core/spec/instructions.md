@@ -244,6 +244,56 @@ clozeformula
   {}
 ```
 
+### Scoring math responses (`method`)
+
+`method` decides how a student's typed response is compared to `valid-response`.
+The choice is not cosmetic — it decides which responses are marked correct, and
+the wrong choice silently rejects answers that should score.
+
+- **`equivLiteral`** — matches the response *literally* against each entry in
+  `valid-response`. Nothing is inferred: `0.5` does not match `"1/2"`. **Every
+  spelling you intend to accept must be listed.**
+- **`equivSymbolic`** — accepts any response symbolically equivalent to a listed
+  value, so equivalent forms need not be enumerated.
+- **`equivValue`** — accepts any response with the same math value as a listed value.
+
+**Rule: if the request names the forms to accept, enumerate every one of them.**
+A request that says "1/2, 0.5, and 2/4 are all accepted" states three accepted
+responses. Under `equivLiteral`, listing only `"1/2"` marks the other two wrong —
+the item compiles, renders, and scores real students incorrectly, and nothing in
+the toolchain will warn you.
+
+**Rejecting a form that is equivalent but still wrong.** Asks like "…but `4/8`
+unsimplified is not accepted" cannot be expressed by the method alone: an
+equivalence method accepts `4/8` precisely because it *is* equivalent. Author the
+exclusion with `invalid-response`.
+
+Both of these satisfy "accept 1/2, 0.5, and 2/4 reduced; reject 4/8":
+
+```
+/* Enumerate every accepted spelling. */
+clozeformula
+  stimulus "Simplify \\(\\frac{4}{8}\\) to lowest terms: {{response}}"
+  valid-response ["1/2", "0.5", "2/4"]
+  method "equivLiteral"
+  {}
+```
+
+```
+/* Accept by equivalence, exclude the form that must still be wrong. */
+clozeformula
+  stimulus "Simplify \\(\\frac{4}{8}\\) to lowest terms: {{response}}"
+  valid-response ["1/2"]
+  invalid-response ["4/8"]
+  method "equivSymbolic"
+  {}
+```
+
+Choose by what the request specifies: a **named list** of acceptable answers →
+`equivLiteral` with all of them listed; **"any equivalent form"** →
+`equivSymbolic` / `equivValue`, plus `invalid-response` for anything that must
+still be marked wrong.
+
 ### Metadata
 
 L0176 supports a `metadata` block at two levels: on `item` (for fields the
