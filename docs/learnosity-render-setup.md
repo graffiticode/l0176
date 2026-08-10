@@ -24,6 +24,32 @@ rather than object identity — see
 `packages/view/src/components/form/contentKey.ts`. Re-initializing on
 already-mounted DOM throws Learnosity's `triggerBufferedEvents` error.
 
+## Which is why L0176 compiles are never cached
+
+A signature that is stamped at compile time expires on a timer, so a *cached*
+compile eventually hands the browser a dead token and the form renders blank —
+and the initial render reads `GET api/data?id=…` (the shared `l0000-view`'s
+mount fetcher), which was held by three caches: the Firestore `compiles/{id}`
+record, the browser (`Cache-Control: …immutable`), and the Cloudflare cache rule
+on `api.graffiticode.org/data`.
+
+L0176 defuses all three by answering **`cache: false`** in its compile envelope
+(`packages/api/src/compile.ts`) — a language declaring that its own output goes
+stale. The api (`packages/api/src/data.js`) strips the directive, skips the
+Firestore write, and sends `Cache-Control: no-store` instead of the immutable
+headers. Every render therefore recompiles and re-signs.
+
+Two consequences:
+
+- L0176 wants `min-instances=1` on Cloud Run — a cold start is now on the render
+  path for every view, not just the first.
+- The Form must keep keying `LearnosityApp.init` on stable question content
+  (`packages/view/src/components/form/contentKey.ts`), since `request` churns on
+  every one of these recompiles.
+
+Any other dialect that signs or timestamps its output opts in the same way; the
+api has no language list.
+
 ## Three service credentials
 
 All three must be set on the Cloud Run service `l0176` (project `graffiticode`)

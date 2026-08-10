@@ -28,14 +28,19 @@ export async function compile({
       ...(config?.learnosity ?? {}),
     },
   };
-  // Response envelope: success output in `data`, compile errors in `errors` (array).
+  // Response envelope: success output in `data`, compile errors in `errors` (array),
+  // and `cache: false` — signForRender folds a time-limited Learnosity signature into
+  // `request` on every compile, so this output goes stale on a timer. The api strips
+  // the directive and, seeing it, neither stores the compile nor lets the `/data`
+  // response be held by the browser or the CDN. Without it a cached compile hands the
+  // browser a dead token and the form renders blank.
   return await new Promise((resolve) =>
     compiler.compile(code, data, mergedConfig, (err: any, out: any) => {
       const errors = Array.isArray(err) ? err.filter(Boolean) : err ? [err] : [];
       if (errors.length > 0) {
-        resolve({ data: null, errors });
+        resolve({ data: null, errors, cache: false });
       } else {
-        resolve({ data: out, errors: [] });
+        resolve({ data: out, errors: [], cache: false });
       }
     }),
   );
