@@ -57,6 +57,7 @@ of attributes for a question type. The chain terminates with `{}`.
 | `stimulus` | string | `stimulus` | All types |
 | `options` | string[] | `options` | mcq, choicematrix |
 | `valid-response` | varies | `validation.valid_response.value` | All scored types |
+| `alternative-response` | varies | `validation.alt_responses[*].value` | mcq, shorttext, clozetext, clozeassociation, clozedropdown, clozeformula, choicematrix, orderlist, classification, token-highlight |
 | `instant-feedback` | boolean | `instant_feedback` | All types |
 | `is-math` | boolean | `is_math` | All types (enables MathJax for LaTeX) |
 | `shuffle-options` | boolean | `shuffle_options` | mcq, choicematrix |
@@ -331,6 +332,26 @@ clozetext
   valid-response ["Civil", "1865"]
   {}
 ```
+
+#### Accepted alternate answers
+
+Do not list multiple accepted answers for a single blank in `valid-response` —
+each entry is one blank. The array length must exactly match the number of
+`{{response}}` markers. To accept genuinely different answers (synonyms,
+alternate phrasings), use `alternative-response`, which is an array of complete
+alternate answers:
+
+```
+clozetext
+  stimulus "The capital of France is {{response}}."
+  valid-response ["Paris"]
+  alternative-response ["Paree"]
+  case-sensitive false
+  {}
+```
+
+For case variants, `case-sensitive false` handles them more elegantly than
+listing each spelling separately.
 
 ### clozeassociation
 

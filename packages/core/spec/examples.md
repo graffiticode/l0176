@@ -51,14 +51,16 @@
 
 36. Create a cloze text question with the template "The {{response}} is the powerhouse of the cell" with the correct answer "mitochondria".
 37. Create a cloze text question with the template "Water is made of {{response}} and oxygen" with the correct answer "hydrogen", case insensitive.
-38. Create a cloze text question with the template "The {{response}} of the United States is Washington, D.C." with the correct answers "capital" or "Capital".
+38. Create a cloze text question with the template "The {{response}} of the United States is Washington, D.C." with the correct answer "capital", case insensitive.
 39. Create a cloze text question with the template "{{response}} is the chemical symbol for gold" with the correct answer "Au".
 40. Create a cloze text question with two blanks: "The {{response}} is in the {{response}} system" with correct answers "Sun" and "solar".
 41. Create a cloze text with instant feedback and the template "Plants convert {{response}} into oxygen" with the correct answer "carbon dioxide".
 42. Create a cloze text question with the template "Photosynthesis occurs in the {{response}} of plant cells" with the correct answer "chloroplast", case insensitive.
+42a. Create a cloze text question with the template "The {{response}} of the United States is Washington, D.C." with the correct answer "capital" and also accept "seat of government" as an alternate.
 43. Create an items assessment with a cloze text question: "The {{response}} War ended in {{response}}" with correct answers "Civil" and "1865".
 44. Create a cloze text question with the template "DNA stands for {{response}} acid" with the correct answer "deoxyribonucleic", case insensitive.
 45. Create a cloze text question with the template "The speed of {{response}} is approximately 300,000 km/s" with the correct answer "light".
+45a. Create a multiple-choice question asking "What is the capital of France?" with options "Paris", "London", "Berlin", "Madrid" where Paris is correct, and add a check answer button.
 
 ## Category 5: Cloze Association — Drag and Drop (46–52)
 

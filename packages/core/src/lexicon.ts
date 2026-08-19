@@ -36,6 +36,7 @@ const additions = {
   stimulus: { tk: 1, name: "STIMULUS", cls: "function", length: 2, arity: 2 },
   options: { tk: 1, name: "OPTIONS", cls: "function", length: 2, arity: 2 },
   "valid-response": { tk: 1, name: "VALID_RESPONSE", cls: "function", length: 2, arity: 2 },
+  "alternative-response": { tk: 1, name: "ALTERNATIVE_RESPONSE", cls: "function", length: 2, arity: 2 },
   "instant-feedback": { tk: 1, name: "INSTANT_FEEDBACK", cls: "function", length: 2, arity: 2 },
   "is-math": { tk: 1, name: "IS_MATH", cls: "function", length: 2, arity: 2 },
   "shuffle-options": { tk: 1, name: "SHUFFLE_OPTIONS", cls: "function", length: 2, arity: 2 },

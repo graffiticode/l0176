@@ -80,7 +80,7 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     {}
   ```
 
-- `clozetext` — Fill-in-the-blank with typed responses:
+- `clozetext` — Fill-in-the-blank with typed responses. One `valid-response` entry per `{{response}}` blank; do not list multiple accepted answers as separate entries — use `alternative-response` for synonyms or alternates:
   ```
   clozetext
     stimulus "The {{response}} is the powerhouse of the cell."
@@ -452,7 +452,7 @@ mcq
   {}
 ```
 
-Common attributes: `stimulus`, `options`, `valid-response`, `instant-feedback`,
+Common attributes: `stimulus`, `options`, `valid-response`, `alternative-response`, `instant-feedback`,
 `is-math`, `shuffle-options`, `multiple-responses`, `partial-credit`,
 `case-sensitive`, `max-length`, `max-word-count`, `placeholder`,
 `possible-responses`, `rows`, `columns`, `list`, `categories`, `method`.
@@ -482,6 +482,26 @@ Only emit it for types with more than one scorable response: `mcq`,
 `classification`, `token-highlight`. On any other type — including
 `shorttext`, `clozeformula`, `bowtie`, `longtext`, `plaintext`, `custom` — it is
 a compile error. On `mcq` it also requires `multiple-responses true`; if the
+
+### Instant Feedback
+
+Scored questions default to no per-response feedback. When the request asks the
+learner to be able to check their answer — "add a check answer button", "let
+students check their work", "show a check button", "submit for feedback",
+"immediate feedback" — chain `instant-feedback true`:
+
+```
+mcq
+  stimulus "Which planet is closest to the Sun?"
+  options ["Mercury", "Venus", "Earth", "Mars"]
+  valid-response [0]
+  instant-feedback true
+  {}
+```
+
+This emits Learnosity's `instant_feedback` flag, which shows per-response
+feedback immediately in supported question types. The question's score and valid
+answer remain unchanged — only the feedback behavior changes.
 request asks for partial credit on a single-answer MCQ, either the item is
 really multi-select (set both) or partial credit does not apply (omit it).
 

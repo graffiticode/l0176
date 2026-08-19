@@ -157,6 +157,7 @@ export function buildMcq(attrs: any) {
     stimulus,
     options,
     valid_response,
+    alternative_response,
     multiple_responses,
     instant_feedback,
     shuffle_options,
@@ -192,6 +193,12 @@ export function buildMcq(attrs: any) {
         value: valid_response.map(String),
       },
     };
+    if (alternative_response != null) {
+      question.validation.alt_responses = alternative_response.map((v: any) => ({
+        score: 1,
+        value: Array.isArray(v) ? v.map(String) : [String(v)],
+      }));
+    }
   }
   return attachQuestionMetadata(question, metadata);
 }
@@ -200,6 +207,7 @@ export function buildShorttext(attrs: any) {
   const {
     stimulus,
     valid_response,
+    alternative_response,
     max_length,
     case_sensitive,
     instant_feedback,
@@ -233,6 +241,9 @@ export function buildShorttext(attrs: any) {
         value: valid_response,
       },
     };
+    if (alternative_response != null) {
+      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
+    }
   }
   return attachQuestionMetadata(question, metadata);
 }
@@ -291,6 +302,7 @@ export function buildClozetext(attrs: any) {
   const {
     stimulus,
     valid_response,
+    alternative_response,
     case_sensitive,
     instant_feedback,
     partial_credit,
@@ -316,6 +328,9 @@ export function buildClozetext(attrs: any) {
         value: valid_response,
       },
     };
+    if (alternative_response != null) {
+      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
+    }
   }
   return attachQuestionMetadata(question, metadata);
 }
@@ -325,6 +340,7 @@ export function buildClozeassociation(attrs: any) {
     stimulus,
     possible_responses,
     valid_response,
+    alternative_response,
     instant_feedback,
     partial_credit,
     metadata,
@@ -347,6 +363,9 @@ export function buildClozeassociation(attrs: any) {
         value: valid_response,
       },
     };
+    if (alternative_response != null) {
+      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
+    }
   }
   return attachQuestionMetadata(question, metadata);
 }
@@ -356,6 +375,7 @@ export function buildClozedropdown(attrs: any) {
     stimulus,
     possible_responses,
     valid_response,
+    alternative_response,
     instant_feedback,
     partial_credit,
     metadata,
@@ -378,6 +398,9 @@ export function buildClozedropdown(attrs: any) {
         value: valid_response,
       },
     };
+    if (alternative_response != null) {
+      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
+    }
   }
   return attachQuestionMetadata(question, metadata);
 }
@@ -406,6 +429,7 @@ export function buildClozeformula(attrs: any) {
   const {
     stimulus,
     valid_response,
+    alternative_response,
     method,
     instant_feedback,
     partial_credit,
@@ -457,8 +481,29 @@ export function buildClozeformula(attrs: any) {
         value: primary.map(rule),
       },
     };
-    if (alternatives.length > 0) {
-      question.validation.alt_responses = alternatives.map((combo: any[]) => ({
+    const allAlternatives: any[] = [...alternatives];
+    if (alternative_response != null) {
+      const altEntries = Array.isArray(alternative_response) ? alternative_response : [alternative_response];
+      for (const altEntry of altEntries) {
+        const altBlanks: string[][] = Array.isArray(altEntry) ? altEntry.map((e: any) => (Array.isArray(e) ? e : [e])) : [Array.isArray(altEntry) ? altEntry : [altEntry]];
+        if (altBlanks.length !== blanks.length) {
+          throw new Error(`clozeformula: alternative-response entry has ${altBlanks.length} blanks but valid-response has ${blanks.length}`);
+        }
+        for (const answers of altBlanks) {
+          if (answers.length === 0) {
+            throw new Error("clozeformula: an alternative-response entry is an empty list — give each blank at least one accepted answer.");
+          }
+        }
+        allAlternatives.push(altBlanks.flat());
+      }
+    }
+    if (allAlternatives.length > ALT_RESPONSE_LIMIT) {
+      throw new Error(
+        `clozeformula: ${allAlternatives.length} total alt_responses exceeds the limit of ${ALT_RESPONSE_LIMIT} — reduce the number of alternatives or use equivSymbolic/equivValue.`
+      );
+    }
+    if (allAlternatives.length > 0) {
+      question.validation.alt_responses = allAlternatives.map((combo: any[]) => ({
         score: 1,
         value: combo.map(rule),
       }));
@@ -473,6 +518,7 @@ export function buildChoicematrix(attrs: any) {
     rows,
     columns,
     valid_response,
+    alternative_response,
     instant_feedback,
     shuffle_options,
     partial_credit,
@@ -500,6 +546,9 @@ export function buildChoicematrix(attrs: any) {
         value: valid_response,
       },
     };
+    if (alternative_response != null) {
+      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
+    }
   }
   return attachQuestionMetadata(question, metadata);
 }
@@ -509,6 +558,7 @@ export function buildOrderlist(attrs: any) {
     stimulus,
     list,
     valid_response,
+    alternative_response,
     instant_feedback,
     partial_credit,
     metadata,
@@ -531,6 +581,9 @@ export function buildOrderlist(attrs: any) {
         value: valid_response,
       },
     };
+    if (alternative_response != null) {
+      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
+    }
   }
   return attachQuestionMetadata(question, metadata);
 }
@@ -541,6 +594,7 @@ export function buildClassification(attrs: any) {
     categories,
     possible_responses,
     valid_response,
+    alternative_response,
     instant_feedback,
     partial_credit,
     metadata,
@@ -567,6 +621,9 @@ export function buildClassification(attrs: any) {
         value: valid_response,
       },
     };
+    if (alternative_response != null) {
+      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
+    }
   }
   return attachQuestionMetadata(question, metadata);
 }
@@ -585,12 +642,50 @@ function ensureArrayOfLength(value: any, length: number, label: string) {
   }
 }
 
+function resolveBowtieResponse(picks3: any[], possible_responses: any[], _column_titles: any[]) {
+  const offsets = [0, possible_responses[0].length, possible_responses[0].length + possible_responses[1].length];
+  ensureArrayOfLength(picks3, 3, "response picks");
+  for (let i = 0; i < 3; i++) {
+    const pool = possible_responses[i];
+    const picks = picks3[i];
+    if (!Array.isArray(picks) || picks.some((x: any) => typeof x !== "string")) {
+      throw new Error(`bowtie: response[${i}] must be an array of strings`);
+    }
+    if (picks.length !== BOWTIE_AREA_COUNTS[i]) {
+      throw new Error(
+        `bowtie: response must have 2-1-2 correct answers (got ${picks3.map((r: any) => r.length).join("-")})`
+      );
+    }
+    if (pool.length < BOWTIE_AREA_COUNTS[i]) {
+      throw new Error(
+        `bowtie: possible-responses[${i}] needs at least ${BOWTIE_AREA_COUNTS[i]} options (got ${pool.length})`
+      );
+    }
+    const seen = new Set();
+    for (const pick of picks) {
+      if (seen.has(pick)) {
+        throw new Error(`bowtie: response[${i}] has a duplicate entry "${pick}"`);
+      }
+      seen.add(pick);
+      if (!pool.includes(pick)) {
+        throw new Error(
+          `bowtie: response[${i}] entry "${pick}" is not in possible-responses[${i}]`
+        );
+      }
+    }
+  }
+  return picks3.map((picks: any, i: number) =>
+    picks.map((pick: any) => offsets[i] + possible_responses[i].indexOf(pick))
+  );
+}
+
 export function buildBowtie(attrs: any) {
   const {
     stimulus,
     column_titles,
     possible_responses,
     valid_response,
+    alternative_response,
     partial_credit,
     metadata,
     ...rest
@@ -602,44 +697,7 @@ export function buildBowtie(attrs: any) {
   ensureArrayOfLength(possible_responses, 3, "possible-responses");
   ensureArrayOfLength(valid_response, 3, "valid-response");
 
-  for (let i = 0; i < 3; i++) {
-    const pool = possible_responses[i];
-    if (!Array.isArray(pool) || pool.some((x: any) => typeof x !== "string")) {
-      throw new Error(`bowtie: possible-responses[${i}] must be an array of strings`);
-    }
-    const picks = valid_response[i];
-    if (!Array.isArray(picks) || picks.some((x: any) => typeof x !== "string")) {
-      throw new Error(`bowtie: valid-response[${i}] must be an array of strings`);
-    }
-    if (picks.length !== BOWTIE_AREA_COUNTS[i]) {
-      throw new Error(
-        `bowtie: valid-response must have 2-1-2 correct answers (got ${valid_response.map((r: any) => r.length).join("-")})`
-      );
-    }
-    if (pool.length < BOWTIE_AREA_COUNTS[i]) {
-      throw new Error(
-        `bowtie: possible-responses[${i}] needs at least ${BOWTIE_AREA_COUNTS[i]} options (got ${pool.length})`
-      );
-    }
-    const seen = new Set();
-    for (const pick of picks) {
-      if (seen.has(pick)) {
-        throw new Error(`bowtie: valid-response[${i}] has a duplicate entry "${pick}"`);
-      }
-      seen.add(pick);
-      if (!pool.includes(pick)) {
-        throw new Error(
-          `bowtie: valid-response[${i}] entry "${pick}" is not in possible-responses[${i}]`
-        );
-      }
-    }
-  }
-
-  // Global index = pool offset + index of the pick within its pool.
-  const offsets = [0, possible_responses[0].length, possible_responses[0].length + possible_responses[1].length];
-  const validValue = valid_response.map((picks: any, i: number) =>
-    picks.map((pick: any) => offsets[i] + possible_responses[i].indexOf(pick))
-  );
+  const validValue = resolveBowtieResponse(valid_response, possible_responses, column_titles);
 
   const question: any = {
     type: "bowtie",
@@ -663,6 +721,16 @@ export function buildBowtie(attrs: any) {
     },
     ...rest,
   };
+
+  if (alternative_response != null) {
+    question.validation.alt_responses = alternative_response.map((altPicks3: any) =>
+      ({
+        score: 1,
+        value: resolveBowtieResponse(altPicks3, possible_responses, column_titles),
+      })
+    );
+  }
+
   return attachQuestionMetadata(question, metadata);
 }
 
@@ -753,6 +821,7 @@ export function buildTokenHighlight(attrs: any) {
     stimulus,
     passage,
     valid_response,
+    alternative_response,
     distractors,
     max_selection,
     partial_credit,
@@ -777,6 +846,12 @@ export function buildTokenHighlight(attrs: any) {
       value,
     },
   };
+  if (alternative_response != null) {
+    question.validation.alt_responses = alternative_response.map((v: any) => {
+      const { value: altValue } = markTokens(passage, v, distractors);
+      return { score: 1, value: altValue };
+    });
+  }
   return attachQuestionMetadata(question, metadata);
 }
 
@@ -804,6 +879,7 @@ export const attributeFields: Record<string, any> = {
   STIMULUS: { field: "stimulus", valueType: "string" },
   OPTIONS: { field: "options", valueType: "array" },
   VALID_RESPONSE: { field: "valid_response", valueType: "any" },
+  ALTERNATIVE_RESPONSE: { field: "alternative_response", valueType: "array" },
   INSTANT_FEEDBACK: { field: "instant_feedback", valueType: "boolean" },
   IS_MATH: { field: "is_math", valueType: "boolean" },
   SHUFFLE_OPTIONS: { field: "shuffle_options", valueType: "boolean" },
@@ -845,17 +921,17 @@ export const metadataMembers: Record<string, { kind: string }> = {
 
 // Which attributes are valid for each question type
 export const validAttributes: Record<string, string[]> = {
-  MCQ: ["stimulus", "options", "valid_response", "instant_feedback", "is_math", "shuffle_options", "multiple_responses", "partial_credit", "metadata"],
-  SHORTTEXT: ["stimulus", "valid_response", "instant_feedback", "is_math", "case_sensitive", "max_length", "placeholder", "metadata"],
+  MCQ: ["stimulus", "options", "valid_response", "alternative_response", "instant_feedback", "is_math", "shuffle_options", "multiple_responses", "partial_credit", "metadata"],
+  SHORTTEXT: ["stimulus", "valid_response", "alternative_response", "instant_feedback", "is_math", "case_sensitive", "max_length", "placeholder", "metadata"],
   LONGTEXT: ["stimulus", "is_math", "max_length", "placeholder", "metadata"],
   PLAINTEXT: ["stimulus", "is_math", "max_length", "placeholder", "metadata"],
-  CLOZETEXT: ["stimulus", "valid_response", "instant_feedback", "is_math", "case_sensitive", "partial_credit", "metadata"],
-  CLOZEASSOCIATION: ["stimulus", "possible_responses", "valid_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
-  CLOZEDROPDOWN: ["stimulus", "possible_responses", "valid_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
-  CLOZEFORMULA: ["stimulus", "valid_response", "instant_feedback", "is_math", "method", "metadata"],
-  CHOICEMATRIX: ["stimulus", "rows", "columns", "valid_response", "instant_feedback", "is_math", "shuffle_options", "partial_credit", "metadata"],
-  ORDERLIST: ["stimulus", "list", "valid_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
-  CLASSIFICATION: ["stimulus", "categories", "possible_responses", "valid_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
-  BOWTIE: ["stimulus", "column_titles", "possible_responses", "valid_response", "is_math", "metadata"],
-  TOKEN_HIGHLIGHT: ["stimulus", "passage", "valid_response", "distractors", "max_selection", "partial_credit", "metadata"],
+  CLOZETEXT: ["stimulus", "valid_response", "alternative_response", "instant_feedback", "is_math", "case_sensitive", "partial_credit", "metadata"],
+  CLOZEASSOCIATION: ["stimulus", "possible_responses", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
+  CLOZEDROPDOWN: ["stimulus", "possible_responses", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
+  CLOZEFORMULA: ["stimulus", "valid_response", "alternative_response", "instant_feedback", "is_math", "method", "metadata"],
+  CHOICEMATRIX: ["stimulus", "rows", "columns", "valid_response", "alternative_response", "instant_feedback", "is_math", "shuffle_options", "partial_credit", "metadata"],
+  ORDERLIST: ["stimulus", "list", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
+  CLASSIFICATION: ["stimulus", "categories", "possible_responses", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
+  BOWTIE: ["stimulus", "column_titles", "possible_responses", "valid_response", "alternative_response", "is_math", "metadata"],
+  TOKEN_HIGHLIGHT: ["stimulus", "passage", "valid_response", "alternative_response", "distractors", "max_selection", "partial_credit", "metadata"],
 };

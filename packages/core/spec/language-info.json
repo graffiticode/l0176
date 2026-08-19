@@ -87,6 +87,16 @@
       "prompt": "Create a spreadsheet question. Embed the L0166 spreadsheet as the interaction. Stem: 'Use the spreadsheet below to compute the column totals for the first quarter.'",
       "produces": "custom",
       "notes": "Embedded interaction: emits a `custom` question with `lang \"0166\"` whose `data:` reads the upstream pipeline task via the base-language `data {}` primitive. The pipeline edge (which L0166 producer feeds this consumer) is wired in the console; L0176 source does not reference task IDs. Scoring is the L0166 widget's own `scorer.js` — no `valid-response` is emitted. `save-to-itembank` produces a snapshot frozen at compile time."
+    },
+    {
+      "prompt": "Create a multiple-choice question asking 'What is the capital of France?' with options 'Paris', 'London', 'Berlin', 'Madrid' where Paris is correct, and add a check answer button.",
+      "produces": "mcq",
+      "notes": "'Check answer button', 'let students check their work', 'show a check button', and 'submit for feedback' all map to `instant-feedback true` — emits Learnosity's `instant_feedback` flag, showing per-response feedback immediately without changing scoring."
+    },
+    {
+      "prompt": "Cloze text item: 'The {{response}} of the United States is Washington, D.C.' Correct answer: 'capital'. Also accept 'seat of government' as an alternate synonym.",
+      "produces": "clozetext",
+      "notes": "Asking to 'also accept' / 'accepts X or Y' / 'synonym answer' emits `alternative-response` with each alternate, scored like the primary. One entry per blank; for multi-blank items each alternate is a complete replacement (one answer per blank). Do not list multiple accepted answers as separate `valid-response` entries — that would be misinterpreted as multiple blanks."
     }
   ]
 }
