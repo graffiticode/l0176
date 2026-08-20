@@ -135,18 +135,28 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   ]
   ```
 
-- `clozeformula` — Fill-in-the-blank with math/formula input. One
-  `valid-response` entry per `{{response}}` blank; nest a list to let a blank
-  accept several expressions. `method` picks how the response is compared — see
-  Scoring math responses:
+- `clozeformula` — Math input. Emits `clozeformulaV2` (Learnosity's "Math").
+  `validation.valid_response.value` is an array per blank of arrays of rule
+  objects, each with a `method`, usually a `value`, and optionally `options`
+  (whose keys are camelCase — `decimal-places` emits `decimalPlaces`):
   ```
   clozeformula [
-    stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\) {{response}}"
-    valid-response ["4"]
-    method "equivLiteral"
+    template "{{response}} minutes = {{response}} hour"
+    is-math true
+    validation [
+      valid-response [
+        score 1
+        value [ [[method "equivLiteral" value "60"]]
+                [[method "equivValue" value "1" options [decimal-places 2]]] ]
+      ]
+    ]
   ]
   ```
-
+  A rule may carry a `method` and no `value`: `isExpanded`, `isSimplified` and
+  `isTrue` are predicates on the response. To accept several different
+  expressions for one blank, use `alt-responses` — each entry is a complete
+  answer set covering every blank. Notation never needs enumerating: `1/2`,
+  `1 / 2` and `\frac{1}{2}` are one expression under every method.
 - `choicematrix` — Grid of prompts and choices. Learnosity's names: `stems` are the row prompts, `options` the column choices.
   `multiple-responses true` turns each row's radio buttons into checkboxes:
   ```
@@ -411,10 +421,14 @@ items [
 Place a `metadata` block inside any question constructor's chain, alongside
 `stimulus`, `options`, etc. These list members are recognized:
 
-- `distractor-rationale` — a string, or a list of strings (one per option).
-  A list is joined into a numbered multi-line string (`"1. ...\n2. ..."`)
-  so the Author Site's single Distractor Rationale field displays the
-  per-option intent in place.
+- `distractor-rationale` — a single string, emitted unchanged.
+- `distractor-rationale-response-level` — a list of strings, one per response.
+  This is the field Learnosity documents for per-option intent; use it rather
+  than packing a list into `distractor-rationale`.
+- `rubric-reference` — identifier of the rubric to use with this question.
+- `sample-answer` — shown in reporting via the Reports API.
+- `response-shuffle-seed` — `mcq` only; fixes the shuffled option order so every
+  learner sees the same one.
 - `acknowledgements` — attribution string.
 
 ```

@@ -126,7 +126,11 @@ output.
 | `description` | string | item | Emitted as the item's top-level `description` field (Author Site item details page Description). |
 | `source` | string | item | Emitted as the item's top-level `source` field (Author Site item details page Source). |
 | `difficulty-level` | integer | item | Emitted as `adaptive.difficulty` — the integer Rasch calibration backing the Author Site item details page Difficulty level spinner. Distinct from the `difficulty` tag (which is a text label like "medium"). |
-| `distractor-rationale` | string or string[] | question | Emitted as `metadata.distractor_rationale`. A list is joined into a numbered multi-line string (`"1. ...\n2. ..."`) so the Author Site's single Distractor Rationale field shows per-option intent. |
+| `distractor-rationale` | string | question | Emitted as `metadata.distractor_rationale`, unchanged. |
+| `distractor-rationale-response-level` | string[] | question | Emitted as `metadata.distractor_rationale_response_level` — one rationale per response, which is the field Learnosity documents for per-option intent. |
+| `rubric-reference` | string | question | Identifier of the rubric to use. |
+| `sample-answer` | string | question | Shown in Reports API. |
+| `response-shuffle-seed` | string | question | mcq only; fixes the shuffled option order across learners. |
 | `acknowledgements` | string | question | Attribution. |
 
 ## Function Reference
@@ -417,49 +421,64 @@ clozedropdown [
 
 ### clozeformula
 
-Creates a fill-in-the-blank question for math/formula input. The response is
-parsed as a math expression; `method` selects which property of that expression
-is compared to `valid-response` — its syntactic form (`equivLiteral`), its
-symbolic equivalence (`equivSymbolic`), its numeric value (`equivValue`), or a
-structural property such as being simplified (`isSimplified`).
+Math input into one or more response boxes. The keyword is `clozeformula` but the
+emitted type is `clozeformulaV2` — Learnosity calls it "Math"; its own
+`clozeformula` ("Cloze math") is an older, different type.
+
+This is the deepest nesting in the language. `validation.valid_response.value` is
+an array per blank of arrays of **rule objects**, each with a `method`, usually a
+`value`, and optionally `options`:
 
 ```
 clozeformula [
-  stimulus "Solve for x: 2x + 4 = 10. x = {{response}}"
-  valid-response ["3"]
-  method "equivLiteral"
+  stimulus "It takes 25 minutes to walk and 45 to drive."
+  template "{{response}} minutes = {{response}} hour and {{response}} minutes"
+  is-math true
+  ui-style [type "block-on-focus-keyboard"]
+  validation [
+    scoring-type "exactMatch"
+    valid-response [
+      score 1
+      value [ [[method "equivLiteral" value "70"]]
+              [[method "equivValue" value "1" options [decimal-places 2]]]
+              [[method "equivLiteral" value "10"]] ]
+    ]
+  ]
 ]
 ```
 
-Supported methods: `equivLiteral`, `equivSymbolic`, `equivValue`,
-`isSimplified`, `isFactorised`, `isExpanded`, `stringMatch`, `isUnit`.
-The compiler passes the method through verbatim and does not check it against
-this list.
+A rule may carry a `method` and no `value` at all — `isExpanded`, `isSimplified`
+and `isTrue` are predicates on the response rather than comparisons against an
+answer.
 
-#### Accepted answers per blank
-
-`valid-response` is positional: one entry per `{{response}}` blank. An entry is
-either a bare value — that blank's only accepted expression — or a list of the
-expressions that blank accepts:
+Accepting several different expressions for one blank is what `alt-responses` is
+for: each entry is a complete answer set covering every blank.
 
 ```
 clozeformula [
-  stimulus "Simplify 4/8 to lowest terms: {{response}}"
-  valid-response [["1/2", "0.5", "2/4"]]
-  method "equivLiteral"
+  template "Simplify 4/8: {{response}}"
+  validation [
+    valid-response [value [[[method "equivLiteral" value "1/2"]]]]
+    alt-responses [[value [[[method "equivLiteral" value "0.5"]]]]
+                   [value [[[method "equivLiteral" value "2/4"]]]]]
+  ]
 ]
 ```
 
-The first expression of every blank forms Learnosity's `valid_response`; each
-remaining combination becomes an entry in `alt_responses`, so
-`valid-response [["2x", "x*2"], ["5"]]` emits one `valid_response`
-(`2x`, `5`) and one alternative (`x*2`, `5`). The number of combinations —
-the product of the per-blank counts — is capped at 25; beyond that the compiler
-errors rather than emit an unwieldy `alt_responses`.
+Notation never needs enumerating — `1/2`, `1 / 2` and `\frac{1}{2}` are one
+expression under every method. Only genuinely different expressions do.
 
-Because the method already absorbs notational variation (under `equivLiteral`,
-`1/2`, `1 / 2` and `\frac{1}{2}` are one expression), a list is only needed for
-genuinely different expressions.
+#### Methods and options are not checked
+
+Nothing constrains `method` or the keys of `options`, deliberately. The
+documentation does not settle either question: the full method list appears on
+exactly one of Learnosity's 51 articles, and the `options` bag is documented as
+two disjoint sets with neither matching its own examples. See C1 and C2 in
+`conflict-resolution.md`. Rather than encode a guess, the compiler passes both
+through and the author writes what Learnosity accepts.
+
+Note the `options` keys are camelCase — `decimal-places` emits `decimalPlaces` —
+alone among Learnosity's fields.
 
 ### choicematrix
 

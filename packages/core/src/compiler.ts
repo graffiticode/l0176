@@ -18,9 +18,8 @@ import { buildInitAuthor, buildCreateAuthor } from "./author.js";
 import {
   questionTypeBuilders,
   memberFields,
-  metadataMembers,
   mergeMembers,
-  isMemberList,
+  inferShape,
 } from "./question-types.js";
 
 // Unwrap L0000's internal Record representation ({_type:"record", _entries:Map})
@@ -241,18 +240,6 @@ for (const name of Object.keys(memberFields)) {
   };
 }
 
-// Generate Checker methods for metadata member constructors (arity 1).
-// Value-shape validation happens in the translators — the Checker just
-// walks the child expression.
-for (const name of Object.keys(metadataMembers)) {
-  Checker.prototype[name] = function (node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      const err = ([] as any[]).concat(e0 || []);
-      const val = node;
-      resume(err, val);
-    });
-  };
-}
 
 export class Transformer extends BaseTransformer {
   [key: string]: any;
@@ -541,19 +528,14 @@ for (const [name, meta] of Object.entries(memberFields)) {
       try {
         let value = raw;
         if (meta.shape === "object") {
-          // A bare value reaching an object-shaped member is an unconverted
-          // question type still using the flat spelling — pass it through
-          // unchanged. See isMemberList in question-types.ts.
-          if (Array.isArray(raw) && (raw.length === 0 || isMemberList(raw))) {
-            value = mergeMembers(raw, where);
-          }
-        } else if (meta.shape === "objectArray" || meta.shape === "objectArrayOrValues") {
+          value = mergeMembers(raw, where);
+        } else if (meta.shape === "objectArray") {
           if (!Array.isArray(raw)) {
             throw new Error(`${where}: expected a list of member lists, e.g. [[score 1 value "x"]].`);
           }
-          const lenient = meta.shape === "objectArrayOrValues";
-          value = raw.map((entry: any, i: number) =>
-            lenient && !isMemberList(entry) ? entry : mergeMembers(entry, `${where}[${i + 1}]`));
+          value = raw.map((entry: any, i: number) => mergeMembers(entry, `${where}[${i + 1}]`));
+        } else if (meta.shape === "infer") {
+          value = inferShape(raw, where);
         }
         resume(err, { [meta.field]: value });
       } catch (e: any) {
@@ -563,17 +545,6 @@ for (const [name, meta] of Object.entries(memberFields)) {
   };
 }
 
-// Generate Transformer methods for metadata member constructors (arity 1).
-// Each returns a tagged-entry record that appears inside the metadata list.
-for (const [name, meta] of Object.entries(metadataMembers)) {
-  Transformer.prototype[name] = function (node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      const err = ([] as any[]).concat(e0 || []);
-      const val = { kind: meta.kind, value: toPlainObject(v0) };
-      resume(err, val);
-    });
-  };
-}
 
 // Override ID to set options["lrn-id"] before visiting continuation,
 // so child transformers (ITEMS, QUESTIONS, AUTHOR) can read it.

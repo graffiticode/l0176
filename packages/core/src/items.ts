@@ -30,7 +30,7 @@ import { v4 as uuid } from "uuid";
 // (integers are stringified). `tags` entries accept a record whose values are
 // a string or an array of strings — a bare string is treated as a single-
 // element array for authoring convenience.
-export function translateItemMetadata(entries: any) {
+export function translateItemMetadata(metadata: any) {
   const empty = {
     tags: undefined,
     note: undefined,
@@ -39,48 +39,24 @@ export function translateItemMetadata(entries: any) {
     adaptive: undefined,
     metadata: undefined,
   };
-  if (!Array.isArray(entries)) {
+  if (metadata == null || typeof metadata !== "object" || Array.isArray(metadata)) {
     return empty;
   }
   const tags: any = {};
-  const meta: any = {};
-  let note;
-  let description;
-  let source;
-  let difficultyLevel;
-  const pushTag = (type: string, value: any) => {
-    if (!tags[type]) tags[type] = [];
-    tags[type].push(String(value));
-  };
-  for (const entry of entries) {
-    if (entry == null || typeof entry !== "object") continue;
-    const { kind, value } = entry;
-    if (value == null) continue;
-    if (kind === "tags") {
-      if (value == null || typeof value !== "object") continue;
-      for (const [type, raw] of Object.entries(value)) {
-        if (raw == null) continue;
-        const values = Array.isArray(raw) ? raw : [raw];
-        for (const v of values) pushTag(type, v);
-      }
-    } else if (kind === "notes") {
-      note = value;
-    } else if (kind === "description") {
-      description = value;
-    } else if (kind === "source") {
-      source = value;
-    } else if (kind === "difficulty_level") {
-      difficultyLevel = value;
-    } else if (kind === "acknowledgements") {
-      meta.acknowledgements = value;
-    }
+  for (const [type, raw] of Object.entries(metadata.tags ?? {})) {
+    if (raw == null) continue;
+    tags[type] = (Array.isArray(raw) ? raw : [raw]).map(String);
   }
+  const meta: any = {};
+  if (metadata.acknowledgements !== undefined) meta.acknowledgements = metadata.acknowledgements;
   return {
     tags: Object.keys(tags).length > 0 ? tags : undefined,
-    note,
-    description,
-    source,
-    adaptive: difficultyLevel !== undefined ? { difficulty: difficultyLevel } : undefined,
+    note: metadata.notes,
+    description: metadata.description,
+    source: metadata.source,
+    adaptive: metadata.difficulty_level !== undefined
+      ? { difficulty: metadata.difficulty_level }
+      : undefined,
     metadata: Object.keys(meta).length > 0 ? meta : undefined,
   };
 }

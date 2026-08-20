@@ -36,15 +36,12 @@ const additions = {
   stimulus: { tk: 1, name: "STIMULUS", cls: "function", length: 1, arity: 1 },
   options: { tk: 1, name: "OPTIONS", cls: "function", length: 1, arity: 1 },
   "valid-response": { tk: 1, name: "VALID_RESPONSE", cls: "function", length: 1, arity: 1 },
-  "alternative-response": { tk: 1, name: "ALTERNATIVE_RESPONSE", cls: "function", length: 1, arity: 1 },
   "instant-feedback": { tk: 1, name: "INSTANT_FEEDBACK", cls: "function", length: 1, arity: 1 },
   "is-math": { tk: 1, name: "IS_MATH", cls: "function", length: 1, arity: 1 },
   "shuffle-options": { tk: 1, name: "SHUFFLE_OPTIONS", cls: "function", length: 1, arity: 1 },
   "multiple-responses": { tk: 1, name: "MULTIPLE_RESPONSES", cls: "function", length: 1, arity: 1 },
-  "partial-credit": { tk: 1, name: "PARTIAL_CREDIT", cls: "function", length: 1, arity: 1 },
   "case-sensitive": { tk: 1, name: "CASE_SENSITIVE", cls: "function", length: 1, arity: 1 },
   "max-length": { tk: 1, name: "MAX_LENGTH", cls: "function", length: 1, arity: 1 },
-  "max-word-count": { tk: 1, name: "MAX_WORD_COUNT", cls: "function", length: 1, arity: 1 },
   placeholder: { tk: 1, name: "PLACEHOLDER", cls: "function", length: 1, arity: 1 },
   "possible-responses": { tk: 1, name: "POSSIBLE_RESPONSES", cls: "function", length: 1, arity: 1 },
   columns: { tk: 1, name: "COLUMNS", cls: "function", length: 1, arity: 1 },
@@ -154,6 +151,33 @@ const additions = {
   "row-titles": { tk: 1, name: "ROW_TITLES", cls: "function", length: 1, arity: 1 },
   "row-titles-width": { tk: 1, name: "ROW_TITLES_WIDTH", cls: "function", length: 1, arity: 1 },
 
+  // Added with clozeformula. `items-list` rather than `items`: the block
+  // keyword `items` is arity 2 and already taken, and hints.items is the only
+  // place a question needs the field.
+  "handwriting-recognises": { tk: 1, name: "HANDWRITING_RECOGNISES", cls: "function", length: 1, arity: 1 },
+  hints: { tk: 1, name: "HINTS", cls: "function", length: 1, arity: 1 },
+  "is-dynamic-content": { tk: 1, name: "IS_DYNAMIC_CONTENT", cls: "function", length: 1, arity: 1 },
+  "math-image-capture": { tk: 1, name: "MATH_IMAGE_CAPTURE", cls: "function", length: 1, arity: 1 },
+  "items-list": { tk: 1, name: "ITEMS_LIST", cls: "function", length: 1, arity: 1 },
+  content: { tk: 1, name: "CONTENT", cls: "function", length: 1, arity: 1 },
+  "keyboard-below-response-area": { tk: 1, name: "KEYBOARD_BELOW_RESPONSE_AREA", cls: "function", length: 1, arity: 1 },
+  "min-width": { tk: 1, name: "MIN_WIDTH", cls: "function", length: 1, arity: 1 },
+  "response-font-scale": { tk: 1, name: "RESPONSE_FONT_SCALE", cls: "function", length: 1, arity: 1 },
+  "show-hints-button": { tk: 1, name: "SHOW_HINTS_BUTTON", cls: "function", length: 1, arity: 1 },
+
+  // Members of a scoring rule's `options`. Learnosity spells these camelCase,
+  // alone among its fields, so the kebab keyword maps to camelCase not snake.
+  // Which of them a given method honours is unsettled — see C1 and C2.
+  // `ignore-leading-and-trailing-spaces-rule` is distinguished from the
+  // question-level attribute of nearly the same name, which is snake_case.
+  "decimal-places": { tk: 1, name: "DECIMAL_PLACES", cls: "function", length: 1, arity: 1 },
+  "set-decimal-separator": { tk: 1, name: "SET_DECIMAL_SEPARATOR", cls: "function", length: 1, arity: 1 },
+  "set-thousands-separator": { tk: 1, name: "SET_THOUSANDS_SEPARATOR", cls: "function", length: 1, arity: 1 },
+  "ignore-order": { tk: 1, name: "IGNORE_ORDER", cls: "function", length: 1, arity: 1 },
+  "ignore-leading-and-trailing-spaces-rule": { tk: 1, name: "IGNORE_LEADING_TRAILING_RULE", cls: "function", length: 1, arity: 1 },
+  "treat-multiple-spaces-as-one": { tk: 1, name: "TREAT_MULTIPLE_SPACES_AS_ONE", cls: "function", length: 1, arity: 1 },
+  "inverse-result": { tk: 1, name: "INVERSE_RESULT", cls: "function", length: 1, arity: 1 },
+
   // Leaf-object members (arity 1). Each returns a single-key record; the
   // enclosing collector merges a list of them into one object. Modelled on
   // L0169's `assess [method "value" expected 42]`.
@@ -168,6 +192,10 @@ const additions = {
   notes: { tk: 1, name: "NOTES", cls: "function", length: 1, arity: 1 },
   "distractor-rationale": { tk: 1, name: "DISTRACTOR_RATIONALE", cls: "function", length: 1, arity: 1 },
   acknowledgements: { tk: 1, name: "ACKNOWLEDGEMENTS", cls: "function", length: 1, arity: 1 },
+  "distractor-rationale-response-level": { tk: 1, name: "DISTRACTOR_RATIONALE_RESPONSE_LEVEL", cls: "function", length: 1, arity: 1 },
+  "rubric-reference": { tk: 1, name: "RUBRIC_REFERENCE", cls: "function", length: 1, arity: 1 },
+  "sample-answer": { tk: 1, name: "SAMPLE_ANSWER", cls: "function", length: 1, arity: 1 },
+  "response-shuffle-seed": { tk: 1, name: "RESPONSE_SHUFFLE_SEED", cls: "function", length: 1, arity: 1 },
   description: { tk: 1, name: "DESCRIPTION", cls: "function", length: 1, arity: 1 },
   source: { tk: 1, name: "SOURCE", cls: "function", length: 1, arity: 1 },
   "difficulty-level": { tk: 1, name: "DIFFICULTY_LEVEL", cls: "function", length: 1, arity: 1 },

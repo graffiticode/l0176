@@ -41,9 +41,9 @@ Two articles carry more than their titles suggest:
 
 | Section | Status | Findings |
 | --- | --- | --- |
-| [Registries are declared but never enforced](#a-registries-are-declared-but-never-enforced) | partly fixed | 1 — enforced for the 12 converted types |
+| [Registries are declared but never enforced](#a-registries-are-declared-but-never-enforced) | **fixed** | 1 — enforced for all 13 types |
 | [Author API widget list](#b-author-api-widget-list) | unreviewed | 1 |
-| [Question metadata](#c-question-metadata) | unreviewed | 1 |
+| [Question metadata](#c-question-metadata) | **fixed** | 1 |
 | [`spec/` accuracy](#d-spec-accuracy) | unreviewed | 2 |
 | [`mcq`](#mcq--mcq) | **fixed** | — |
 | [`shorttext`](#shorttext--shorttext) | **fixed** | — |
@@ -52,7 +52,7 @@ Two articles carry more than their titles suggest:
 | [`clozetext`](#clozetext--clozetext) | **fixed** | 1 (shared) — resolved for this type |
 | [`clozeassociation`](#clozeassociation--clozeassociation) | **fixed** | 1 (shared) |
 | [`clozedropdown`](#clozedropdown--clozedropdown) | **fixed** | 1 (shared) |
-| [`clozeformula`](#clozeformula--clozeformulav2) | unreviewed | 4 |
+| [`clozeformula`](#clozeformula--clozeformulav2) | **fixed** | 4 — 1, 2 and 4 resolved; 3 is now the author's |
 | [`choicematrix`](#choicematrix--choicematrix) | **fixed** | 1 |
 | [`orderlist`](#orderlist--orderlist) | **fixed** | — |
 | [`classification`](#classification--classification) | **fixed** | — |
@@ -125,7 +125,7 @@ The list also omits `bowtie`, which L0176 itself supports.
 
 ## C. Question metadata
 
-**Status:** unreviewed
+**Status:** **fixed** — the join is gone and the documented fields are exposed
 
 Learnosity documents `metadata.distractor_rationale_response_level` as
 `array[string]` — one rationale per response — which is exactly L0176's
@@ -133,11 +133,10 @@ per-distractor use case. `translateQuestionMetadata`
 (`question-types.ts:136-139`) instead joins the list into a single numbered string
 in `metadata.distractor_rationale`.
 
-Switching the emission would break golden parity, so this can only be an
-*additional* field, or left as-is and documented.
-
-Also documented and unexposed: `metadata.sample_answer` (shown by Reports API),
-`metadata.rubric_reference`, and `metadata.response_shuffle_seed` (`mcq` only).
+**Resolved.** `distractor-rationale` now emits a single string unchanged, and
+`distractor-rationale-response-level` is its own member taking the list — which is
+what Learnosity documents for per-option intent, and was previously unreachable.
+`sample-answer`, `rubric-reference` and `response-shuffle-seed` are exposed too.
 
 Worth reflecting in `spec/`: Learnosity states the Questions API provides **no
 built-in UI** for distractor rationale — the data is in the question JSON and the
@@ -297,7 +296,7 @@ Note the response format returns `null` for an unanswered menu.
 
 ## `clozeformula` → `clozeformulaV2`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Math-clozeformulaV2.md` (the emitted type), `Cloze-math-clozeformula.md`
 (the same-named older type), `Chemistry-formula-chemistry.md` (the method list) ·
 **Builder:** `question-types.ts:428` · **Attributes:** `question-types.ts:931`

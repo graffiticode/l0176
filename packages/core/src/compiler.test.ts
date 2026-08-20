@@ -54,12 +54,10 @@ describe("questions path", () => {
     expect(out.data.questions[0].data.validation.scoring_type).toBe("partialMatch");
   });
 
-  test("partial-credit is gone from every converted type", async () => {
-    await expect(
-      compile('set-var "lrn-id" "t" questions [mcq [valid-response [0] partial-credit true]] {}..')
-    ).rejects.toContainEqual(expect.objectContaining({
-      message: expect.stringContaining("not attributes of mcq"),
-    }));
+  test("partial-credit is gone from the language, not merely from a type", async () => {
+    expect(lexicon["partial-credit"]).toBeUndefined();
+    expect(lexicon["alternative-response"]).toBeUndefined();
+    expect(lexicon["max-word-count"]).toBeUndefined();
   });
 
   test("token-highlight takes its own lrn_token markup and span indices", async () => {
@@ -91,45 +89,70 @@ describe("questions path", () => {
   });
 });
 
-// `valid-response` on clozeformula is positional — one entry per {{response}} blank.
-// A nested entry lists the expressions that blank accepts; the extras become
-// Learnosity alt_responses, which is the only way to accept a finite set of answers.
-describe("clozeformula accepted answers", () => {
-  const answers = (o: any) => o.value.map((blank: any) => blank[0].value);
+describe("clozeformula (the deepest nesting)", () => {
+  const q = async (src: string) => (await compile(`set-var "lrn-id" "t" questions [${src}] {}..`)).data.questions[0].data;
 
-  test("flat entries stay one blank each", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [clozeformula [stimulus "a {{response}} b {{response}}" valid-response ["11", "5"]]] {}..');
-    const v = out.data.questions[0].data.validation;
-    expect(answers(v.valid_response)).toEqual(["11", "5"]);
-    expect(v.alt_responses).toBeUndefined();
+  test("valid_response.value is an array per blank of arrays of rule objects", async () => {
+    // The builder used to take flat answer strings and build the rule objects,
+    // taking the cartesian product across blanks to fill alt_responses. The
+    // author writes the rules now.
+    const d = await q(`clozeformula [
+      template "{{response}} minutes = {{response}} hour"
+      is-math true
+      validation [
+        scoring-type "exactMatch"
+        valid-response [
+          score 1
+          value [ [[method "equivLiteral" value "60"]]
+                  [[method "equivValue" value "1" options [decimal-places 2]]] ]
+        ]
+      ]
+    ]`);
+    expect(d.type).toBe("clozeformulaV2");
+    expect(d.validation.valid_response).toEqual({
+      score: 1,
+      value: [
+        [{ method: "equivLiteral", value: "60" }],
+        [{ method: "equivValue", value: "1", options: { decimalPlaces: 2 } }],
+      ],
+    });
   });
 
-  test("a nested entry accepts several expressions in one blank", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [clozeformula [stimulus "S {{response}}" valid-response [["1/2", "0.5", "2/4"]] method "equivLiteral"]] {}..');
-    const v = out.data.questions[0].data.validation;
-    expect(answers(v.valid_response)).toEqual(["1/2"]);
-    expect(v.alt_responses.map(answers)).toEqual([["0.5"], ["2/4"]]);
-    expect(v.alt_responses[0].score).toBe(1);
-    expect(v.alt_responses[0].value[0][0].method).toBe("equivLiteral");
+  test("a rule may carry a method and no value", async () => {
+    // isExpanded and friends are predicates on the response. The old builder
+    // always emitted a `value`, so this shape was unwritable.
+    const d = await q(`clozeformula [
+      template "{{response}}"
+      validation [valid-response [value [[[method "isExpanded"]]]]]
+    ]`);
+    expect(d.validation.valid_response.value).toEqual([[{ method: "isExpanded" }]]);
   });
 
-  test("alternates in one blank pair with every other blank's answer", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [clozeformula [stimulus "a {{response}} b {{response}}" valid-response [["2x", "x*2"], ["5"]]]] {}..');
-    const v = out.data.questions[0].data.validation;
-    expect(answers(v.valid_response)).toEqual(["2x", "5"]);
-    expect(v.alt_responses.map(answers)).toEqual([["x*2", "5"]]);
+  test("alternates are whole answer sets, one per entry", async () => {
+    const d = await q(`clozeformula [
+      template "{{response}}"
+      validation [
+        valid-response [value [[[method "equivLiteral" value "1/2"]]]]
+        alt-responses [[value [[[method "equivLiteral" value "0.5"]]]]
+                       [value [[[method "equivLiteral" value "2/4"]]]]]
+      ]
+    ]`);
+    expect(d.validation.alt_responses).toEqual([
+      { value: [[{ method: "equivLiteral", value: "0.5" }]] },
+      { value: [[{ method: "equivLiteral", value: "2/4" }]] },
+    ]);
   });
 
-  test("too many combinations is a compile error, not an unwieldy alt_responses", async () => {
-    await expect(
-      compile('set-var "lrn-id" "t" questions [clozeformula [valid-response [["a", "b", "c", "d"], ["e", "f", "g"], ["h", "i", "j"]]]] {}..')
-    ).rejects.toMatchObject([{ message: expect.stringContaining("36 accepted answer combinations") }]);
-  });
-
-  test("an empty accepted-answer list is a compile error", async () => {
-    await expect(
-      compile('set-var "lrn-id" "t" questions [clozeformula [valid-response [[]]]] {}..')
-    ).rejects.toMatchObject([{ message: expect.stringContaining("empty list") }]);
+  test("nothing constrains the method or the options keys", async () => {
+    // C1 and C2 are open: which methods exist, and which options they honour,
+    // is not settled by the documentation. The compiler does not guess.
+    const d = await q(`clozeformula [
+      template "{{response}}"
+      validation [valid-response [value [[[method "equivSyntax" value "x" options [ignore-order true]]]]]]
+    ]`);
+    expect(d.validation.valid_response.value[0][0]).toEqual({
+      method: "equivSyntax", value: "x", options: { ignoreOrder: true },
+    });
   });
 });
 
@@ -261,9 +284,9 @@ describe("clozetext (aligned vocabulary)", () => {
 
   test("the pre-alignment flat spelling is rejected", async () => {
     await expect(
-      compile('set-var "lrn-id" "t" questions [clozetext [valid-response ["x"] partial-credit true]] {}..')
+      compile('set-var "lrn-id" "t" questions [clozetext [valid-response ["x"]]] {}..')
     ).rejects.toContainEqual(expect.objectContaining({
-      message: expect.stringContaining("not attributes of clozetext"),
+      message: expect.stringContaining("valid-response: every entry must be an attribute applied to a value"),
     }));
   });
 
@@ -285,10 +308,6 @@ describe("clozetext (aligned vocabulary)", () => {
     }));
   });
 
-  test("clozeformula is the last type still on the flat spelling", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [clozeformula [stimulus "a {{response}}" valid-response ["11"]]] {}..');
-    expect(out.data.questions[0].data.validation.valid_response.value[0][0].value).toBe("11");
-  });
 });
 
 // The seven types whose builders did nothing but rename and lift. Each is now a
@@ -409,5 +428,54 @@ describe("the mechanical types (aligned vocabulary)", () => {
       const d = await q(`${kw} []`);
       expect(d.type, kw).toBe(type);
     }
+  });
+});
+
+// metadata is a member at both question and item level, and the two levels do
+// different things with it: a question emits the object as written, an item
+// routes its members to several destinations in the item record.
+describe("metadata", () => {
+  test("question metadata emits the object Learnosity documents", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [
+      clozetext [
+        template "A {{response}}."
+        metadata [
+          acknowledgements "Source X"
+          sample-answer "ans"
+          distractor-rationale-response-level ["wrong for this reason", "and this"]
+        ]
+      ]] {}..`);
+    // Until the members were folded into the member registry, the raw tagged
+    // entries ([{kind, value}, ...]) reached the emitted JSON instead.
+    expect(out.data.questions[0].data.metadata).toEqual({
+      acknowledgements: "Source X",
+      sample_answer: "ans",
+      distractor_rationale_response_level: ["wrong for this reason", "and this"],
+    });
+  });
+
+  test("a rationale list is no longer flattened into one numbered string", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [
+      clozetext [template "A {{response}}." metadata [distractor-rationale "just the one"]]] {}..`);
+    expect(out.data.questions[0].data.metadata.distractor_rationale).toBe("just the one");
+  });
+
+  test("item metadata routes to the item record's several fields", async () => {
+    const { translateItemMetadata } = await import("./items.js");
+    expect(translateItemMetadata({
+      tags: { Difficulty: "medium", DOK: 2 },
+      notes: "a note",
+      description: "a description",
+      source: "a source",
+      difficulty_level: 3,
+      acknowledgements: "thanks",
+    })).toEqual({
+      tags: { Difficulty: ["medium"], DOK: ["2"] },
+      note: "a note",
+      description: "a description",
+      source: "a source",
+      adaptive: { difficulty: 3 },
+      metadata: { acknowledgements: "thanks" },
+    });
   });
 });

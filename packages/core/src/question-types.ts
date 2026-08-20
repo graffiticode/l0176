@@ -59,9 +59,16 @@ const DEFAULTS: Record<string, any> = {
     },
   },
   clozeformula: {
-    stimulus: "Solve: {{response}}",
-    valid_response: ["x+1"],
-    method: "equivLiteral",
+    template: "Solve: {{response}}",
+    is_math: true,
+    ui_style: { type: "block-on-focus-keyboard" },
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: {
+        score: 1,
+        value: [[{ method: "equivLiteral", value: "x+1" }]],
+      },
+    },
   },
   choicematrix: {
     stimulus: "Select the correct answer for each row.",
@@ -131,26 +138,6 @@ function withDefaults(type: string, attrs: any) {
 // Only types with more than one scorable response accept it — the rest are
 // all-or-nothing by construction, and silently ignoring the attribute there
 // would emit a question that scores differently than the author asked for.
-// Empty: no type accepts `partial-credit` any more. Every converted type writes
-// `scoring-type` inside `validation` instead, which reaches modes the boolean
-// never could — partialMatchV2, orderlist's partialMatchPairwise, and
-// classification's per-element pair. The two types still on the older spelling,
-// `clozeformula` and `custom`, both rejected it before and still do, which is
-// all `scoringType` is left doing. It goes when they are converted.
-const PARTIAL_CREDIT_TYPES = new Set<string>([]);
-
-function scoringType(type: string, partialCredit: any) {
-  if (!partialCredit) {
-    return "exactMatch";
-  }
-  if (!PARTIAL_CREDIT_TYPES.has(type)) {
-    throw new Error(
-      `${type}: partial-credit is not supported — Learnosity scores this type all-or-nothing.`
-    );
-  }
-  return "partialMatch";
-}
-
 // Reject attributes the question type does not take. Learnosity ignores unknown
 // fields silently, so without this an attribute belonging to another type — or a
 // typo — reaches the item bank and the question simply behaves unexpectedly.
@@ -183,6 +170,7 @@ const SCORING_TYPES: Record<string, string[]> = {
   // Alone in offering pairwise comparison of adjacent entries.
   orderlist: ["exactMatch", "partialMatchV2", "partialMatch", "partialMatchPairwise"],
   mcq: ["exactMatch", "partialMatchV2", "partialMatch"],
+  clozeformula: ["exactMatch", "partialMatchV2", "partialMatch"],
   tokenhighlight: ["exactMatch", "partialMatchV2", "partialMatch"],
   // Four modes, two of them per-element rather than per-cell.
   classification: ["exactMatch", "partialMatchV2", "partialMatch",
@@ -205,39 +193,6 @@ function assertScoringType(type: string, validation: any) {
       `${type}: scoring-type "${given}" is not supported — use one of ${allowed.join(", ")}.`,
     );
   }
-}
-
-// Translate a DSL question-level metadata list into a Learnosity question
-// metadata object. Input is an array of tagged entries ({kind, value}) where
-// kind is one of "acknowledgements" | "distractor_rationale".
-// Returns undefined when there is nothing to attach, so no-metadata programs
-// produce byte-identical output to pre-feature behavior.
-export function translateQuestionMetadata(entries: any) {
-  if (!Array.isArray(entries)) {
-    return undefined;
-  }
-  const out: any = {};
-  for (const entry of entries) {
-    if (entry == null || typeof entry !== "object") continue;
-    const { kind, value } = entry;
-    if (value == null) continue;
-    if (kind === "distractor_rationale") {
-      out.distractor_rationale = Array.isArray(value)
-        ? value.map((v, i) => `${i + 1}. ${v}`).join("\n")
-        : value;
-    } else if (kind === "acknowledgements") {
-      out.acknowledgements = value;
-    }
-  }
-  return Object.keys(out).length > 0 ? out : undefined;
-}
-
-function attachQuestionMetadata(question: any, metadata: any) {
-  const translated = translateQuestionMetadata(metadata);
-  if (translated !== undefined) {
-    question.metadata = translated;
-  }
-  return question;
 }
 
 // Learnosity's options are {label, value} objects. `value` is what a response
@@ -318,114 +273,28 @@ export function buildClozedropdown(attrs: any) {
   };
 }
 
-// Learnosity scores a clozeformula against one answer *set* — `valid_response.value`
-// is indexed by blank, so N entries mean N blanks, not N accepted answers for one
-// blank. Accepting several answers for the same blank is what `alt_responses` is
-// for: each entry is a complete alternative set covering every blank. Hence the
-// two shapes of a `valid-response` entry: a bare string is that blank's only answer
-// (unchanged), and a nested list is the answers that blank accepts. Note the
-// equivalence method already absorbs notational variation — under equivLiteral
-// "1/2", "1 / 2" and "\frac{1}{2}" are one expression — so a list is only needed
-// for genuinely different expressions (1/2 vs 0.5 vs 2/4).
-const ALT_RESPONSE_LIMIT = 25;
-
-// Every combination of one accepted answer per blank, primary combination first
-// (that one becomes valid_response; the rest become alt_responses).
-function answerCombinations(blanks: string[][]) {
-  return blanks.reduce(
-    (acc: any[][], answers: string[]) => acc.flatMap((combo) => answers.map((a) => [...combo, a])),
-    [[]],
-  );
-}
-
+// The keyword is `clozeformula`, the emitted type `clozeformulaV2` — Learnosity's
+// "Math". Its own `clozeformula` ("Cloze math") is an older, different type.
+//
+// validation.valid_response.value is an array per blank of arrays of rule
+// objects, which is the deepest nesting in the language:
+//
+//   value [ [[method "equivLiteral" value "1/2"]]
+//           [[method "equivValue" value "7" options [decimal-places 2]]] ]
+//
+// Which methods are real, and which `options` keys they honour, is unsettled —
+// see C1 and C2 in spec/conflict-resolution.md. Nothing here constrains either:
+// the author writes what Learnosity accepts.
 export function buildClozeformula(attrs: any) {
-  const {
-    stimulus,
-    valid_response,
-    alternative_response,
-    method,
-    instant_feedback,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("clozeformula", attrs);
-  const mathMethod = method || "equivLiteral";
-  const question: any = {
+  const merged = withDefaults("clozeformula", attrs);
+  assertKnownAttributes("clozeformula", "CLOZEFORMULA", merged);
+  assertScoringType("clozeformula", merged.validation);
+  return {
+    ...merged,
     type: "clozeformulaV2",
-    template: stimulus,
-    is_math: true,
-    ui_style: { type: "block-on-focus-keyboard" },
-    response_containers: [],
-    show_hints_button: true,
-    ...rest,
   };
-  if (instant_feedback != null) {
-    question.instant_feedback = instant_feedback;
-  }
-  if (valid_response != null) {
-    const rule = (v: any) => [{
-      method: mathMethod,
-      value: v,
-      options: {
-        ignoreOrder: false,
-        setDecimalSeparator: ".",
-        setThousandsSeparator: [],
-        inverseResult: false,
-      },
-    }];
-    const entries = Array.isArray(valid_response) ? valid_response : [valid_response];
-    const blanks: string[][] = entries.map((e: any) => (Array.isArray(e) ? e : [e]));
-    for (const answers of blanks) {
-      if (answers.length === 0) {
-        throw new Error("clozeformula: a valid-response entry is an empty list — give the blank at least one accepted answer.");
-      }
-    }
-    const combinations = answerCombinations(blanks);
-    if (combinations.length > ALT_RESPONSE_LIMIT) {
-      throw new Error(
-        `clozeformula: ${combinations.length} accepted answer combinations exceeds the limit of ${ALT_RESPONSE_LIMIT} — list fewer alternatives per blank, or use equivSymbolic/equivValue to accept the whole equivalence class instead of enumerating it.`
-      );
-    }
-    const [primary, ...alternatives] = combinations;
-    question.validation = {
-      scoring_type: scoringType("clozeformula", partial_credit),
-      valid_response: {
-        score: 1,
-        value: primary.map(rule),
-      },
-    };
-    const allAlternatives: any[] = [...alternatives];
-    if (alternative_response != null) {
-      const altEntries = Array.isArray(alternative_response) ? alternative_response : [alternative_response];
-      for (const altEntry of altEntries) {
-        const altBlanks: string[][] = Array.isArray(altEntry) ? altEntry.map((e: any) => (Array.isArray(e) ? e : [e])) : [Array.isArray(altEntry) ? altEntry : [altEntry]];
-        if (altBlanks.length !== blanks.length) {
-          throw new Error(`clozeformula: alternative-response entry has ${altBlanks.length} blanks but valid-response has ${blanks.length}`);
-        }
-        for (const answers of altBlanks) {
-          if (answers.length === 0) {
-            throw new Error("clozeformula: an alternative-response entry is an empty list — give each blank at least one accepted answer.");
-          }
-        }
-        allAlternatives.push(altBlanks.flat());
-      }
-    }
-    if (allAlternatives.length > ALT_RESPONSE_LIMIT) {
-      throw new Error(
-        `clozeformula: ${allAlternatives.length} total alt_responses exceeds the limit of ${ALT_RESPONSE_LIMIT} — reduce the number of alternatives or use equivSymbolic/equivValue.`
-      );
-    }
-    if (allAlternatives.length > 0) {
-      question.validation.alt_responses = allAlternatives.map((combo: any[]) => ({
-        score: 1,
-        value: combo.map(rule),
-      }));
-    }
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
-// Learnosity's names: `stems` are the row prompts, `options` the column choices.
 export function buildChoicematrix(attrs: any) {
   const merged = withDefaults("choicematrix", attrs);
   assertKnownAttributes("choicematrix", "CHOICEMATRIX", merged);
@@ -472,10 +341,9 @@ export function buildBowtie(attrs: any) {
 }
 
 export function buildCustom(attrs: any) {
-  const { lang, data, partial_credit, ...rest } = attrs || {};
-  // The embedded language owns its own scoring — reject partial-credit here
-  // rather than pass it through into the custom question's JSON.
-  scoringType("custom", partial_credit);
+  const { lang, data, ...rest } = attrs || {};
+  // The embedded language owns its own scoring, so there is nothing here to
+  // reject any more: `partial-credit` no longer exists as a keyword.
   if (typeof lang !== "string" || lang.length === 0) {
     throw new Error('custom requires lang to be a non-empty string (e.g. lang "0166").');
   }
@@ -535,14 +403,18 @@ export const questionTypeBuilders: Record<string, (attrs: any) => any> = {
 //   (none)        the value as written — a scalar, or a list of scalars
 //   "object"      a member list, merged into one object
 //   "objectArray" a list of member lists, each merged
-//   "objectArrayOrValues"
-//                 the same, but an entry that is not a member list passes
-//                 through — for a field Learnosity documents as objects on one
-//                 type and plain values on another
+//   "infer"       the reading is decided by what is in the list, for the two
+//                 words Learnosity gives different types on different question
+//                 types. The three readings are mutually exclusive by element
+//                 type, so there is nothing to guess:
+//                   members            -> one object   (a rule's `options`)
+//                   member lists       -> array        (mcq's `options`)
+//                   lists of members   -> array[array] (clozeformula's `value`)
+//                 anything else passes through unchanged.
 //
 // A member needs no builder involvement: the question-type transformer merges
 // the list and the field lands by name.
-export type MemberShape = "object" | "objectArray" | "objectArrayOrValues";
+export type MemberShape = "object" | "objectArray" | "infer";
 export const memberFields: Record<string, { field: string; shape?: MemberShape }> = {
   // Question-level content
   STIMULUS: { field: "stimulus" },
@@ -550,10 +422,7 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   INSTRUCTOR_STIMULUS: { field: "instructor_stimulus" },
   TEMPLATE: { field: "template" },
   IS_MATH: { field: "is_math" },
-  // mcq documents options as array[object] ({label, value}); choicematrix
-  // documents the same word as array[string]. Entries written as member
-  // lists are merged, anything else passes through.
-  OPTIONS: { field: "options", shape: "objectArrayOrValues" },
+  OPTIONS: { field: "options", shape: "infer" },
   POSSIBLE_RESPONSES: { field: "possible_responses" },
   ORDER_LIST: { field: "list" },
   COLUMNS: { field: "columns" },
@@ -567,7 +436,6 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   MAX_SELECTION: { field: "max_selection" },
   CASE_SENSITIVE: { field: "case_sensitive" },
   MAX_LENGTH: { field: "max_length" },
-  MAX_WORD_COUNT: { field: "max_length" },
   PLACEHOLDER: { field: "placeholder" },
   MULTIPLE_LINE: { field: "multiple_line" },
   CHARACTER_MAP: { field: "character_map" },
@@ -575,8 +443,6 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   IGNORE_LEADING_AND_TRAILING_SPACES: { field: "ignore_leading_and_trailing_spaces" },
   MATCH_ALL_POSSIBLE_RESPONSES: { field: "match_all_possible_responses" },
   METHOD: { field: "method" },
-  PARTIAL_CREDIT: { field: "partial_credit" },
-  ALTERNATIVE_RESPONSE: { field: "alternative_response" },
 
   // Nested objects
   VALIDATION: { field: "validation", shape: "object" },
@@ -593,7 +459,7 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   ENABLED: { field: "enabled" },
   ACCENT_PENALTY_POINTS: { field: "accent_penalty_points" },
   SCORE: { field: "score" },
-  VALUE: { field: "value" },
+  VALUE: { field: "value", shape: "infer" },
 
   UI_STYLE: { field: "ui_style", shape: "object" },
   FONTSIZE: { field: "fontsize" },
@@ -654,9 +520,45 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   ROW_TITLES: { field: "row_titles" },
   ROW_TITLES_WIDTH: { field: "row_titles_width" },
 
+  // clozeformula
+  HANDWRITING_RECOGNISES: { field: "handwriting_recognises" },
+  HINTS: { field: "hints", shape: "object" },
+  IS_DYNAMIC_CONTENT: { field: "is_dynamic_content" },
+  MATH_IMAGE_CAPTURE: { field: "math_image_capture" },
+  ITEMS_LIST: { field: "items", shape: "objectArray" },
+  CONTENT: { field: "content" },
+  KEYBOARD_BELOW_RESPONSE_AREA: { field: "keyboard_below_response_area" },
+  MIN_WIDTH: { field: "min_width" },
+  RESPONSE_FONT_SCALE: { field: "response_font_scale" },
+  SHOW_HINTS_BUTTON: { field: "show_hints_button" },
+
+  // Scoring-rule options (camelCase in Learnosity)
+  DECIMAL_PLACES: { field: "decimalPlaces" },
+  SET_DECIMAL_SEPARATOR: { field: "setDecimalSeparator" },
+  SET_THOUSANDS_SEPARATOR: { field: "setThousandsSeparator" },
+  IGNORE_ORDER: { field: "ignoreOrder" },
+  IGNORE_LEADING_TRAILING_RULE: { field: "ignoreLeadingAndTrailingSpaces" },
+  TREAT_MULTIPLE_SPACES_AS_ONE: { field: "treatMultipleSpacesAsOne" },
+  INVERSE_RESULT: { field: "inverseResult" },
+
+  // metadata members. Ordinary members returning a single-key record, so
+  // `metadata` merges them into the object Learnosity expects. At item level
+  // translateItemMetadata routes them to their several destinations.
+  TAGS: { field: "tags" },
+  NOTES: { field: "notes" },
+  DISTRACTOR_RATIONALE: { field: "distractor_rationale" },
+  ACKNOWLEDGEMENTS: { field: "acknowledgements" },
+  RESPONSE_SHUFFLE_SEED: { field: "response_shuffle_seed" },
+  SAMPLE_ANSWER: { field: "sample_answer" },
+  RUBRIC_REFERENCE: { field: "rubric_reference" },
+  DISTRACTOR_RATIONALE_RESPONSE_LEVEL: { field: "distractor_rationale_response_level" },
+  DESCRIPTION: { field: "description" },
+  SOURCE: { field: "source" },
+  DIFFICULTY_LEVEL: { field: "difficulty_level" },
+
   // Item level. `metadata` is a member at both question and item level, which is
   // why `item` takes a member list too — a word has one arity.
-  METADATA: { field: "metadata" },
+  METADATA: { field: "metadata", shape: "object" },
   PARAMS: { field: "params" },
 
   // custom
@@ -665,12 +567,8 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
 };
 
 // True when every element is a single-key record — i.e. the list was written as
-// members (`[score 1 value "x"]`) rather than as a bare list of values.
-//
-// TRANSITIONAL. `valid-response` means a member list on a converted type and a
-// bare array on one that is not yet converted, and it is one word either way.
-// When the last type is converted this test goes and `object`-shaped members
-// become unconditional, which restores the sharper error message.
+// members (`[score 1 value "x"]`) rather than as a bare list of values. Used
+// only by inferShape, to tell the readings of `options` and `value` apart.
 export function isMemberList(v: any) {
   return (
     Array.isArray(v) &&
@@ -680,6 +578,29 @@ export function isMemberList(v: any) {
         e != null && typeof e === "object" && !Array.isArray(e) && Object.keys(e).length === 1,
     )
   );
+}
+
+// `options` and `value` are each one word for several Learnosity types — a rule's
+// options object, mcq's array of {label, value}, clozeformula's array of arrays
+// of rules, and plain arrays of strings or numbers. Which is meant is decided by
+// element type, and the readings do not overlap, so nothing is guessed.
+export function inferShape(raw: any, where: string): any {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    return raw;
+  }
+  const isMember = (e: any) =>
+    e != null && typeof e === "object" && !Array.isArray(e) && Object.keys(e).length === 1;
+  if (raw.every(isMember)) {
+    return mergeMembers(raw, where);                        // one object
+  }
+  if (raw.every(isMemberList)) {
+    return raw.map((e: any, i: number) => mergeMembers(e, `${where}[${i + 1}]`));
+  }
+  if (raw.every((e: any) => Array.isArray(e) && e.length > 0 && e.every(isMemberList))) {
+    return raw.map((outer: any, i: number) =>
+      outer.map((e: any, j: number) => mergeMembers(e, `${where}[${i + 1}][${j + 1}]`)));
+  }
+  return raw;
 }
 
 // Merge a list of single-key member records into one object, per L0169's ASSESS.
@@ -700,18 +621,6 @@ export function mergeMembers(members: any, where: string) {
   return out;
 }
 
-// Metadata member constructors (arity 1). Each maps a DSL keyword to the
-// `kind` string attached to its tagged-entry output, so the translators in
-// items.ts and question-types.ts can dispatch on kind.
-export const metadataMembers: Record<string, { kind: string }> = {
-  TAGS: { kind: "tags" },
-  NOTES: { kind: "notes" },
-  DISTRACTOR_RATIONALE: { kind: "distractor_rationale" },
-  ACKNOWLEDGEMENTS: { kind: "acknowledgements" },
-  DESCRIPTION: { kind: "description" },
-  SOURCE: { kind: "source" },
-  DIFFICULTY_LEVEL: { kind: "difficulty_level" },
-};
 
 // Which attributes are valid for each question type
 export const validAttributes: Record<string, string[]> = {
@@ -766,7 +675,14 @@ export const validAttributes: Record<string, string[]> = {
     "response_containers", "shuffle_options", "stimulus", "stimulus_review",
     "template", "ui_style", "validation",
   ],
-  CLOZEFORMULA: ["stimulus", "valid_response", "alternative_response", "instant_feedback", "is_math", "method", "metadata"],
+  CLOZEFORMULA: [
+    "feedback_attempts", "handwriting_recognises", "hints",
+    "horizontal_layout", "instant_feedback", "instructor_stimulus",
+    "is_dynamic_content", "is_math", "math_image_capture", "metadata",
+    "response_container", "response_containers", "show_hints_button",
+    "stimulus", "stimulus_review", "template", "text_blocks", "ui_style",
+    "validation",
+  ],
   CHOICEMATRIX: [
     "feedback_attempts", "instant_feedback", "instructor_stimulus",
     "is_math", "metadata", "multiple_responses", "options",
