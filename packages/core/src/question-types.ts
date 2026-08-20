@@ -25,8 +25,11 @@ const DEFAULTS: Record<string, any> = {
     placeholder: "Start writing here...",
   },
   clozetext: {
-    stimulus: "The {{response}} is the answer.",
-    valid_response: ["answer"],
+    template: "The {{response}} is the answer.",
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: ["answer"] },
+    },
   },
   clozeassociation: {
     stimulus: "Drag the correct {{response}} here.",
@@ -96,10 +99,12 @@ function withDefaults(type: string, attrs: any) {
 // Only types with more than one scorable response accept it — the rest are
 // all-or-nothing by construction, and silently ignoring the attribute there
 // would emit a question that scores differently than the author asked for.
+// `clozetext` is absent: it takes `scoring-type` directly, so there is no
+// synthetic boolean to gate. The remaining types keep the older spelling until
+// each is converted.
 const PARTIAL_CREDIT_TYPES = new Set([
   "mcq",
   "choicematrix",
-  "clozetext",
   "clozeassociation",
   "clozedropdown",
   "orderlist",
@@ -117,6 +122,45 @@ function scoringType(type: string, partialCredit: any) {
     );
   }
   return "partialMatch";
+}
+
+// Reject attributes the question type does not take. Learnosity ignores unknown
+// fields silently, so without this an attribute belonging to another type — or a
+// typo — reaches the item bank and the question simply behaves unexpectedly.
+// Only types listed in `validAttributes` are enforced; the rest are unconverted.
+function assertKnownAttributes(type: string, key: string, attrs: any) {
+  const allowed = validAttributes[key];
+  if (!allowed) {
+    return;
+  }
+  const unknown = Object.keys(attrs).filter((k) => !allowed.includes(k));
+  if (unknown.length > 0) {
+    throw new Error(
+      `${type}: ${unknown.map((u) => `\`${u}\``).join(", ")} ` +
+        `${unknown.length === 1 ? "is not an attribute" : "are not attributes"} of ${type}. ` +
+        `It takes: ${allowed.join(", ")}.`,
+    );
+  }
+}
+
+// The scoring types a widget accepts, from its Learnosity article. Learnosity
+// falls back to exactMatch on an unrecognized value rather than erroring, which
+// turns a typo into a silently mis-scored question.
+const SCORING_TYPES: Record<string, string[]> = {
+  clozetext: ["exactMatch", "partialMatchV2", "partialMatch"],
+};
+
+function assertScoringType(type: string, validation: any) {
+  const allowed = SCORING_TYPES[type];
+  if (!allowed || validation == null || typeof validation !== "object") {
+    return;
+  }
+  const given = validation.scoring_type;
+  if (given !== undefined && !allowed.includes(given)) {
+    throw new Error(
+      `${type}: scoring-type "${given}" is not supported — use one of ${allowed.join(", ")}.`,
+    );
+  }
 }
 
 // Translate a DSL question-level metadata list into a Learnosity question
@@ -298,41 +342,18 @@ export function buildPlaintext(attrs: any) {
   return attachQuestionMetadata(question, metadata);
 }
 
+// clozetext is the first type converted to the aligned vocabulary: every
+// attribute is named for the Learnosity field it emits and nests the way the
+// field nests, so there is nothing left to rename or lift. The builder stamps
+// the type, applies defaults, and checks what the docs say is checkable.
 export function buildClozetext(attrs: any) {
-  const {
-    stimulus,
-    valid_response,
-    alternative_response,
-    case_sensitive,
-    instant_feedback,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("clozetext", attrs);
-  const question: any = {
+  const merged = withDefaults("clozetext", attrs);
+  assertKnownAttributes("clozetext", "CLOZETEXT", merged);
+  assertScoringType("clozetext", merged.validation);
+  return {
     type: "clozetext",
-    template: stimulus,
-    ...rest,
+    ...merged,
   };
-  if (case_sensitive != null) {
-    question.case_sensitive = case_sensitive;
-  }
-  if (instant_feedback != null) {
-    question.instant_feedback = instant_feedback;
-  }
-  if (valid_response != null) {
-    question.validation = {
-      scoring_type: scoringType("clozetext", partial_credit),
-      valid_response: {
-        score: 1,
-        value: valid_response,
-      },
-    };
-    if (alternative_response != null) {
-      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
-    }
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
 export function buildClozeassociation(attrs: any) {
@@ -878,7 +899,8 @@ export const questionTypeBuilders: Record<string, (attrs: any) => any> = {
 export const attributeFields: Record<string, any> = {
   STIMULUS: { field: "stimulus", valueType: "string" },
   OPTIONS: { field: "options", valueType: "array" },
-  VALID_RESPONSE: { field: "valid_response", valueType: "any" },
+  // VALID_RESPONSE is hand-written in compiler.ts: it accepts either a bare
+  // value (the older flat spelling) or a member list to merge.
   ALTERNATIVE_RESPONSE: { field: "alternative_response", valueType: "array" },
   INSTANT_FEEDBACK: { field: "instant_feedback", valueType: "boolean" },
   IS_MATH: { field: "is_math", valueType: "boolean" },
@@ -904,7 +926,79 @@ export const attributeFields: Record<string, any> = {
   MODEL: { field: "data", valueType: "any" },
   METADATA: { field: "metadata", valueType: "array" },
   PARAMS: { field: "params", valueType: "array" },
+
+  // --- Aligned Learnosity fields ------------------------------------------
+  // Named for the field they emit, so the generated transformer places them
+  // with no builder involvement. Values that are records (validation,
+  // ui_style, response_container) need nothing special: the generic
+  // transformer already accepts a record built by a nested attribute chain.
+  TEMPLATE: { field: "template", valueType: "string" },
+  STIMULUS_REVIEW: { field: "stimulus_review", valueType: "string" },
+  INSTRUCTOR_STIMULUS: { field: "instructor_stimulus", valueType: "string" },
+  CHARACTER_MAP: { field: "character_map", valueType: "any" },
+  MULTIPLE_LINE: { field: "multiple_line", valueType: "boolean" },
+  SPELLCHECK: { field: "spellcheck", valueType: "boolean" },
+  IGNORE_LEADING_AND_TRAILING_SPACES: { field: "ignore_leading_and_trailing_spaces", valueType: "boolean" },
+  MATCH_ALL_POSSIBLE_RESPONSES: { field: "match_all_possible_responses", valueType: "boolean" },
+  FEEDBACK_ATTEMPTS: { field: "feedback_attempts", valueType: "number" },
+
+  VALIDATION: { field: "validation", valueType: "any" },
+  SCORING_TYPE: { field: "scoring_type", valueType: "string" },
+  ALLOW_NEGATIVE_SCORES: { field: "allow_negative_scores", valueType: "boolean" },
+  PENALTY: { field: "penalty", valueType: "number" },
+  MIN_SCORE_IF_ATTEMPTED: { field: "min_score_if_attempted", valueType: "number" },
+  UNSCORED: { field: "unscored", valueType: "boolean" },
+  AUTOMARKABLE: { field: "automarkable", valueType: "boolean" },
+  ENABLE_FULLWIDTH_SCORING: { field: "enable_fullwidth_scoring", valueType: "boolean" },
+  ACCENT_SENSITIVITY: { field: "accent_sensitivity", valueType: "any" },
+  ENABLED: { field: "enabled", valueType: "boolean" },
+  ACCENT_PENALTY_POINTS: { field: "accent_penalty_points", valueType: "number" },
+
+  UI_STYLE: { field: "ui_style", valueType: "any" },
+  FONTSIZE: { field: "fontsize", valueType: "string" },
+  VALIDATION_STEM_NUMERATION: { field: "validation_stem_numeration", valueType: "string" },
+  RESPONSE_CONTAINER: { field: "response_container", valueType: "any" },
+  RESPONSE_CONTAINERS: { field: "response_containers", valueType: "array" },
+  HEIGHT: { field: "height", valueType: "string" },
+  WIDTH: { field: "width", valueType: "string" },
+  INPUT_TYPE: { field: "input_type", valueType: "string" },
+  ARIA_LABEL: { field: "aria_label", valueType: "string" },
 };
+
+// Leaf-object members (arity 1). Each returns a single-key record; the
+// enclosing collector merges a list of them into one object. Modelled on
+// L0169's ASSESS/METHOD/EXPECTED (l0169/packages/api/src/compiler.js:328).
+export const validationMembers: Record<string, { field: string }> = {
+  SCORE: { field: "score" },
+  VALUE: { field: "value" },
+};
+
+// The member field names, for the shape test that lets VALID_RESPONSE tell a
+// member list apart from a bare value.
+export const memberFields = new Set(Object.values(validationMembers).map((m) => m.field));
+
+// Merge a list of single-key member records into one object, per L0169.
+export function mergeMembers(members: any[]) {
+  return members.reduce((acc: any, item: any) => ({ ...acc, ...item }), {});
+}
+
+// True when every element is a single-key record whose key is a known member
+// field -- i.e. the list was written as `[score 1 value "x"]` rather than as a
+// bare array of answers.
+export function isMemberList(v: any) {
+  return (
+    Array.isArray(v) &&
+    v.length > 0 &&
+    v.every(
+      (e: any) =>
+        e != null &&
+        typeof e === "object" &&
+        !Array.isArray(e) &&
+        Object.keys(e).length === 1 &&
+        memberFields.has(Object.keys(e)[0]),
+    )
+  );
+}
 
 // Metadata member constructors (arity 1). Each maps a DSL keyword to the
 // `kind` string attached to its tagged-entry output, so the translators in
@@ -925,7 +1019,17 @@ export const validAttributes: Record<string, string[]> = {
   SHORTTEXT: ["stimulus", "valid_response", "alternative_response", "instant_feedback", "is_math", "case_sensitive", "max_length", "placeholder", "metadata"],
   LONGTEXT: ["stimulus", "is_math", "max_length", "placeholder", "metadata"],
   PLAINTEXT: ["stimulus", "is_math", "max_length", "placeholder", "metadata"],
-  CLOZETEXT: ["stimulus", "valid_response", "alternative_response", "instant_feedback", "is_math", "case_sensitive", "partial_credit", "metadata"],
+  // From Cloze-text-clozetext.md's attribute table. `description` is omitted
+  // (deprecated in favour of stimulus_review) and `type` is emitted, not authored.
+  CLOZETEXT: [
+    "stimulus", "stimulus_review", "instructor_stimulus", "template",
+    "is_math", "metadata", "ui_style", "validation",
+    "instant_feedback", "feedback_attempts",
+    "response_container", "response_containers",
+    "character_map", "max_length", "multiple_line", "spellcheck",
+    "case_sensitive", "ignore_leading_and_trailing_spaces",
+    "match_all_possible_responses",
+  ],
   CLOZEASSOCIATION: ["stimulus", "possible_responses", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
   CLOZEDROPDOWN: ["stimulus", "possible_responses", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
   CLOZEFORMULA: ["stimulus", "valid_response", "alternative_response", "instant_feedback", "is_math", "method", "metadata"],

@@ -15,7 +15,14 @@ import { buildDataApi } from "./dataapi.js";
 import { buildCreateItems, buildInitItems } from "./items.js";
 import { buildCreateQuestions, buildInitQuestions } from "./questions.js";
 import { buildInitAuthor, buildCreateAuthor } from "./author.js";
-import { questionTypeBuilders, attributeFields, metadataMembers } from "./question-types.js";
+import {
+  questionTypeBuilders,
+  attributeFields,
+  metadataMembers,
+  validationMembers,
+  mergeMembers,
+  isMemberList,
+} from "./question-types.js";
 
 // Unwrap L0000's internal Record representation ({_type:"record", _entries:Map})
 // to plain JS, stripping the tag:/str:/num: key prefixes. Identical shape to
@@ -232,6 +239,24 @@ for (const [name] of Object.entries(attributeFields)) {
         const err = ([] as any[]).concat(e0 || [], e1 || []);
         const val = node;
         resume(err, val);
+      });
+    });
+  };
+}
+
+// Generate Checker methods for leaf-object members (arity 1) and for the two
+// collectors that consume them. Shape validation happens in the Transformer,
+// where the values are known; the Checker just walks the child expressions.
+for (const name of [...Object.keys(validationMembers), "VALID_RESPONSE", "ALT_RESPONSES"]) {
+  const arity1 = name in validationMembers;
+  Checker.prototype[name] = function (node: any, options: any, resume: any) {
+    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
+      if (arity1) {
+        resume(([] as any[]).concat(e0 || []), node);
+        return;
+      }
+      this.visit(node.elts[1], options, async (e1: any, v1: any) => {
+        resume(([] as any[]).concat(e0 || [], e1 || []), node);
       });
     });
   };
@@ -547,6 +572,61 @@ for (const [name, meta] of Object.entries(attributeFields)) {
     });
   };
 }
+
+// Generate Transformer methods for leaf-object members (arity 1). Each returns
+// a single-key record; the enclosing collector merges a list of them.
+for (const [name, meta] of Object.entries(validationMembers)) {
+  Transformer.prototype[name] = function (node: any, options: any, resume: any) {
+    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
+      resume(([] as any[]).concat(e0 || []), { [meta.field]: toPlainObject(v0) });
+    });
+  };
+}
+
+// valid_response is one object, so `valid-response` takes one member list and
+// merges it. A value that is not a member list is passed through unchanged —
+// that is the older flat spelling (`valid-response ["a", "b"]`), still used by
+// every question type except clozetext until each is converted.
+Transformer.prototype.VALID_RESPONSE = function (node: any, options: any, resume: any) {
+  this.visit(node.elts[0], options, async (e0: any, v0: any) => {
+    this.visit(node.elts[1], options, async (e1: any, v1: any) => {
+      const err = ([] as any[]).concat(e0 || [], e1 || []);
+      const raw = toPlainObject(v0);
+      const value = isMemberList(raw) ? mergeMembers(raw) : raw;
+      resume(err, { ...toPlainObject(v1), valid_response: value });
+    });
+  });
+};
+
+// alt_responses is an array of objects, so `alt-responses` takes a list of
+// member lists and merges each one.
+Transformer.prototype.ALT_RESPONSES = function (node: any, options: any, resume: any) {
+  this.visit(node.elts[0], options, async (e0: any, v0: any) => {
+    this.visit(node.elts[1], options, async (e1: any, v1: any) => {
+      const err = ([] as any[]).concat(e0 || [], e1 || []);
+      const raw = toPlainObject(v0);
+      if (!Array.isArray(raw)) {
+        resume(
+          err.concat("alt-responses takes a list of member lists, e.g. [[score 1 value [\"a\"]]]"),
+          toPlainObject(v1),
+        );
+        return;
+      }
+      const bad = raw.findIndex((entry: any) => !isMemberList(entry));
+      if (bad >= 0) {
+        resume(
+          err.concat(
+            `alt-responses entry ${bad + 1} is not a member list — each entry is written ` +
+              'like [score 1 value ["a"]], with score and value as members.',
+          ),
+          toPlainObject(v1),
+        );
+        return;
+      }
+      resume(err, { ...toPlainObject(v1), alt_responses: raw.map(mergeMembers) });
+    });
+  });
+};
 
 // Generate Transformer methods for metadata member constructors (arity 1).
 // Each returns a tagged-entry record that appears inside the metadata list.

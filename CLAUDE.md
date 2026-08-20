@@ -112,6 +112,15 @@ Checker/Transformer methods for question types, attributes, and metadata members
 programmatically by looping over the registries in `question-types.ts`; only the block-level
 nodes have hand-written methods.
 
+**The aligned vocabulary.** Question types are being converted, one at a time, to a vocabulary
+in which an attribute is named for the Learnosity field it emits and the program nests the way
+the object nests — so an aligned attribute needs no builder code, it lands on the question by
+name. `clozetext` is converted; the other 13 keep the older flat spellings (`valid-response` at
+top level, the synthetic `partial-credit`, `alternative-response`) until each is done. A
+converted type also enforces `validAttributes`, rejecting attributes that are not its own;
+unconverted types do not. See `docs/learnosity-audit.md` for the per-type queue and
+`packages/core/spec/conflict-resolution.md` for where the Learnosity docs contradict each other.
+
 ### Data Flow
 
 ```

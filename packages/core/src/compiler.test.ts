@@ -63,7 +63,9 @@ describe("questions path", () => {
   });
 
   test("partial-credit applies to the multi-blank cloze types", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [clozetext {valid_response: ["a", "b"], partial_credit: true}] {}..');
+    // clozetext is excluded: it is on the aligned vocabulary and writes
+    // scoring-type directly. See the clozetext describe block below.
+    const out = await compile('set-var "lrn-id" "t" questions [clozeassociation {valid_response: ["a", "b"], partial_credit: true}] {}..');
     expect(out.data.questions[0].data.validation.scoring_type).toBe("partialMatch");
   });
 
@@ -171,5 +173,126 @@ describe("error paths", () => {
     await expect(
       compile('set-var "lrn-id" "t" questions [mcq {}] save-to-itembank true {}..'),
     ).rejects.toBeTruthy();
+  });
+});
+
+// clozetext is the first question type converted to the aligned vocabulary:
+// every attribute is named for the Learnosity field it emits, and the program
+// nests the way the object nests. These tests pin that correspondence.
+describe("clozetext (aligned vocabulary)", () => {
+  const program = `set-var "lrn-id" "t" questions [
+    clozetext
+      stimulus "Fill in the blanks."
+      template "The {{response}} is the {{response}}."
+      case-sensitive false
+      max-length 20
+      validation
+        scoring-type "partialMatch"
+        valid-response [score 1 value ["cat", "mat"]]
+        alt-responses [[score 1 value ["feline", "mat"]]
+                       [value ["cat", "rug"]]]
+        {}
+      {}
+  ] {}..`;
+
+  test("the program transcribes to the Learnosity object", async () => {
+    const out = await compile(program);
+    expect(out.data.questions[0].data).toEqual({
+      type: "clozetext",
+      stimulus: "Fill in the blanks.",
+      template: "The {{response}} is the {{response}}.",
+      case_sensitive: false,
+      max_length: 20,
+      validation: {
+        scoring_type: "partialMatch",
+        valid_response: { score: 1, value: ["cat", "mat"] },
+        alt_responses: [
+          { score: 1, value: ["feline", "mat"] },
+          { value: ["cat", "rug"] },
+        ],
+      },
+    });
+  });
+
+  test("stimulus is the prompt and template carries the blanks", async () => {
+    // The pre-alignment builder wrote `stimulus` into `template` and emitted no
+    // `stimulus` at all, so a cloze could not carry a prompt of its own.
+    const d = (await compile(program)).data.questions[0].data;
+    expect(d.stimulus).toBe("Fill in the blanks.");
+    expect(d.template).toContain("{{response}}");
+  });
+
+  test("score and value merge into one object per member list", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [
+      clozetext template "A {{response}}."
+        validation valid-response [value ["x"] score 3] {}
+      {}] {}..`);
+    expect(out.data.questions[0].data.validation.valid_response).toEqual({
+      value: ["x"], score: 3,
+    });
+  });
+
+  test("a member list may omit score", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [
+      clozetext template "A {{response}}."
+        validation alt-responses [[value ["x"]]] {}
+      {}] {}..`);
+    expect(out.data.questions[0].data.validation.alt_responses).toEqual([{ value: ["x"] }]);
+  });
+
+  test("defaults produce a complete question in the aligned shape", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [clozetext {}] {}..');
+    expect(out.data.questions[0].data).toEqual({
+      type: "clozetext",
+      template: "The {{response}} is the answer.",
+      validation: {
+        scoring_type: "exactMatch",
+        valid_response: { score: 1, value: ["answer"] },
+      },
+    });
+  });
+
+  test("an attribute belonging to another type is rejected", async () => {
+    // Before per-type validation this compiled and emitted `passage` — a
+    // token-highlight field — onto the clozetext.
+    await expect(
+      compile('set-var "lrn-id" "t" questions [clozetext template "A {{response}}." passage "x" {}] {}..')
+    ).rejects.toContainEqual(expect.objectContaining({
+      message: expect.stringContaining("`passage` is not an attribute of clozetext"),
+    }));
+  });
+
+  test("the pre-alignment flat spelling is rejected", async () => {
+    await expect(
+      compile('set-var "lrn-id" "t" questions [clozetext valid-response ["x"] partial-credit true {}] {}..')
+    ).rejects.toContainEqual(expect.objectContaining({
+      message: expect.stringContaining("not attributes of clozetext"),
+    }));
+  });
+
+  test("an unsupported scoring-type is rejected rather than silently ignored", async () => {
+    // Learnosity falls back to exactMatch on an unrecognized value, which turns
+    // a typo into a silently mis-scored question.
+    await expect(
+      compile('set-var "lrn-id" "t" questions [clozetext template "A {{response}}." validation scoring-type "partialMatchElement" {} {}] {}..')
+    ).rejects.toContainEqual(expect.objectContaining({
+      message: expect.stringContaining("use one of exactMatch, partialMatchV2, partialMatch"),
+    }));
+  });
+
+  test("alt-responses rejects a bare list of answers", async () => {
+    await expect(
+      compile('set-var "lrn-id" "t" questions [clozetext template "A {{response}}." validation alt-responses ["x"] {} {}] {}..')
+    ).rejects.toContainEqual(expect.objectContaining({
+      message: expect.stringContaining("is not a member list"),
+    }));
+  });
+
+  test("the other question types keep the flat spelling until converted", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [clozedropdown {valid_response: ["a"], partial_credit: true}] {}..');
+    expect(out.data.questions[0].data.validation).toEqual({
+      scoring_type: "partialMatch",
+      valid_response: { score: 1, value: ["a"] },
+    });
   });
 });

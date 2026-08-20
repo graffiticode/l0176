@@ -312,46 +312,58 @@ plaintext
 
 ### clozetext
 
-Creates a fill-in-the-blank question where students type responses.
-Use `{{response}}` markers in the stimulus for each blank. The
-`valid-response` is a flat list of strings with one entry per blank.
+Fill-in-the-blank: the learner types into response boxes placed in a passage.
+
+Every attribute is named for the Learnosity field it emits, and the program nests
+the way the object nests. `stimulus` is the prompt shown above the response area;
+`template` is the passage, with `{{response}}` marking each blank.
 
 ```
 clozetext
-  stimulus "The {{response}} is the powerhouse of the cell."
-  valid-response ["mitochondria"]
+  stimulus "Fill in the blanks."
+  template "The {{response}} is the {{response}}."
   case-sensitive false
+  validation
+    scoring-type "partialMatch"
+    valid-response [score 1 value ["cat", "mat"]]
+    {}
   {}
 ```
 
-Multiple blanks:
-
-```
-clozetext
-  stimulus "The {{response}} War ended in {{response}}."
-  valid-response ["Civil", "1865"]
-  {}
-```
+`valid-response` holds one answer per blank, in order. Its `score` and `value` are
+arity-1 members: a list of them merges into the single `valid_response` object.
 
 #### Accepted alternate answers
 
-Do not list multiple accepted answers for a single blank in `valid-response` —
-each entry is one blank. The array length must exactly match the number of
-`{{response}}` markers. To accept genuinely different answers (synonyms,
-alternate phrasings), use `alternative-response`, which is an array of complete
-alternate answers:
+`valid-response` is one answer set, so a second accepted answer for a blank is not
+another entry in it — it is a whole alternate set under `alt-responses`. Each entry
+is its own member list, and each must cover every `{{response}}` marker:
 
 ```
 clozetext
-  stimulus "The capital of France is {{response}}."
-  valid-response ["Paris"]
-  alternative-response ["Paree"]
-  case-sensitive false
+  template "The capital of France is {{response}}."
+  validation
+    valid-response [score 1 value ["Paris"]]
+    alt-responses [[score 1 value ["Paree"]]]
+    {}
   {}
 ```
 
-For case variants, `case-sensitive false` handles them more elegantly than
-listing each spelling separately.
+`score` may be omitted from a member list, in which case Learnosity's default
+applies. For case variants prefer `case-sensitive false` over listing spellings.
+
+#### Scoring
+
+`scoring-type` takes `exactMatch` (the default), `partialMatch` (a cumulative score
+per correct blank) or `partialMatchV2` (the question score divided between blanks).
+Any other value is a compile error: Learnosity silently falls back to `exactMatch`
+on an unrecognized one, which would mis-score the question without saying so.
+
+#### Response length
+
+`max-length` caps the characters a learner may type **per blank**. Learnosity's
+default is `15`, so an answer longer than fifteen characters cannot be entered
+unless this is raised. The maximum is 250.
 
 ### clozeassociation
 

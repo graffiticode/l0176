@@ -29,7 +29,7 @@ provide a higher-level interface with sensible defaults:
 - `shorttext` — Short typed responses
 - `longtext` — Rich text essays (manually scored)
 - `plaintext` — Plain text essays (manually scored)
-- `clozetext` — Fill-in-the-blank with typed responses
+- `clozetext` — Fill-in-the-blank with typed responses (aligned vocabulary)
 - `clozeassociation` — Fill-in-the-blank with drag and drop (use `possible-responses`, not `options`)
 - `clozedropdown` — Fill-in-the-blank with dropdown select (use `possible-responses`, not `options`)
 - `clozeformula` — Fill-in-the-blank with math/formula input
@@ -80,13 +80,22 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     {}
   ```
 
-- `clozetext` — Fill-in-the-blank with typed responses. One `valid-response` entry per `{{response}}` blank; do not list multiple accepted answers as separate entries — use `alternative-response` for synonyms or alternates:
+- `clozetext` — Fill-in-the-blank with typed responses. **On the aligned
+  vocabulary** (see below): `stimulus` is the prompt, `template` is the passage
+  carrying the `{{response}}` blanks, and scoring sits inside `validation`:
   ```
   clozetext
-    stimulus "The {{response}} is the powerhouse of the cell."
-    valid-response ["mitochondria"]
+    stimulus "Complete the sentence."
+    template "The {{response}} is the powerhouse of the cell."
+    validation
+      valid-response [score 1 value ["mitochondria"]]
+      {}
     {}
   ```
+  One `valid-response` entry per `{{response}}` blank, in order. Do not list
+  multiple accepted answers for one blank — each alternate is a complete answer
+  set under `alt-responses`. `max-length` defaults to **15 characters per blank**,
+  so raise it for longer answers.
 
 - `clozeassociation` — Fill-in-the-blank with drag and drop (use `possible-responses`, not `options`):
   ```
@@ -457,6 +466,35 @@ Common attributes: `stimulus`, `options`, `valid-response`, `alternative-respons
 `case-sensitive`, `max-length`, `max-word-count`, `placeholder`,
 `possible-responses`, `rows`, `columns`, `list`, `categories`, `method`.
 
+#### The aligned vocabulary
+
+Question types are being converted, one at a time, to a vocabulary in which **an
+attribute is named for the Learnosity field it emits and the program nests the way
+the object nests**. `clozetext` is converted; the rest still use the flat spellings
+listed above, and mixing the two on one question is a compile error.
+
+On a converted type there is no `alternative-response` and no `partial-credit`:
+scoring lives in a `validation` block that mirrors Learnosity's `validation` object.
+
+```
+clozetext
+  stimulus "Fill in the blanks."
+  template "The {{response}} is the {{response}}."
+  validation
+    scoring-type "partialMatch"
+    valid-response [score 1 value ["cat", "mat"]]
+    alt-responses [[score 1 value ["feline", "mat"]]]
+    {}
+  {}
+```
+
+`score` and `value` are arity-1 members: a list of them merges into one object.
+`valid_response` is a single object, so `valid-response` takes one member list;
+`alt_responses` is an array, so `alt-responses` takes a list of member lists.
+
+A converted type rejects attributes that are not its own — the legal set is the
+one Learnosity documents for that widget.
+
 ### Partial Credit
 
 Scored questions default to all-or-nothing scoring (`exactMatch`). When the
@@ -478,10 +516,15 @@ This emits Learnosity's `partialMatch` scoring type, which awards a fraction of
 the score per correct response. The question's total score stays 1.
 
 Only emit it for types with more than one scorable response: `mcq`,
-`choicematrix`, `clozetext`, `clozeassociation`, `clozedropdown`, `orderlist`,
+`choicematrix`, `clozeassociation`, `clozedropdown`, `orderlist`,
 `classification`, `token-highlight`. On any other type — including
 `shorttext`, `clozeformula`, `bowtie`, `longtext`, `plaintext`, `custom` — it is
-a compile error. On `mcq` it also requires `multiple-responses true`; if the
+a compile error.
+
+`clozetext` is not in that list because it is on the aligned vocabulary and has no
+`partial-credit` attribute: write `scoring-type "partialMatch"` inside its
+`validation` block instead, which also reaches `partialMatchV2` — a third mode the
+boolean cannot express. On `mcq` it also requires `multiple-responses true`; if the
 
 ### Instant Feedback
 

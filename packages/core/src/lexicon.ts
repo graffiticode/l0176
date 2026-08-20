@@ -62,6 +62,55 @@ const additions = {
   "save-to-itembank": { tk: 1, name: "SAVE_TO_ITEMBANK", cls: "function", length: 2, arity: 2 },
   params: { tk: 1, name: "PARAMS", cls: "function", length: 2, arity: 2 },
 
+  // --- Aligned Learnosity vocabulary -------------------------------------
+  // Every word below is the kebab-case spelling of the Learnosity field it
+  // emits, and nests the way the field nests. Introduced with `clozetext`; the
+  // remaining question types still use the older flat spellings above and are
+  // converted one at a time. Which words a given type accepts is scoped by
+  // `validAttributes` in question-types.ts, not by the lexicon, which is global.
+
+  // Question-level fields
+  template: { tk: 1, name: "TEMPLATE", cls: "function", length: 2, arity: 2 },
+  "stimulus-review": { tk: 1, name: "STIMULUS_REVIEW", cls: "function", length: 2, arity: 2 },
+  "instructor-stimulus": { tk: 1, name: "INSTRUCTOR_STIMULUS", cls: "function", length: 2, arity: 2 },
+  "character-map": { tk: 1, name: "CHARACTER_MAP", cls: "function", length: 2, arity: 2 },
+  "multiple-line": { tk: 1, name: "MULTIPLE_LINE", cls: "function", length: 2, arity: 2 },
+  spellcheck: { tk: 1, name: "SPELLCHECK", cls: "function", length: 2, arity: 2 },
+  "ignore-leading-and-trailing-spaces": { tk: 1, name: "IGNORE_LEADING_AND_TRAILING_SPACES", cls: "function", length: 2, arity: 2 },
+  "match-all-possible-responses": { tk: 1, name: "MATCH_ALL_POSSIBLE_RESPONSES", cls: "function", length: 2, arity: 2 },
+  "feedback-attempts": { tk: 1, name: "FEEDBACK_ATTEMPTS", cls: "function", length: 2, arity: 2 },
+
+  // validation (arity 2) — value is the record built by the words beneath it
+  validation: { tk: 1, name: "VALIDATION", cls: "function", length: 2, arity: 2 },
+  "scoring-type": { tk: 1, name: "SCORING_TYPE", cls: "function", length: 2, arity: 2 },
+  "alt-responses": { tk: 1, name: "ALT_RESPONSES", cls: "function", length: 2, arity: 2 },
+  "allow-negative-scores": { tk: 1, name: "ALLOW_NEGATIVE_SCORES", cls: "function", length: 2, arity: 2 },
+  penalty: { tk: 1, name: "PENALTY", cls: "function", length: 2, arity: 2 },
+  "min-score-if-attempted": { tk: 1, name: "MIN_SCORE_IF_ATTEMPTED", cls: "function", length: 2, arity: 2 },
+  unscored: { tk: 1, name: "UNSCORED", cls: "function", length: 2, arity: 2 },
+  automarkable: { tk: 1, name: "AUTOMARKABLE", cls: "function", length: 2, arity: 2 },
+  "enable-fullwidth-scoring": { tk: 1, name: "ENABLE_FULLWIDTH_SCORING", cls: "function", length: 2, arity: 2 },
+  "accent-sensitivity": { tk: 1, name: "ACCENT_SENSITIVITY", cls: "function", length: 2, arity: 2 },
+  enabled: { tk: 1, name: "ENABLED", cls: "function", length: 2, arity: 2 },
+  "accent-penalty-points": { tk: 1, name: "ACCENT_PENALTY_POINTS", cls: "function", length: 2, arity: 2 },
+
+  // ui-style and response containers (arity 2) — values are records
+  "ui-style": { tk: 1, name: "UI_STYLE", cls: "function", length: 2, arity: 2 },
+  fontsize: { tk: 1, name: "FONTSIZE", cls: "function", length: 2, arity: 2 },
+  "validation-stem-numeration": { tk: 1, name: "VALIDATION_STEM_NUMERATION", cls: "function", length: 2, arity: 2 },
+  "response-container": { tk: 1, name: "RESPONSE_CONTAINER", cls: "function", length: 2, arity: 2 },
+  "response-containers": { tk: 1, name: "RESPONSE_CONTAINERS", cls: "function", length: 2, arity: 2 },
+  height: { tk: 1, name: "HEIGHT", cls: "function", length: 2, arity: 2 },
+  width: { tk: 1, name: "WIDTH", cls: "function", length: 2, arity: 2 },
+  "input-type": { tk: 1, name: "INPUT_TYPE", cls: "function", length: 2, arity: 2 },
+  "aria-label": { tk: 1, name: "ARIA_LABEL", cls: "function", length: 2, arity: 2 },
+
+  // Leaf-object members (arity 1). Each returns a single-key record; the
+  // enclosing collector merges a list of them into one object. Modelled on
+  // L0169's `assess [method "value" expected 42]`.
+  score: { tk: 1, name: "SCORE", cls: "function", length: 1, arity: 1 },
+  value: { tk: 1, name: "VALUE", cls: "function", length: 1, arity: 1 },
+
   // Metadata container (arity 2) — value is a list of member constructors
   metadata: { tk: 1, name: "METADATA", cls: "function", length: 2, arity: 2 },
 
