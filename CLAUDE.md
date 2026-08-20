@@ -112,6 +112,30 @@ Checker/Transformer methods for question types, attributes, and metadata members
 programmatically by looping over the registries in `question-types.ts`; only the block-level
 nodes have hand-written methods.
 
+**Member lists.** Every attribute is an arity-1 member returning a single-key record, and a
+question is a bracketed member list — `mcq [ stimulus "..." validation [ ... ] ]`. Objects nest
+the same way at any depth, and an array of objects is a list of member lists. `{}` survives only
+on the arity-2 blocks (`items`, `questions`) and the control-flow attributes `id` and
+`save-to-itembank` that chain onto them. A word gets one arity, which is why `item` takes a
+member list too: `metadata` is a member at both item and question level.
+
+**An attribute is named for the Learnosity field it emits**, and the program nests the way the
+object nests, so a question is a transcription of its JSON. That means a builder has almost
+nothing to do — the generated member transformer accumulates the record and the builder stamps
+the type, applies defaults, and checks the attribute set against `validAttributes` and the
+`scoring-type` against `SCORING_TYPES`, both taken from the type's Learnosity article. All 13
+types work this way; there is no second form.
+
+Two words carry different Learnosity types on different question types — `options` and `value` —
+and `inferShape` in `question-types.ts` decides which reading applies from the element types,
+which do not overlap. Scoring-rule `options` keys are camelCase (`decimalPlaces`), alone among
+Learnosity's fields.
+
+Because the language transcribes rather than derives, L0176 validates very little of what it
+emits: no index is range-checked, no `method` is recognised, no `options` key is known. See
+`packages/core/spec/conflict-resolution.md` for where the Learnosity documentation contradicts
+itself, and `docs/learnosity-audit.md` for the per-type record of what was decided.
+
 ### Data Flow
 
 ```

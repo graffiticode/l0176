@@ -42,39 +42,39 @@ complete renderable question.
 | `clozeformula` | 1 | `clozeformulaV2` | Fill-in-the-blank (math/formula) |
 | `choicematrix` | 1 | `choicematrix` | Grid of options by stems |
 | `orderlist` | 1 | `orderlist` | Drag items into correct order |
-| `classification` | 1 | `classification` | Sort items into categories |
+| `classification` | 1 | `classification` | Drag items into a grid of cells |
 | `bowtie` | 1 | `bowtie` | NGN/NCLEX bow-tie: 2-1-2 drag-and-drop |
 | `token-highlight` | 1 | `tokenhighlight` | Highlight tokens in a passage |
 | `custom` | 1 | `custom` | Embed a separately deployed Graffiticode-language interaction |
 
 ### Attribute Keywords
 
-Attribute keywords are arity-2 functions that chain together to build a record
-of attributes for a question type. The chain terminates with `{}`.
+An attribute keyword is named for the Learnosity field it emits, so the program
+reads as a transcription of the question JSON.
+
+Attribute keywords are arity-1 members. A question is a bracketed member list —
+`mcq [ stimulus "..." options [...] ]` — and every object inside it is written the
+same way, so the same keyword works at any depth. An array of objects is a list of
+member lists. `{}` appears only on the arity-2 blocks (`items`, `questions`),
+which take a continuation record.
 
 | Keyword | Value Type | Learnosity Field | Used By |
 | :------ | :--------- | :--------------- | :------ |
 | `stimulus` | string | `stimulus` | All types |
 | `options` | string[] | `options` | mcq, choicematrix |
 | `valid-response` | varies | `validation.valid_response.value` | All scored types |
-| `alternative-response` | varies | `validation.alt_responses[*].value` | mcq, shorttext, clozetext, clozeassociation, clozedropdown, clozeformula, choicematrix, orderlist, classification, token-highlight |
 | `instant-feedback` | boolean | `instant_feedback` | All types |
 | `is-math` | boolean | `is_math` | All types (enables MathJax for LaTeX) |
 | `shuffle-options` | boolean | `shuffle_options` | mcq, choicematrix |
 | `multiple-responses` | boolean | `multiple_responses` | mcq |
-| `partial-credit` | boolean | `validation.scoring_type` | mcq (with `multiple-responses`), choicematrix, clozetext, clozeassociation, clozedropdown, orderlist, classification, token-highlight |
 | `case-sensitive` | boolean | `case_sensitive` | shorttext, clozetext |
 | `max-length` | number | `max_length` | shorttext |
-| `max-word-count` | number | `max_word_count` | longtext, plaintext |
 | `placeholder` | string | `placeholder` | longtext, plaintext, shorttext |
 | `possible-responses` | array | `possible_responses` | clozeassociation, clozedropdown, classification |
-| `rows` | string[] | `stems` | choicematrix |
 | `columns` | string[] | `options` | choicematrix |
 | `list` | string[] | `list` | orderlist |
-| `categories` | string[] | `ui_style.column_titles` | classification |
 | `column-titles` | string[] | `ui_style.column_titles` + `possible_response_groups[].title` | bowtie |
 | `passage` | string | `template` (with `lrn_token` spans injected) | token-highlight |
-| `distractors` | string[] | — (clickable tokens only, not scored) | token-highlight |
 | `max-selection` | number | `max_selection` | token-highlight |
 | `method` | string | `validation method` | clozeformula |
 | `lang` | string | — (URL/`custom_type` synthesis) | custom |
@@ -83,31 +83,35 @@ of attributes for a question type. The chain terminates with `{}`.
 | `params` | record[] | `dynamic_content_data` | item chain |
 | `save-to-itembank` | boolean | — (compiler flag) | items chain |
 
-#### Partial Credit
+#### Scoring
 
-Scored questions default to Learnosity's `exactMatch` scoring: the learner must
-get every response right to earn the point. `partial-credit true` switches the
-question to `partialMatch`, which awards a fraction of the score for each
-correct response. The score itself stays `1`, so partial credit changes how the
-point is divided, not what the question is worth.
+Scored questions default to Learnosity's `exactMatch`: the learner must get every
+response right to earn the point. `scoring-type`, inside `validation`, chooses
+otherwise.
 
 ```
-mcq
+mcq [
   stimulus "Select all the prime numbers."
-  options ["2", "4", "7", "9"]
-  valid-response [0, 2]
+  options [[label "2" value "2"] [label "4" value "4"] [label "7" value "7"]]
   multiple-responses true
-  partial-credit true
-  {}
+  validation [
+    scoring-type "partialMatch"
+    valid-response [score 1 value ["2", "7"]]
+  ]
+]
 ```
 
-Only types with more than one scorable response accept it: `mcq`,
-`choicematrix`, `clozetext`, `clozeassociation`, `clozedropdown`, `orderlist`,
-`classification`, and `token-highlight`. Anywhere else — including
-`shorttext`, `clozeformula`, `bowtie`, and the unscored `longtext` / `plaintext`
-— it is a compile error rather than a silently ignored attribute. On `mcq` it
-additionally requires `multiple-responses true`; a single-response mcq is
-all-or-nothing by construction.
+| value | meaning | accepted by |
+| :---- | :------ | :---------- |
+| `exactMatch` | every part must be right | every scored type |
+| `partialMatch` | a cumulative score per correct part | multi-response types |
+| `partialMatchV2` | the question's score divided between the parts | multi-response types |
+| `partialMatchPairwise` | adjacent entries compared in pairs | `orderlist` |
+| `partialMatchElement`, `partialMatchElementV2` | per response element rather than per cell | `classification`, `bowtie` |
+
+The accepted set is per type, taken from that type's Learnosity article, and a
+value the widget does not document is a compile error — Learnosity would silently
+fall back to `exactMatch`, mis-scoring the question without saying so.
 
 #### Metadata Member Constructors
 
@@ -123,7 +127,11 @@ output.
 | `description` | string | item | Emitted as the item's top-level `description` field (Author Site item details page Description). |
 | `source` | string | item | Emitted as the item's top-level `source` field (Author Site item details page Source). |
 | `difficulty-level` | integer | item | Emitted as `adaptive.difficulty` — the integer Rasch calibration backing the Author Site item details page Difficulty level spinner. Distinct from the `difficulty` tag (which is a text label like "medium"). |
-| `distractor-rationale` | string or string[] | question | Emitted as `metadata.distractor_rationale`. A list is joined into a numbered multi-line string (`"1. ...\n2. ..."`) so the Author Site's single Distractor Rationale field shows per-option intent. |
+| `distractor-rationale` | string | question | Emitted as `metadata.distractor_rationale`, unchanged. |
+| `distractor-rationale-response-level` | string[] | question | Emitted as `metadata.distractor_rationale_response_level` — one rationale per response, which is the field Learnosity documents for per-option intent. |
+| `rubric-reference` | string | question | Identifier of the rubric to use. |
+| `sample-answer` | string | question | Shown in Reports API. |
+| `response-shuffle-seed` | string | question | mcq only; fixes the shuffled option order across learners. |
 | `acknowledgements` | string | question | Attribution. |
 
 ## Function Reference
@@ -136,15 +144,15 @@ call (`items` or `author`) and a continuation record.
 ```
 learnosity
   items [
-    item
+    item [
       questions [
-        mcq
+        mcq [
           stimulus "What is 2 + 2?"
           options ["3", "4", "5"]
           valid-response [1]
-          {}
-      ]
-      {}
+        ]
+      ] {}
+    ]
   ] {}
 ```
 
@@ -163,15 +171,15 @@ Creates a Learnosity Items API request from a list of `item` objects.
 
 ```
 items [
-  item
+  item [
     questions [
-      mcq
+      mcq [
         stimulus "What is the capital of France?"
         options ["Paris", "London", "Berlin", "Madrid"]
         valid-response [0]
-        {}
-    ]
-    {}
+      ]
+    ] {}
+  ]
 ]
 ```
 
@@ -205,9 +213,9 @@ Defines a single item for use in a list passed to `items`. Takes a record
 of chained attributes (questions, features, layout).
 
 ```
-item
-  questions [mcq {}]
-  {}
+item [
+  questions [mcq {}] {}
+]
 ```
 
 ### questions
@@ -217,11 +225,11 @@ list of question objects and a continuation.
 
 ```
 questions [
-  mcq
+  mcq [
     stimulus "What is 2 + 2?"
     options ["3", "4", "5"]
     valid-response [1]
-    {}
+  ]
 ] {}
 ```
 
@@ -263,28 +271,41 @@ hello "world"
 
 ### mcq
 
-Creates a multiple choice question. Options are provided as a string array
-and `valid-response` is an array of correct option indices.
+Select one or more answers from a list. Each option is a `{label, value}` object:
+the label is shown, the value is what a response records, so it is yours to
+choose. `valid-response` lists the values of the correct options.
 
 ```
-mcq
+mcq [
   stimulus "Which planet is closest to the Sun?"
-  options ["Mercury", "Venus", "Earth", "Mars"]
-  valid-response [0]
+  options [
+    [label "Mercury" value "mercury"]
+    [label "Venus" value "venus"]
+    [label "Earth" value "earth"]
+  ]
   instant-feedback true
-  {}
+  validation [
+    valid-response [score 1 value ["mercury"]]
+  ]
+]
 ```
+
+Set `multiple-responses true` to turn the radio buttons into checkboxes, then
+`min-selection` / `max-selection` to bound how many may be picked.
 
 ### shorttext
 
-Creates a short text response question.
+A short typed answer — a word or two, or a number. Note `valid-response`'s
+`value` is a bare string here, not a list: this type has one response box.
 
 ```
-shorttext
+shorttext [
   stimulus "What is the chemical symbol for water?"
-  valid-response "H2O"
   case-sensitive false
-  {}
+  validation [
+    valid-response [score 1 value "H2O"]
+  ]
+]
 ```
 
 ### longtext
@@ -292,11 +313,12 @@ shorttext
 Creates an essay question with a rich text editor. No auto-scoring.
 
 ```
-longtext
+longtext [
   stimulus "Describe the water cycle in your own words."
-  max-word-count 300
+  max-length 300
   placeholder "Write your essay here..."
-  {}
+  show-word-count true
+]
 ```
 
 ### plaintext
@@ -304,226 +326,279 @@ longtext
 Creates an essay question with a plain text editor. No auto-scoring.
 
 ```
-plaintext
+plaintext [
   stimulus "Explain your reasoning."
-  max-word-count 200
-  {}
+  max-length 200
+]
 ```
 
 ### clozetext
 
-Creates a fill-in-the-blank question where students type responses.
-Use `{{response}}` markers in the stimulus for each blank. The
-`valid-response` is a flat list of strings with one entry per blank.
+Fill-in-the-blank: the learner types into response boxes placed in a passage.
+
+`stimulus` is the prompt shown above the response area; `template` is the passage,
+with `{{response}}` marking each blank.
 
 ```
-clozetext
-  stimulus "The {{response}} is the powerhouse of the cell."
-  valid-response ["mitochondria"]
+clozetext [
+  stimulus "Fill in the blanks."
+  template "The {{response}} is the {{response}}."
   case-sensitive false
-  {}
+  validation [
+    scoring-type "partialMatch"
+    valid-response [score 1 value ["cat", "mat"]]
+  ]
+]
 ```
 
-Multiple blanks:
-
-```
-clozetext
-  stimulus "The {{response}} War ended in {{response}}."
-  valid-response ["Civil", "1865"]
-  {}
-```
+`valid-response` holds one answer per blank, in order. Its `score` and `value` are
+arity-1 members: a list of them merges into the single `valid_response` object.
 
 #### Accepted alternate answers
 
-Do not list multiple accepted answers for a single blank in `valid-response` —
-each entry is one blank. The array length must exactly match the number of
-`{{response}}` markers. To accept genuinely different answers (synonyms,
-alternate phrasings), use `alternative-response`, which is an array of complete
-alternate answers:
+`valid-response` is one answer set, so a second accepted answer for a blank is not
+another entry in it — it is a whole alternate set under `alt-responses`. Each entry
+is its own member list, and each must cover every `{{response}}` marker:
 
 ```
-clozetext
-  stimulus "The capital of France is {{response}}."
-  valid-response ["Paris"]
-  alternative-response ["Paree"]
-  case-sensitive false
-  {}
+clozetext [
+  template "The capital of France is {{response}}."
+  validation [
+    valid-response [score 1 value ["Paris"]]
+    alt-responses [[score 1 value ["Paree"]]]
+  ]
+]
 ```
 
-For case variants, `case-sensitive false` handles them more elegantly than
-listing each spelling separately.
+`score` may be omitted from a member list, in which case Learnosity's default
+applies. For case variants prefer `case-sensitive false` over listing spellings.
+
+#### Scoring
+
+`scoring-type` takes `exactMatch` (the default), `partialMatch` (a cumulative score
+per correct blank) or `partialMatchV2` (the question score divided between blanks).
+Any other value is a compile error: Learnosity silently falls back to `exactMatch`
+on an unrecognized one, which would mis-score the question without saying so.
+
+#### Response length
+
+`max-length` caps the characters a learner may type **per blank**. Learnosity's
+default is `15`, so an answer longer than fifteen characters cannot be entered
+unless this is raised. The maximum is 250.
 
 ### clozeassociation
 
-Creates a fill-in-the-blank question where students drag responses from
-a pool of options into blanks. Use `possible-responses` (not `options`)
-to provide the draggable choices.
+Fill-in-the-blank where the learner drags responses from a pool into blanks.
+`stimulus` is the prompt, `template` the passage carrying the `{{response}}`
+markers, and `possible-responses` the draggable choices.
 
 ```
-clozeassociation
-  stimulus "Drag the correct answer: {{response}} is the capital of France."
+clozeassociation [
+  stimulus "Drag the correct answer into the blank."
+  template "{{response}} is the capital of France."
   possible-responses ["Paris", "London", "Berlin"]
-  valid-response ["Paris"]
-  {}
+  validation [
+    valid-response [score 1 value ["Paris"]]
+  ]
+]
 ```
 
 ### clozedropdown
 
-Creates a fill-in-the-blank question with dropdown selects. Use
-`possible-responses` (not `options`) to provide the dropdown choices.
-Each blank gets its own list of choices, so `possible-responses` is
-a list of lists.
+Fill-in-the-blank with drop-down selects. `stimulus` is the prompt and
+`template` the passage. Each drop-down gets its own list of choices, in order of
+appearance, so `possible-responses` is a list of lists.
 
 ```
-clozedropdown
-  stimulus "Select the answer: The sky is {{response}}."
+clozedropdown [
+  stimulus "Select the answer."
+  template "The sky is {{response}}."
   possible-responses [["blue", "red", "green"]]
-  valid-response ["blue"]
-  {}
+  validation [
+    valid-response [score 1 value ["blue"]]
+  ]
+]
 ```
 
 ### clozeformula
 
-Creates a fill-in-the-blank question for math/formula input. The response is
-parsed as a math expression; `method` selects which property of that expression
-is compared to `valid-response` — its syntactic form (`equivLiteral`), its
-symbolic equivalence (`equivSymbolic`), its numeric value (`equivValue`), or a
-structural property such as being simplified (`isSimplified`).
+Math input into one or more response boxes. The keyword is `clozeformula` but the
+emitted type is `clozeformulaV2` — Learnosity calls it "Math"; its own
+`clozeformula` ("Cloze math") is an older, different type.
+
+This is the deepest nesting in the language. `validation.valid_response.value` is
+an array per blank of arrays of **rule objects**, each with a `method`, usually a
+`value`, and optionally `options`:
 
 ```
-clozeformula
-  stimulus "Solve for x: 2x + 4 = 10. x = {{response}}"
-  valid-response ["3"]
-  method "equivLiteral"
-  {}
+clozeformula [
+  stimulus "It takes 25 minutes to walk and 45 to drive."
+  template "{{response}} minutes = {{response}} hour and {{response}} minutes"
+  is-math true
+  ui-style [type "block-on-focus-keyboard"]
+  validation [
+    scoring-type "exactMatch"
+    valid-response [
+      score 1
+      value [ [[method "equivLiteral" value "70"]]
+              [[method "equivValue" value "1" options [decimal-places 2]]]
+              [[method "equivLiteral" value "10"]] ]
+    ]
+  ]
+]
 ```
 
-Supported methods: `equivLiteral`, `equivSymbolic`, `equivValue`,
-`isSimplified`, `isFactorised`, `isExpanded`, `stringMatch`, `isUnit`.
-The compiler passes the method through verbatim and does not check it against
-this list.
+A rule may carry a `method` and no `value` at all — `isExpanded`, `isSimplified`
+and `isTrue` are predicates on the response rather than comparisons against an
+answer.
 
-#### Accepted answers per blank
-
-`valid-response` is positional: one entry per `{{response}}` blank. An entry is
-either a bare value — that blank's only accepted expression — or a list of the
-expressions that blank accepts:
+Accepting several different expressions for one blank is what `alt-responses` is
+for: each entry is a complete answer set covering every blank.
 
 ```
-clozeformula
-  stimulus "Simplify 4/8 to lowest terms: {{response}}"
-  valid-response [["1/2", "0.5", "2/4"]]
-  method "equivLiteral"
-  {}
+clozeformula [
+  template "Simplify 4/8: {{response}}"
+  validation [
+    valid-response [value [[[method "equivLiteral" value "1/2"]]]]
+    alt-responses [[value [[[method "equivLiteral" value "0.5"]]]]
+                   [value [[[method "equivLiteral" value "2/4"]]]]]
+  ]
+]
 ```
 
-The first expression of every blank forms Learnosity's `valid_response`; each
-remaining combination becomes an entry in `alt_responses`, so
-`valid-response [["2x", "x*2"], ["5"]]` emits one `valid_response`
-(`2x`, `5`) and one alternative (`x*2`, `5`). The number of combinations —
-the product of the per-blank counts — is capped at 25; beyond that the compiler
-errors rather than emit an unwieldy `alt_responses`.
+Notation never needs enumerating — `1/2`, `1 / 2` and `\frac{1}{2}` are one
+expression under every method. Only genuinely different expressions do.
 
-Because the method already absorbs notational variation (under `equivLiteral`,
-`1/2`, `1 / 2` and `\frac{1}{2}` are one expression), a list is only needed for
-genuinely different expressions.
+#### Methods and options are not checked
+
+Nothing constrains `method` or the keys of `options`, deliberately. The
+documentation does not settle either question: the full method list appears on
+exactly one of Learnosity's 51 articles, and the `options` bag is documented as
+two disjoint sets with neither matching its own examples. See C1 and C2 in
+`conflict-resolution.md`. Rather than encode a guess, the compiler passes both
+through and the author writes what Learnosity accepts.
+
+Note the `options` keys are camelCase — `decimal-places` emits `decimalPlaces` —
+alone among Learnosity's fields.
 
 ### choicematrix
 
-Creates a grid question where students select an option for each row.
+A grid of prompts and choices. Learnosity's names: `stems` are the row prompts,
+`options` the column choices. Set `multiple-responses true` to turn each row's
+radio buttons into checkboxes.
 
 ```
-choicematrix
+choicematrix [
   stimulus "Classify each statement as true or false."
-  rows ["The sun is a star", "The moon is a planet"]
-  columns ["True", "False"]
-  valid-response [[0], [1]]
-  {}
+  stems ["The sun is a star", "The moon is a planet"]
+  options ["True", "False"]
+  validation [
+    valid-response [score 1 value [[0], [1]]]
+  ]
+]
 ```
 
 ### orderlist
 
-Creates a question where students drag items into the correct order.
+Drag items into the correct order. Alone among the types, its `scoring-type`
+reaches `partialMatchPairwise`, which compares adjacent entries rather than
+scoring each position outright.
 
 ```
-orderlist
+orderlist [
   stimulus "Arrange these events in chronological order."
   list ["World War II", "World War I", "Moon Landing", "Internet"]
-  valid-response [1, 0, 2, 3]
-  {}
+  validation [
+    scoring-type "partialMatchPairwise"
+    valid-response [score 1 value [1, 0, 2, 3]]
+  ]
+]
 ```
 
 ### classification
 
-Creates a question where students sort items into categories.
+Drag items into a grid of cells. The layout lives in `ui-style`, where Learnosity
+puts it: `column-count` and `column-titles`, plus `row-count` and `row-titles` for
+a two-dimensional grid. `valid-response`'s value is one array of
+`possible-responses` indices per cell, in reading order.
 
 ```
-classification
+classification [
   stimulus "Sort the animals into the correct categories."
-  categories ["Mammals", "Reptiles"]
   possible-responses ["Dog", "Snake", "Cat", "Lizard"]
-  valid-response [[0, 2], [1, 3]]
-  {}
+  ui-style [
+    column-count 2
+    column-titles ["Mammals", "Reptiles"]
+  ]
+  validation [
+    valid-response [score 1 value [[0, 2], [1, 3]]]
+  ]
+]
 ```
+
+`possible-responses` is absent from Learnosity's own attribute table for this
+type even though the type cannot work without it — see C9 in
+`conflict-resolution.md`.
 
 ### bowtie
 
-Creates a Next-Gen NCLEX bow-tie question: three source pools feed three
-drop zones in a 2-1-2 layout (two on the left, one in the center, two on
-the right). `column-titles` labels both the source pools and the drop
-zones. Correct answers are written as the option text — the compiler
-flattens the three pools and resolves each string to the global index
-Learnosity expects.
+A Next-Gen NCLEX bow-tie: source pools feed the drop zones of a bow-tie diagram.
+`possible-response-groups` gives each pool a `title` and its `responses`, and
+`ui-style` carries the `column-titles` shown above the drop zones.
+
+`valid-response`'s value is one array of indices per drop zone, indexing into the
+groups flattened in order — so with pools of 4, 3 and 4, the second pool occupies
+indices 4 to 6.
 
 ```
-bowtie
+bowtie [
   stimulus "65-year-old male presents with chest pain and diaphoresis."
-  column-titles ["Actions to Take", "Condition Most Likely", "Parameters to Monitor"]
-  possible-responses [
-    ["give aspirin", "give nitro", "call cardiology", "obtain 12-lead ECG"],
-    ["myocardial infarction", "pulmonary embolism", "pericarditis"],
-    ["ST segment changes", "blood pressure", "troponin", "respiratory rate"]
+  group-possible-responses true
+  possible-response-groups [
+    [title "Actions to Take"
+     responses ["give aspirin", "give nitro", "call cardiology", "obtain 12-lead ECG"]]
+    [title "Condition Most Likely"
+     responses ["myocardial infarction", "pulmonary embolism", "pericarditis"]]
+    [title "Parameters to Monitor"
+     responses ["ST segment changes", "blood pressure", "troponin", "respiratory rate"]]
   ]
-  valid-response [
-    ["give aspirin", "obtain 12-lead ECG"],
-    ["myocardial infarction"],
-    ["ST segment changes", "troponin"]
+  ui-style [
+    column-titles ["Actions to Take", "Condition Most Likely", "Parameters to Monitor"]
   ]
-  {}
+  validation [
+    valid-response [score 1 value [[0, 3], [4], [7, 9]]]
+  ]
+]
 ```
 
-The 2-1-2 shape is enforced at compile time: `valid-response` must have
-exactly two entries in the first and third lists and one in the middle,
-every entry must appear in the matching pool, and no list may contain
-duplicates.
+Nothing checks those indices. Learnosity documents no numbering scheme beyond
+"an array with three elements representing each drop zone", and the indices in
+its own worked example do not decode under any scheme — see C8 in
+`conflict-resolution.md`. Until a bow-tie has been rendered and inspected, a
+wrong index produces a wrong question silently.
 
 ### token-highlight
 
-Creates a token-highlight question: the learner clicks tokens in a `passage`
-to select them. Clickable tokens are listed explicitly — `valid-response`
-holds the correct tokens and `distractors` the clickable-but-incorrect
-ones. The compiler wraps each
-whole-word occurrence of a listed token in `<span class="lrn_token">` (so only
-listed tokens are clickable; everything else is plain text) and emits
-`tokenization: "custom"`. Correct tokens are scored by their span index in
-document order.
+The learner clicks words, sentences or paragraphs in a passage. `template` is the
+passage with each clickable token wrapped in `<span class="lrn_token">`, and
+`valid-response`'s value is the indices of the correct spans in document order,
+counting from zero.
 
 ```
-token-highlight
+token-highlight [
   stimulus "Highlight the verbs."
-  passage "The cat runs then jumps high."
-  valid-response ["runs", "jumps"]
-  distractors ["cat", "high"]
-  max-selection 2
-  {}
+  template "The <span class=\"lrn_token\">cat</span> <span class=\"lrn_token\">runs</span> then <span class=\"lrn_token\">jumps</span>."
+  tokenization "custom"
+  validation [
+    scoring-type "partialMatch"
+    valid-response [score 1 value [1, 2]]
+  ]
+]
 ```
 
-Matching is case-insensitive and whole-word, so `"runs"` matches `"Runs"` at a
-sentence start but not the substring of `"runner"`. A correct token that
-appears more than once is highlighted and scored at every occurrence.
-`max-selection` optionally caps how many tokens the learner may select. The
-compiler errors if a listed token is not found in the passage or if a token
-appears in both `valid-response` and `distractors`.
+`tokenization` selects how the passage is split: `"custom"` honours the spans you
+wrote, while `"word"`, `"sentence"` and `"paragraph"` let Learnosity split the
+passage for you, in which case the template needs no spans at all.
 
 ### custom
 
@@ -548,11 +623,11 @@ at `l<lang>.graffiticode.org` — consult that integration's docs for the
 fields it expects.
 
 ```
-custom
+custom [
   lang "0166"
   stimulus "..."
   model { ...interaction-specific fields... }
-  {}
+]
 ```
 
 Compiles to:
@@ -579,19 +654,19 @@ base-language `data` primitive and threaded into the `custom` question's
 `data:` field via the `model` attribute. There are two equivalent forms:
 
 ```
-custom
+custom [
   lang "0166"
   stimulus "Use the spreadsheet to compute the column totals."
   model data use "0166"
-  {}
+]
 ```
 
 ```
-custom
+custom [
   lang "0166"
   stimulus "Use the spreadsheet to compute the column totals."
   model data {}
-  {}
+]
 ```
 
 - **`data use "<lang>"`** (preferred) declares the upstream language
@@ -623,16 +698,16 @@ Multiple choice assessment:
 set-var "lrn-id" get-val-public "itemId"
 learnosity
   items [
-    item
+    item [
       questions [
-        mcq
+        mcq [
           stimulus "What color means go?"
           options ["Red", "Yellow", "Green"]
           valid-response [2]
           instant-feedback true
-          {}
-      ]
-      {}
+        ]
+      ] {}
+    ]
   ] {}..
 ```
 
@@ -642,20 +717,20 @@ Multiple questions in one item:
 set-var "lrn-id" get-val-public "itemId"
 learnosity
   items [
-    item
+    item [
       questions [
         mcq
           stimulus "What is 2 + 2?"
           options ["3", "4", "5"]
           valid-response [1]
           {},
-        shorttext
+        shorttext [
           stimulus "Spell the word for the number 4."
           valid-response "four"
           case-sensitive false
-          {}
-      ]
-      {}
+        ]
+      ] {}
+    ]
   ] {}..
 ```
 
@@ -683,14 +758,14 @@ Spreadsheet question reading an upstream L0166 task:
 set-var "lrn-id" get-val-public "itemId"
 learnosity
   items [
-    item
+    item [
       questions [
-        custom
+        custom [
           lang "0166"
           stimulus "Use the spreadsheet to compute the column totals."
           model data use "0166"
-          {}
-      ]
-      {}
+        ]
+      ] {}
+    ]
   ] {}..
 ```

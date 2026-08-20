@@ -241,11 +241,10 @@ whole paragraphs.
 
 ## Category 17: Partial Credit (155–162)
 
-These items chain `partial-credit true`, which emits Learnosity's
-`partialMatch` scoring type — the learner earns a fraction of the point per
-correct response instead of needing every response right. It applies only to
-types with more than one scorable response, and on `mcq` it requires
-`multiple-responses true`.
+These items ask for partial credit, which sets Learnosity's `partialMatch`
+scoring type — the learner earns a fraction of the point per correct response
+instead of needing every response right. It applies only to types with more than
+one scorable response, and on `mcq` it requires multiple responses to be allowed.
 
 155. Create a multiple choice question asking "Select all the prime numbers." with options "2", "4", "7", "9" where 2 and 7 are correct, allowing multiple responses, and give partial credit for each correct selection.
 156. Create a multiple choice question asking "Which of these are mammals?" with options "Dolphin", "Shark", "Bat", "Eagle" where Dolphin and Bat are correct, allowing multiple responses, scoring each correct answer separately.
