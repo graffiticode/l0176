@@ -27,64 +27,62 @@ describe("questions path", () => {
     expect(q.data.options).toHaveLength(4);
   });
 
-  test("custom mcq attributes override defaults and build validation", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [mcq [stimulus "2+2?" options ["3", "4"] valid-response [1]]] {}..');
+  test("mcq options are the {label, value} objects Learnosity documents", async () => {
+    // The builder used to invent `value` from the array index. It is what a
+    // response records, so it is the author's to choose.
+    const out = await compile(`set-var "lrn-id" "t" questions [
+      mcq [
+        stimulus "Which has the smallest wavelength?"
+        options [[label "Red" value "red"] [label "Violet" value "violet"]]
+        validation [valid-response [score 1 value ["violet"]]]
+      ]] {}..`);
     const d = out.data.questions[0].data;
-    expect(d.stimulus).toBe("2+2?");
     expect(d.options).toEqual([
-      { label: "3", value: "0" },
-      { label: "4", value: "1" },
+      { label: "Red", value: "red" },
+      { label: "Violet", value: "violet" },
     ]);
-    expect(d.validation).toEqual({
-      scoring_type: "exactMatch",
-      valid_response: { score: 1, value: ["1"] },
-    });
+    expect(d.validation).toEqual({ valid_response: { score: 1, value: ["violet"] } });
   });
 
-  test("partial-credit switches a multi-response mcq to partialMatch scoring", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [mcq [stimulus "Pick two" options ["a", "b", "c"] valid-response [0, 1] multiple-responses true partial-credit true]] {}..');
-    const d = out.data.questions[0].data;
-    expect(d.validation).toEqual({
-      scoring_type: "partialMatch",
-      valid_response: { score: 1, value: ["0", "1"] },
-    });
-    // The attribute picks a scoring mode; it is not itself a Learnosity field.
-    expect(d.partial_credit).toBeUndefined();
-  });
-
-  test("partial-credit chains as an attribute keyword", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [mcq [options ["a", "b", "c"] valid-response [0, 1] multiple-responses true partial-credit true]] {}..');
+  test("scoring-type replaces the partial-credit boolean", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [
+      mcq [
+        options [[label "a" value "0"] [label "b" value "1"]]
+        multiple-responses true
+        validation [scoring-type "partialMatch" valid-response [score 1 value ["0", "1"]]]
+      ]] {}..`);
     expect(out.data.questions[0].data.validation.scoring_type).toBe("partialMatch");
   });
 
-  test("partial-credit false leaves scoring exact", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [mcq [valid-response [0] partial-credit false]] {}..');
-    expect(out.data.questions[0].data.validation.scoring_type).toBe("exactMatch");
+  test("partial-credit is gone from every converted type", async () => {
+    await expect(
+      compile('set-var "lrn-id" "t" questions [mcq [valid-response [0] partial-credit true]] {}..')
+    ).rejects.toContainEqual(expect.objectContaining({
+      message: expect.stringContaining("not attributes of mcq"),
+    }));
   });
 
-  test("partial-credit applies to the multi-blank cloze types", async () => {
-    // Converted types are excluded: they write scoring-type directly. This
-    // covers what is left on the flat spelling.
-    const out = await compile('set-var "lrn-id" "t" questions [classification [valid-response [[0], [1]] partial-credit true]] {}..');
-    expect(out.data.questions[0].data.validation.scoring_type).toBe("partialMatch");
-  });
-
-  test("token-highlight marks tokens and scores correct spans by document order", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [token-highlight [passage "The cat runs and jumps." valid-response ["runs", "jumps"] distractors ["cat"]]] {}..');
+  test("token-highlight takes its own lrn_token markup and span indices", async () => {
+    // markTokens used to wrap the spans and compute the indices from a plain
+    // passage plus token strings. The author writes both now.
+    const out = await compile(`set-var "lrn-id" "t" questions [
+      token-highlight [
+        stimulus "Highlight the verbs."
+        template "The <span class=\\"lrn_token\\">cat</span> <span class=\\"lrn_token\\">runs</span>."
+        tokenization "custom"
+        validation [valid-response [score 1 value [1]]]
+      ]] {}..`);
     const d = out.data.questions[0].data;
     expect(d.type).toBe("tokenhighlight");
     expect(d.template).toContain('<span class="lrn_token">runs</span>');
-    // cat is token 0, runs token 1, jumps token 2 → correct spans [1, 2]
-    expect(d.validation.valid_response.value).toEqual([1, 2]);
+    expect(d.validation.valid_response.value).toEqual([1]);
   });
 
   // `hot-text` was renamed to `token-highlight` and dropped from every public surface,
   // but sources saved under the old spelling must keep compiling identically.
   test("the deprecated hot-text alias still compiles as token-highlight", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [hot-text [passage "The cat runs and jumps." valid-response ["runs", "jumps"] distractors ["cat"]]] {}..');
-    const d = out.data.questions[0].data;
-    expect(d.type).toBe("tokenhighlight");
-    expect(d.validation.valid_response.value).toEqual([1, 2]);
+    const out = await compile('set-var "lrn-id" "t" questions [hot-text [stimulus "x"]] {}..');
+    expect(out.data.questions[0].data.type).toBe("tokenhighlight");
   });
 
   test("the deprecated alias is absent from the published lexicon", async () => {
@@ -253,12 +251,11 @@ describe("clozetext (aligned vocabulary)", () => {
   });
 
   test("an attribute belonging to another type is rejected", async () => {
-    // Before per-type validation this compiled and emitted `passage` — a
-    // token-highlight field — onto the clozetext.
+    // Before per-type validation this compiled and emitted the stray field.
     await expect(
-      compile('set-var "lrn-id" "t" questions [clozetext [template "A {{response}}." passage "x"]] {}..')
+      compile('set-var "lrn-id" "t" questions [clozetext [template "A {{response}}." options ["x"]]] {}..')
     ).rejects.toContainEqual(expect.objectContaining({
-      message: expect.stringContaining("`passage` is not an attribute of clozetext"),
+      message: expect.stringContaining("`options` is not an attribute of clozetext"),
     }));
   });
 
@@ -288,12 +285,9 @@ describe("clozetext (aligned vocabulary)", () => {
     }));
   });
 
-  test("the other question types keep the flat spelling until converted", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [mcq [valid-response [0] multiple-responses true partial-credit true]] {}..');
-    expect(out.data.questions[0].data.validation).toEqual({
-      scoring_type: "partialMatch",
-      valid_response: { score: 1, value: ["0"] },
-    });
+  test("clozeformula is the last type still on the flat spelling", async () => {
+    const out = await compile('set-var "lrn-id" "t" questions [clozeformula [stimulus "a {{response}}" valid-response ["11"]]] {}..');
+    expect(out.data.questions[0].data.validation.valid_response.value[0][0].value).toBe("11");
   });
 });
 
@@ -388,9 +382,9 @@ describe("the mechanical types (aligned vocabulary)", () => {
       .rejects.toContainEqual(expect.objectContaining({
         message: expect.stringContaining("`template` is not an attribute of shorttext"),
       }));
-    await expect(q('choicematrix [stimulus "x" rows ["a"]]'))
+    await expect(q('choicematrix [stimulus "x" list ["a"]]'))
       .rejects.toContainEqual(expect.objectContaining({
-        message: expect.stringContaining("`rows` is not an attribute of choicematrix"),
+        message: expect.stringContaining("`list` is not an attribute of choicematrix"),
       }));
   });
 

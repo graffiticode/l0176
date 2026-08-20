@@ -547,11 +547,13 @@ for (const [name, meta] of Object.entries(memberFields)) {
           if (Array.isArray(raw) && (raw.length === 0 || isMemberList(raw))) {
             value = mergeMembers(raw, where);
           }
-        } else if (meta.shape === "objectArray") {
+        } else if (meta.shape === "objectArray" || meta.shape === "objectArrayOrValues") {
           if (!Array.isArray(raw)) {
             throw new Error(`${where}: expected a list of member lists, e.g. [[score 1 value "x"]].`);
           }
-          value = raw.map((entry: any, i: number) => mergeMembers(entry, `${where}[${i + 1}]`));
+          const lenient = meta.shape === "objectArrayOrValues";
+          value = raw.map((entry: any, i: number) =>
+            lenient && !isMemberList(entry) ? entry : mergeMembers(entry, `${where}[${i + 1}]`));
         }
         resume(err, { [meta.field]: value });
       } catch (e: any) {

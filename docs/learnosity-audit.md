@@ -41,11 +41,11 @@ Two articles carry more than their titles suggest:
 
 | Section | Status | Findings |
 | --- | --- | --- |
-| [Registries are declared but never enforced](#a-registries-are-declared-but-never-enforced) | partly fixed | 1 — enforced for the 8 converted types |
+| [Registries are declared but never enforced](#a-registries-are-declared-but-never-enforced) | partly fixed | 1 — enforced for the 12 converted types |
 | [Author API widget list](#b-author-api-widget-list) | unreviewed | 1 |
 | [Question metadata](#c-question-metadata) | unreviewed | 1 |
 | [`spec/` accuracy](#d-spec-accuracy) | unreviewed | 2 |
-| [`mcq`](#mcq--mcq) | unreviewed | — |
+| [`mcq`](#mcq--mcq) | **fixed** | — |
 | [`shorttext`](#shorttext--shorttext) | **fixed** | — |
 | [`longtext`](#longtext--longtextv2) | **fixed** | — |
 | [`plaintext`](#plaintext--plaintext) | **fixed** | — |
@@ -55,9 +55,9 @@ Two articles carry more than their titles suggest:
 | [`clozeformula`](#clozeformula--clozeformulav2) | unreviewed | 4 |
 | [`choicematrix`](#choicematrix--choicematrix) | **fixed** | 1 |
 | [`orderlist`](#orderlist--orderlist) | **fixed** | — |
-| [`classification`](#classification--classification) | unreviewed | — |
-| [`bowtie`](#bowtie--bowtie) | unreviewed | 2 |
-| [`token-highlight`](#token-highlight--tokenhighlight) | unreviewed | — |
+| [`classification`](#classification--classification) | **fixed** | — |
+| [`bowtie`](#bowtie--bowtie) | **fixed** | 2 |
+| [`token-highlight`](#token-highlight--tokenhighlight) | **fixed** | — |
 | [`custom`](#custom--custom) | unreviewed | — |
 
 ---
@@ -162,7 +162,7 @@ host environment must render it.
 
 ## `mcq` → `mcq`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Multiple-choice-mcq.md` · **Builder:** `question-types.ts:155` ·
 **Attributes:** `question-types.ts:924`
 
@@ -427,7 +427,7 @@ bare string while its attribute table declares `ui_style` an object.)*
 
 ## `classification` → `classification`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Classification-classification.md` · **Builder:** `question-types.ts:591` ·
 **Attributes:** `question-types.ts:934`
 
@@ -445,7 +445,7 @@ Note this type has four partial-scoring modes (`partialMatch`,
 
 ## `bowtie` → `bowtie`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Bow-tie-bowtie.md` · **Builder:** `question-types.ts:682` ·
 **Attributes:** `question-types.ts:935`
 
@@ -479,7 +479,7 @@ Also note: the 2-1-2 answer shape L0176 enforces (`BOWTIE_AREA_COUNTS`,
 
 ## `token-highlight` → `tokenhighlight`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Token-highlight-tokenhighlight.md` · **Builder:** `question-types.ts:819` ·
 **Attributes:** `question-types.ts:936`
 

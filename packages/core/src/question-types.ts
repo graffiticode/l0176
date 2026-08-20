@@ -7,8 +7,16 @@
 const DEFAULTS: Record<string, any> = {
   mcq: {
     stimulus: "Which of the following is correct?",
-    options: ["Option A", "Option B", "Option C", "Option D"],
-    valid_response: [0],
+    options: [
+      { label: "Option A", value: "0" },
+      { label: "Option B", value: "1" },
+      { label: "Option C", value: "2" },
+      { label: "Option D", value: "3" },
+    ],
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: ["0"] },
+    },
   },
   shorttext: {
     stimulus: "Type your answer below.",
@@ -74,29 +82,38 @@ const DEFAULTS: Record<string, any> = {
   },
   classification: {
     stimulus: "Sort the items into the correct categories.",
-    categories: ["Category A", "Category B"],
     possible_responses: ["Item 1", "Item 2", "Item 3", "Item 4"],
-    valid_response: [[0, 2], [1, 3]],
+    ui_style: { column_count: 2, column_titles: ["Category A", "Category B"] },
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: [[0, 2], [1, 3]] },
+    },
   },
   bowtie: {
     stimulus: "Review the scenario and complete the diagram.",
-    column_titles: ["Actions to Take", "Condition Most Likely", "Parameters to Monitor"],
-    possible_responses: [
-      ["Action A", "Action B", "Action C", "Action D"],
-      ["Condition X", "Condition Y", "Condition Z"],
-      ["Parameter P", "Parameter Q", "Parameter R", "Parameter S"],
+    group_possible_responses: true,
+    possible_response_groups: [
+      { title: "Actions to Take", responses: ["Action A", "Action B", "Action C", "Action D"] },
+      { title: "Condition Most Likely", responses: ["Condition X", "Condition Y", "Condition Z"] },
+      { title: "Parameters to Monitor", responses: ["Parameter P", "Parameter Q", "Parameter R"] },
     ],
-    valid_response: [
-      ["Action A", "Action B"],
-      ["Condition X"],
-      ["Parameter P", "Parameter Q"],
-    ],
+    ui_style: {
+      column_titles: ["Actions to Take", "Condition Most Likely", "Parameters to Monitor"],
+    },
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: [[0, 1], [4], [7, 8]] },
+    },
   },
   tokenhighlight: {
     stimulus: "Highlight the verbs in the sentence.",
-    passage: "The cat runs then jumps high.",
-    valid_response: ["runs", "jumps"],
-    distractors: ["cat", "high"],
+    template: 'The <span class="lrn_token">cat</span> <span class="lrn_token">runs</span> ' +
+      'then <span class="lrn_token">jumps</span> <span class="lrn_token">high</span>.',
+    tokenization: "custom",
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: [1, 2] },
+    },
   },
 };
 
@@ -114,16 +131,13 @@ function withDefaults(type: string, attrs: any) {
 // Only types with more than one scorable response accept it — the rest are
 // all-or-nothing by construction, and silently ignoring the attribute there
 // would emit a question that scores differently than the author asked for.
-// Only the types still on the older spelling. A converted type writes
-// `scoring-type` directly inside `validation`, so it has no synthetic boolean to
-// gate — and reaches modes the boolean cannot express, such as orderlist's
-// partialMatchPairwise. This set empties as the remaining types are converted,
-// at which point `partial-credit` and `scoringType()` go with it.
-const PARTIAL_CREDIT_TYPES = new Set([
-  "mcq",
-  "classification",
-  "tokenhighlight",
-]);
+// Empty: no type accepts `partial-credit` any more. Every converted type writes
+// `scoring-type` inside `validation` instead, which reaches modes the boolean
+// never could — partialMatchV2, orderlist's partialMatchPairwise, and
+// classification's per-element pair. The two types still on the older spelling,
+// `clozeformula` and `custom`, both rejected it before and still do, which is
+// all `scoringType` is left doing. It goes when they are converted.
+const PARTIAL_CREDIT_TYPES = new Set<string>([]);
 
 function scoringType(type: string, partialCredit: any) {
   if (!partialCredit) {
@@ -168,6 +182,14 @@ const SCORING_TYPES: Record<string, string[]> = {
   shorttext: ["exactMatch"],
   // Alone in offering pairwise comparison of adjacent entries.
   orderlist: ["exactMatch", "partialMatchV2", "partialMatch", "partialMatchPairwise"],
+  mcq: ["exactMatch", "partialMatchV2", "partialMatch"],
+  tokenhighlight: ["exactMatch", "partialMatchV2", "partialMatch"],
+  // Four modes, two of them per-element rather than per-cell.
+  classification: ["exactMatch", "partialMatchV2", "partialMatch",
+    "partialMatchElement", "partialMatchElementV2"],
+  // Documented in prose only, and the widest set of any type.
+  bowtie: ["exactMatch", "partialMatchV2", "partialMatch",
+    "partialMatchElement", "partialMatchElementV2"],
   // longtext and plaintext are absent: neither documents scoring_type at all —
   // they are manually scored, and their validation carries max_score instead.
 };
@@ -218,55 +240,17 @@ function attachQuestionMetadata(question: any, metadata: any) {
   return question;
 }
 
+// Learnosity's options are {label, value} objects. `value` is what a response
+// records, so it is the author's to choose — the array index as a string is
+// only what the authoring tools happen to generate.
 export function buildMcq(attrs: any) {
-  const {
-    stimulus,
-    options,
-    valid_response,
-    alternative_response,
-    multiple_responses,
-    instant_feedback,
-    shuffle_options,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("mcq", attrs);
-  if (partial_credit && !multiple_responses) {
-    throw new Error(
-      "mcq: partial-credit requires multiple-responses true — a single-response mcq is all-or-nothing."
-    );
-  }
-  const question: any = {
+  const merged = withDefaults("mcq", attrs);
+  assertKnownAttributes("mcq", "MCQ", merged);
+  assertScoringType("mcq", merged.validation);
+  return {
+    ...merged,
     type: "mcq",
-    stimulus,
-    options: options.map((label: any, i: number) => ({ label, value: String(i) })),
-    ...rest,
   };
-  if (multiple_responses != null) {
-    question.multiple_responses = multiple_responses;
-  }
-  if (shuffle_options != null) {
-    question.shuffle_options = shuffle_options;
-  }
-  if (instant_feedback != null) {
-    question.instant_feedback = instant_feedback;
-  }
-  if (valid_response != null) {
-    question.validation = {
-      scoring_type: scoringType("mcq", partial_credit),
-      valid_response: {
-        score: 1,
-        value: valid_response.map(String),
-      },
-    };
-    if (alternative_response != null) {
-      question.validation.alt_responses = alternative_response.map((v: any) => ({
-        score: 1,
-        value: Array.isArray(v) ? v.map(String) : [String(v)],
-      }));
-    }
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
 export function buildShorttext(attrs: any) {
@@ -462,150 +446,29 @@ export function buildOrderlist(attrs: any) {
   };
 }
 
+// The column and row layout lives in ui_style, where Learnosity puts it —
+// column_count is written, not counted from a list of category names.
 export function buildClassification(attrs: any) {
-  const {
-    stimulus,
-    categories,
-    possible_responses,
-    valid_response,
-    alternative_response,
-    instant_feedback,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("classification", attrs);
-  const question: any = {
+  const merged = withDefaults("classification", attrs);
+  assertKnownAttributes("classification", "CLASSIFICATION", merged);
+  assertScoringType("classification", merged.validation);
+  return {
+    ...merged,
     type: "classification",
-    stimulus,
-    possible_responses,
-    ui_style: {
-      column_count: categories.length,
-      column_titles: categories,
-    },
-    ...rest,
   };
-  if (instant_feedback != null) {
-    question.instant_feedback = instant_feedback;
-  }
-  if (valid_response != null) {
-    question.validation = {
-      scoring_type: scoringType("classification", partial_credit),
-      valid_response: {
-        score: 1,
-        value: valid_response,
-      },
-    };
-    if (alternative_response != null) {
-      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
-    }
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
-// The bow-tie (NGN/NCLEX) shape is fixed: 2 correct answers in the left area,
-// 1 in the center, 2 in the right. These counts are baked into Learnosity's
-// widget and enforced here so authors get clear errors instead of a silently
-// misshapen question.
-const BOWTIE_AREA_COUNTS = [2, 1, 2];
-
-function ensureArrayOfLength(value: any, length: number, label: string) {
-  if (!Array.isArray(value) || value.length !== length) {
-    throw new Error(
-      `bowtie: ${label} must be an array of ${length} entries (got ${Array.isArray(value) ? value.length : typeof value})`
-    );
-  }
-}
-
-function resolveBowtieResponse(picks3: any[], possible_responses: any[], _column_titles: any[]) {
-  const offsets = [0, possible_responses[0].length, possible_responses[0].length + possible_responses[1].length];
-  ensureArrayOfLength(picks3, 3, "response picks");
-  for (let i = 0; i < 3; i++) {
-    const pool = possible_responses[i];
-    const picks = picks3[i];
-    if (!Array.isArray(picks) || picks.some((x: any) => typeof x !== "string")) {
-      throw new Error(`bowtie: response[${i}] must be an array of strings`);
-    }
-    if (picks.length !== BOWTIE_AREA_COUNTS[i]) {
-      throw new Error(
-        `bowtie: response must have 2-1-2 correct answers (got ${picks3.map((r: any) => r.length).join("-")})`
-      );
-    }
-    if (pool.length < BOWTIE_AREA_COUNTS[i]) {
-      throw new Error(
-        `bowtie: possible-responses[${i}] needs at least ${BOWTIE_AREA_COUNTS[i]} options (got ${pool.length})`
-      );
-    }
-    const seen = new Set();
-    for (const pick of picks) {
-      if (seen.has(pick)) {
-        throw new Error(`bowtie: response[${i}] has a duplicate entry "${pick}"`);
-      }
-      seen.add(pick);
-      if (!pool.includes(pick)) {
-        throw new Error(
-          `bowtie: response[${i}] entry "${pick}" is not in possible-responses[${i}]`
-        );
-      }
-    }
-  }
-  return picks3.map((picks: any, i: number) =>
-    picks.map((pick: any) => offsets[i] + possible_responses[i].indexOf(pick))
-  );
-}
-
+// valid_response.value is three arrays of indices into the flattened
+// possible_response_groups. Nothing here checks them: see C8 in
+// spec/conflict-resolution.md, where the docs' own example does not decode.
 export function buildBowtie(attrs: any) {
-  const {
-    stimulus,
-    column_titles,
-    possible_responses,
-    valid_response,
-    alternative_response,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("bowtie", attrs);
-
-  scoringType("bowtie", partial_credit);
-
-  ensureArrayOfLength(column_titles, 3, "column-titles");
-  ensureArrayOfLength(possible_responses, 3, "possible-responses");
-  ensureArrayOfLength(valid_response, 3, "valid-response");
-
-  const validValue = resolveBowtieResponse(valid_response, possible_responses, column_titles);
-
-  const question: any = {
+  const merged = withDefaults("bowtie", attrs);
+  assertKnownAttributes("bowtie", "BOWTIE", merged);
+  assertScoringType("bowtie", merged.validation);
+  return {
+    ...merged,
     type: "bowtie",
-    stimulus,
-    ui_style: {
-      column_titles,
-      show_drag_handle: false,
-    },
-    group_possible_responses: true,
-    max_response_per_cell: 1,
-    possible_response_groups: possible_responses.map((responses: any, i: number) => ({
-      title: column_titles[i],
-      responses,
-    })),
-    validation: {
-      scoring_type: "exactMatch",
-      valid_response: {
-        score: 1,
-        value: validValue,
-      },
-    },
-    ...rest,
   };
-
-  if (alternative_response != null) {
-    question.validation.alt_responses = alternative_response.map((altPicks3: any) =>
-      ({
-        score: 1,
-        value: resolveBowtieResponse(altPicks3, possible_responses, column_titles),
-      })
-    );
-  }
-
-  return attachQuestionMetadata(question, metadata);
 }
 
 export function buildCustom(attrs: any) {
@@ -633,100 +496,16 @@ export function buildCustom(attrs: any) {
   return out;
 }
 
-function escapeRegExp(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// Token highlight. Tokens are explicitly listed: `valid_response`
-// holds the correct clickable tokens and `distractors` the clickable-but-wrong
-// ones. Only listed tokens are clickable, so tokenization is always "custom":
-// we wrap each whole-word occurrence of a listed token in
-// <span class="lrn_token"> and reference the correct ones by their span index
-// (document order). A token string that occurs more than once is wrapped — and,
-// when correct, scored — at every occurrence.
-function markTokens(passage: any, validResponse: any, distractors: any) {
-  if (typeof passage !== "string" || passage.length === 0) {
-    throw new Error("token-highlight requires a non-empty passage string.");
-  }
-  const correct = Array.isArray(validResponse) ? validResponse : (validResponse == null ? [] : [validResponse]);
-  const wrong = Array.isArray(distractors) ? distractors : (distractors == null ? [] : [distractors]);
-  const clickable = [...correct, ...wrong];
-  for (const t of clickable) {
-    if (typeof t !== "string" || t.length === 0) {
-      throw new Error("token-highlight: valid-response and distractors must be non-empty strings.");
-    }
-  }
-  if (correct.length === 0) {
-    throw new Error("token-highlight requires at least one correct token in valid-response.");
-  }
-  // Matching is case-insensitive so a sentence-initial capital still matches a
-  // lowercase token (valid-response "run" matches "Run" starting a sentence).
-  const correctSet = new Set(correct.map((s: any) => s.toLowerCase()));
-  for (const d of wrong) {
-    if (correctSet.has(d.toLowerCase())) {
-      throw new Error(`token-highlight: "${d}" is listed in both valid-response and distractors.`);
-    }
-  }
-  // Match whole-word occurrences of any clickable token, longest first so a
-  // longer token isn't pre-empted by a shorter overlapping one.
-  const ordered = [...new Set(clickable)].sort((a: any, b: any) => b.length - a.length);
-  const pattern = new RegExp(`(?<![\\w-])(${ordered.map(escapeRegExp).join("|")})(?![\\w-])`, "gi");
-  const found = new Set();
-  const value: number[] = [];
-  let index = 0;
-  const template = passage.replace(pattern, (match: string) => {
-    found.add(match.toLowerCase());
-    if (correctSet.has(match.toLowerCase())) {
-      value.push(index);
-    }
-    index += 1;
-    return `<span class="lrn_token">${match}</span>`;
-  });
-  for (const t of clickable) {
-    if (!found.has(t.toLowerCase())) {
-      throw new Error(`token-highlight: token "${t}" was not found in the passage.`);
-    }
-  }
-  return { template, value: value.sort((a, b) => a - b) };
-}
-
+// The template carries its own <span class="lrn_token"> markup and the valid
+// response is span indices in document order, as Learnosity documents them.
 export function buildTokenHighlight(attrs: any) {
-  const {
-    stimulus,
-    passage,
-    valid_response,
-    alternative_response,
-    distractors,
-    max_selection,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("tokenhighlight", attrs);
-  const { template, value } = markTokens(passage, valid_response, distractors);
-  const question: any = {
+  const merged = withDefaults("tokenhighlight", attrs);
+  assertKnownAttributes("tokenhighlight", "TOKEN_HIGHLIGHT", merged);
+  assertScoringType("tokenhighlight", merged.validation);
+  return {
+    ...merged,
     type: "tokenhighlight",
-    stimulus,
-    template,
-    tokenization: "custom",
-    ...rest,
   };
-  if (max_selection != null) {
-    question.max_selection = max_selection;
-  }
-  question.validation = {
-    scoring_type: scoringType("tokenhighlight", partial_credit),
-    valid_response: {
-      score: 1,
-      value,
-    },
-  };
-  if (alternative_response != null) {
-    question.validation.alt_responses = alternative_response.map((v: any) => {
-      const { value: altValue } = markTokens(passage, v, distractors);
-      return { score: 1, value: altValue };
-    });
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
 // Registry mapping AST names to builders
@@ -756,10 +535,14 @@ export const questionTypeBuilders: Record<string, (attrs: any) => any> = {
 //   (none)        the value as written — a scalar, or a list of scalars
 //   "object"      a member list, merged into one object
 //   "objectArray" a list of member lists, each merged
+//   "objectArrayOrValues"
+//                 the same, but an entry that is not a member list passes
+//                 through — for a field Learnosity documents as objects on one
+//                 type and plain values on another
 //
 // A member needs no builder involvement: the question-type transformer merges
 // the list and the field lands by name.
-export type MemberShape = "object" | "objectArray";
+export type MemberShape = "object" | "objectArray" | "objectArrayOrValues";
 export const memberFields: Record<string, { field: string; shape?: MemberShape }> = {
   // Question-level content
   STIMULUS: { field: "stimulus" },
@@ -767,14 +550,13 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   INSTRUCTOR_STIMULUS: { field: "instructor_stimulus" },
   TEMPLATE: { field: "template" },
   IS_MATH: { field: "is_math" },
-  OPTIONS: { field: "options" },
+  // mcq documents options as array[object] ({label, value}); choicematrix
+  // documents the same word as array[string]. Entries written as member
+  // lists are merged, anything else passes through.
+  OPTIONS: { field: "options", shape: "objectArrayOrValues" },
   POSSIBLE_RESPONSES: { field: "possible_responses" },
   ORDER_LIST: { field: "list" },
-  PASSAGE: { field: "passage" },
-  DISTRACTORS: { field: "distractors" },
-  ROWS: { field: "rows" },
   COLUMNS: { field: "columns" },
-  CATEGORIES: { field: "categories" },
   COLUMN_TITLES: { field: "column_titles" },
 
   // Behaviour
@@ -853,6 +635,25 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   SCORE_WITH_FEEDBACKAIDE: { field: "score_with_feedbackaide" },
   FEEDBACKAIDE_PASSAGES: { field: "feedbackaide_passages" },
 
+  // mcq, classification, bowtie, token-highlight
+  LABEL: { field: "label" },
+  ASSISTIVE_LABEL: { field: "assistive_label", shape: "object" },
+  EXPOSED_VISIBLE_LABEL: { field: "exposed_visible_label" },
+  RESPONSES: { field: "responses" },
+  TITLE: { field: "title" },
+  MIN_SELECTION: { field: "min_selection" },
+  MAX_RESPONSE_PER_CELL: { field: "max_response_per_cell" },
+  POSSIBLE_RESPONSE_GROUPS: { field: "possible_response_groups", shape: "objectArray" },
+  TOKENIZATION: { field: "tokenization" },
+  CHOICE_LABEL: { field: "choice_label" },
+  COLUMN_COUNT: { field: "column_count" },
+  ORIENTATION: { field: "orientation" },
+  ROW_COUNT: { field: "row_count" },
+  ROW_HEADER: { field: "row_header" },
+  ROW_MIN_HEIGHT: { field: "row_min_height" },
+  ROW_TITLES: { field: "row_titles" },
+  ROW_TITLES_WIDTH: { field: "row_titles_width" },
+
   // Item level. `metadata` is a member at both question and item level, which is
   // why `item` takes a member list too — a word has one arity.
   METADATA: { field: "metadata" },
@@ -914,7 +715,12 @@ export const metadataMembers: Record<string, { kind: string }> = {
 
 // Which attributes are valid for each question type
 export const validAttributes: Record<string, string[]> = {
-  MCQ: ["stimulus", "options", "valid_response", "alternative_response", "instant_feedback", "is_math", "shuffle_options", "multiple_responses", "partial_credit", "metadata"],
+  MCQ: [
+    "feedback_attempts", "instant_feedback", "instructor_stimulus",
+    "is_math", "max_selection", "metadata", "min_selection",
+    "multiple_responses", "options", "shuffle_options", "stimulus",
+    "stimulus_review", "ui_style", "validation",
+  ],
   SHORTTEXT: [
     "case_sensitive", "character_map", "feedback_attempts",
     "ignore_leading_and_trailing_spaces", "instant_feedback",
@@ -972,7 +778,22 @@ export const validAttributes: Record<string, string[]> = {
     "is_math", "list", "metadata", "shuffle_options", "stimulus",
     "stimulus_review", "ui_style", "validation",
   ],
-  CLASSIFICATION: ["stimulus", "categories", "possible_responses", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
-  BOWTIE: ["stimulus", "column_titles", "possible_responses", "valid_response", "alternative_response", "is_math", "metadata"],
-  TOKEN_HIGHLIGHT: ["stimulus", "passage", "valid_response", "alternative_response", "distractors", "max_selection", "partial_credit", "metadata"],
+  CLASSIFICATION: [
+    "duplicate_responses", "feedback_attempts", "group_possible_responses",
+    "instant_feedback", "instructor_stimulus", "is_math",
+    "max_response_per_cell", "metadata", "possible_responses",
+    "shuffle_options", "stimulus", "stimulus_review", "ui_style",
+    "validation",
+  ],
+  BOWTIE: [
+    "feedback_attempts", "group_possible_responses", "instant_feedback",
+    "instructor_stimulus", "is_math", "metadata",
+    "possible_response_groups", "stimulus", "stimulus_review", "ui_style",
+    "validation",
+  ],
+  TOKEN_HIGHLIGHT: [
+    "feedback_attempts", "instant_feedback", "instructor_stimulus",
+    "is_math", "max_selection", "metadata", "stimulus", "stimulus_review",
+    "template", "tokenization", "ui_style", "validation",
+  ],
 };

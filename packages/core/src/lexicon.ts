@@ -47,13 +47,9 @@ const additions = {
   "max-word-count": { tk: 1, name: "MAX_WORD_COUNT", cls: "function", length: 1, arity: 1 },
   placeholder: { tk: 1, name: "PLACEHOLDER", cls: "function", length: 1, arity: 1 },
   "possible-responses": { tk: 1, name: "POSSIBLE_RESPONSES", cls: "function", length: 1, arity: 1 },
-  rows: { tk: 1, name: "ROWS", cls: "function", length: 1, arity: 1 },
   columns: { tk: 1, name: "COLUMNS", cls: "function", length: 1, arity: 1 },
   list: { tk: 1, name: "ORDER_LIST", cls: "function", length: 1, arity: 1 },
-  categories: { tk: 1, name: "CATEGORIES", cls: "function", length: 1, arity: 1 },
   "column-titles": { tk: 1, name: "COLUMN_TITLES", cls: "function", length: 1, arity: 1 },
-  passage: { tk: 1, name: "PASSAGE", cls: "function", length: 1, arity: 1 },
-  distractors: { tk: 1, name: "DISTRACTORS", cls: "function", length: 1, arity: 1 },
   "max-selection": { tk: 1, name: "MAX_SELECTION", cls: "function", length: 1, arity: 1 },
   method: { tk: 1, name: "METHOD", cls: "function", length: 1, arity: 1 },
   id: { tk: 1, name: "ID", cls: "function", length: 2, arity: 2 },
@@ -137,6 +133,26 @@ const additions = {
   "max-score": { tk: 1, name: "MAX_SCORE", cls: "function", length: 1, arity: 1 },
   "score-with-feedbackaide": { tk: 1, name: "SCORE_WITH_FEEDBACKAIDE", cls: "function", length: 1, arity: 1 },
   "feedbackaide-passages": { tk: 1, name: "FEEDBACKAIDE_PASSAGES", cls: "function", length: 1, arity: 1 },
+
+  // Added with mcq, classification, bowtie and token-highlight: the option and
+  // response-group object members, and the ui_style members those types document.
+  label: { tk: 1, name: "LABEL", cls: "function", length: 1, arity: 1 },
+  "assistive-label": { tk: 1, name: "ASSISTIVE_LABEL", cls: "function", length: 1, arity: 1 },
+  "exposed-visible-label": { tk: 1, name: "EXPOSED_VISIBLE_LABEL", cls: "function", length: 1, arity: 1 },
+  responses: { tk: 1, name: "RESPONSES", cls: "function", length: 1, arity: 1 },
+  title: { tk: 1, name: "TITLE", cls: "function", length: 1, arity: 1 },
+  "min-selection": { tk: 1, name: "MIN_SELECTION", cls: "function", length: 1, arity: 1 },
+  "max-response-per-cell": { tk: 1, name: "MAX_RESPONSE_PER_CELL", cls: "function", length: 1, arity: 1 },
+  "possible-response-groups": { tk: 1, name: "POSSIBLE_RESPONSE_GROUPS", cls: "function", length: 1, arity: 1 },
+  tokenization: { tk: 1, name: "TOKENIZATION", cls: "function", length: 1, arity: 1 },
+  "choice-label": { tk: 1, name: "CHOICE_LABEL", cls: "function", length: 1, arity: 1 },
+  "column-count": { tk: 1, name: "COLUMN_COUNT", cls: "function", length: 1, arity: 1 },
+  orientation: { tk: 1, name: "ORIENTATION", cls: "function", length: 1, arity: 1 },
+  "row-count": { tk: 1, name: "ROW_COUNT", cls: "function", length: 1, arity: 1 },
+  "row-header": { tk: 1, name: "ROW_HEADER", cls: "function", length: 1, arity: 1 },
+  "row-min-height": { tk: 1, name: "ROW_MIN_HEIGHT", cls: "function", length: 1, arity: 1 },
+  "row-titles": { tk: 1, name: "ROW_TITLES", cls: "function", length: 1, arity: 1 },
+  "row-titles-width": { tk: 1, name: "ROW_TITLES_WIDTH", cls: "function", length: 1, arity: 1 },
 
   // Leaf-object members (arity 1). Each returns a single-key record; the
   // enclosing collector merges a list of them into one object. Modelled on

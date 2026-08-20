@@ -42,7 +42,7 @@ complete renderable question.
 | `clozeformula` | 1 | `clozeformulaV2` | Fill-in-the-blank (math/formula) |
 | `choicematrix` | 1 | `choicematrix` | Grid of options by stems |
 | `orderlist` | 1 | `orderlist` | Drag items into correct order |
-| `classification` | 1 | `classification` | Sort items into categories |
+| `classification` | 1 | `classification` | Drag items into a grid of cells |
 | `bowtie` | 1 | `bowtie` | NGN/NCLEX bow-tie: 2-1-2 drag-and-drop |
 | `token-highlight` | 1 | `tokenhighlight` | Highlight tokens in a passage |
 | `custom` | 1 | `custom` | Embed a separately deployed Graffiticode-language interaction |
@@ -74,13 +74,10 @@ which take a continuation record.
 | `max-word-count` | number | `max_word_count` | longtext, plaintext |
 | `placeholder` | string | `placeholder` | longtext, plaintext, shorttext |
 | `possible-responses` | array | `possible_responses` | clozeassociation, clozedropdown, classification |
-| `rows` | string[] | `stems` | choicematrix |
 | `columns` | string[] | `options` | choicematrix |
 | `list` | string[] | `list` | orderlist |
-| `categories` | string[] | `ui_style.column_titles` | classification |
 | `column-titles` | string[] | `ui_style.column_titles` + `possible_response_groups[].title` | bowtie |
 | `passage` | string | `template` (with `lrn_token` spans injected) | token-highlight |
-| `distractors` | string[] | — (clickable tokens only, not scored) | token-highlight |
 | `max-selection` | number | `max_selection` | token-highlight |
 | `method` | string | `validation method` | clozeformula |
 | `lang` | string | — (URL/`custom_type` synthesis) | custom |
@@ -269,17 +266,27 @@ hello "world"
 
 ### mcq
 
-Creates a multiple choice question. Options are provided as a string array
-and `valid-response` is an array of correct option indices.
+Select one or more answers from a list. Each option is a `{label, value}` object:
+the label is shown, the value is what a response records, so it is yours to
+choose. `valid-response` lists the values of the correct options.
 
 ```
 mcq [
   stimulus "Which planet is closest to the Sun?"
-  options ["Mercury", "Venus", "Earth", "Mars"]
-  valid-response [0]
+  options [
+    [label "Mercury" value "mercury"]
+    [label "Venus" value "venus"]
+    [label "Earth" value "earth"]
+  ]
   instant-feedback true
+  validation [
+    valid-response [score 1 value ["mercury"]]
+  ]
 ]
 ```
+
+Set `multiple-responses true` to turn the radio buttons into checkboxes, then
+`min-selection` / `max-selection` to bound how many may be picked.
 
 ### shorttext
 
@@ -490,75 +497,88 @@ orderlist [
 
 ### classification
 
-Creates a question where students sort items into categories.
+Drag items into a grid of cells. The layout lives in `ui-style`, where Learnosity
+puts it: `column-count` and `column-titles`, plus `row-count` and `row-titles` for
+a two-dimensional grid. `valid-response`'s value is one array of
+`possible-responses` indices per cell, in reading order.
 
 ```
 classification [
   stimulus "Sort the animals into the correct categories."
-  categories ["Mammals", "Reptiles"]
   possible-responses ["Dog", "Snake", "Cat", "Lizard"]
-  valid-response [[0, 2], [1, 3]]
+  ui-style [
+    column-count 2
+    column-titles ["Mammals", "Reptiles"]
+  ]
+  validation [
+    valid-response [score 1 value [[0, 2], [1, 3]]]
+  ]
 ]
 ```
 
+`possible-responses` is absent from Learnosity's own attribute table for this
+type even though the type cannot work without it — see C9 in
+`conflict-resolution.md`.
+
 ### bowtie
 
-Creates a Next-Gen NCLEX bow-tie question: three source pools feed three
-drop zones in a 2-1-2 layout (two on the left, one in the center, two on
-the right). `column-titles` labels both the source pools and the drop
-zones. Correct answers are written as the option text — the compiler
-flattens the three pools and resolves each string to the global index
-Learnosity expects.
+A Next-Gen NCLEX bow-tie: source pools feed the drop zones of a bow-tie diagram.
+`possible-response-groups` gives each pool a `title` and its `responses`, and
+`ui-style` carries the `column-titles` shown above the drop zones.
+
+`valid-response`'s value is one array of indices per drop zone, indexing into the
+groups flattened in order — so with pools of 4, 3 and 4, the second pool occupies
+indices 4 to 6.
 
 ```
 bowtie [
   stimulus "65-year-old male presents with chest pain and diaphoresis."
-  column-titles ["Actions to Take", "Condition Most Likely", "Parameters to Monitor"]
-  possible-responses [
-    ["give aspirin", "give nitro", "call cardiology", "obtain 12-lead ECG"],
-    ["myocardial infarction", "pulmonary embolism", "pericarditis"],
-    ["ST segment changes", "blood pressure", "troponin", "respiratory rate"]
+  group-possible-responses true
+  possible-response-groups [
+    [title "Actions to Take"
+     responses ["give aspirin", "give nitro", "call cardiology", "obtain 12-lead ECG"]]
+    [title "Condition Most Likely"
+     responses ["myocardial infarction", "pulmonary embolism", "pericarditis"]]
+    [title "Parameters to Monitor"
+     responses ["ST segment changes", "blood pressure", "troponin", "respiratory rate"]]
   ]
-  valid-response [
-    ["give aspirin", "obtain 12-lead ECG"],
-    ["myocardial infarction"],
-    ["ST segment changes", "troponin"]
+  ui-style [
+    column-titles ["Actions to Take", "Condition Most Likely", "Parameters to Monitor"]
+  ]
+  validation [
+    valid-response [score 1 value [[0, 3], [4], [7, 9]]]
   ]
 ]
 ```
 
-The 2-1-2 shape is enforced at compile time: `valid-response` must have
-exactly two entries in the first and third lists and one in the middle,
-every entry must appear in the matching pool, and no list may contain
-duplicates.
+Nothing checks those indices. Learnosity documents no numbering scheme beyond
+"an array with three elements representing each drop zone", and the indices in
+its own worked example do not decode under any scheme — see C8 in
+`conflict-resolution.md`. Until a bow-tie has been rendered and inspected, a
+wrong index produces a wrong question silently.
 
 ### token-highlight
 
-Creates a token-highlight question: the learner clicks tokens in a `passage`
-to select them. Clickable tokens are listed explicitly — `valid-response`
-holds the correct tokens and `distractors` the clickable-but-incorrect
-ones. The compiler wraps each
-whole-word occurrence of a listed token in `<span class="lrn_token">` (so only
-listed tokens are clickable; everything else is plain text) and emits
-`tokenization: "custom"`. Correct tokens are scored by their span index in
-document order.
+The learner clicks words, sentences or paragraphs in a passage. `template` is the
+passage with each clickable token wrapped in `<span class="lrn_token">`, and
+`valid-response`'s value is the indices of the correct spans in document order,
+counting from zero.
 
 ```
 token-highlight [
   stimulus "Highlight the verbs."
-  passage "The cat runs then jumps high."
-  valid-response ["runs", "jumps"]
-  distractors ["cat", "high"]
-  max-selection 2
+  template "The <span class=\"lrn_token\">cat</span> <span class=\"lrn_token\">runs</span> then <span class=\"lrn_token\">jumps</span>."
+  tokenization "custom"
+  validation [
+    scoring-type "partialMatch"
+    valid-response [score 1 value [1, 2]]
+  ]
 ]
 ```
 
-Matching is case-insensitive and whole-word, so `"runs"` matches `"Runs"` at a
-sentence start but not the substring of `"runner"`. A correct token that
-appears more than once is highlighted and scored at every occurrence.
-`max-selection` optionally caps how many tokens the learner may select. The
-compiler errors if a listed token is not found in the passage or if a token
-appears in both `valid-response` and `distractors`.
+`tokenization` selects how the passage is split: `"custom"` honours the spans you
+wrote, while `"word"`, `"sentence"` and `"paragraph"` let Learnosity split the
+passage for you, in which case the template needs no spans at all.
 
 ### custom
 

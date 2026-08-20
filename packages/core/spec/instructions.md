@@ -25,7 +25,7 @@ and renders them via a React frontend.
 Instead of writing raw Learnosity JSON, use the question type functions which
 provide a higher-level interface with sensible defaults:
 
-- `mcq` — Multiple choice questions
+- `mcq` — Multiple choice; options are `{label, value}` objects
 - `shorttext` — Short typed responses
 - `longtext` — Rich text essays, manually scored
 - `plaintext` — Plain text essays, manually scored
@@ -35,9 +35,9 @@ provide a higher-level interface with sensible defaults:
 - `clozeformula` — Fill-in-the-blank with math/formula input
 - `choicematrix` — Grid of prompts (`stems`) by choices (`options`)
 - `orderlist` — Drag items into correct order
-- `classification` — Sort items into categories
-- `bowtie` — NGN/NCLEX bow-tie: 2-1-2 drag-and-drop (actions, condition, monitor)
-- `token-highlight` — Highlight tokens in a passage. List correct tokens with `valid-response` and clickable wrong ones with `distractors`
+- `classification` — Drag items into a grid; layout lives in `ui-style`
+- `bowtie` — NGN/NCLEX bow-tie: source pools feeding a bow-tie diagram
+- `token-highlight` — Click tokens in a passage; `template` carries the `lrn_token` spans
 - `custom` — Embed a separately deployed Graffiticode-language interaction (e.g. an L0166 spreadsheet). Set the interaction payload with the chained `model` attribute (preferred); see Pipeline Composition
 
 Each function takes a record built from chainable attribute keywords.
@@ -45,14 +45,24 @@ All attributes have defaults, so `mcq {}` produces a complete question.
 
 ### Question Type Templates
 
-- `mcq` — Multiple choice:
+- `mcq` — Multiple choice. Options are `{label, value}` objects: the label is
+  shown, the value is what a response records. `valid-response` lists the values
+  of the correct options:
   ```
   mcq [
     stimulus "What is 2 + 2?"
-    options ["3", "4", "5"]
-    valid-response [1]
+    options [
+      [label "3" value "0"]
+      [label "4" value "1"]
+      [label "5" value "2"]
+    ]
+    validation [
+      valid-response [score 1 value ["1"]]
+    ]
   ]
   ```
+  `multiple-responses true` turns the radio buttons into checkboxes;
+  `min-selection` and `max-selection` then bound how many may be picked.
 
 - `shorttext` — Short typed response. `valid-response`'s
   `value` is a bare string here, not a list — the type has one response box:
@@ -163,59 +173,57 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   ]
   ```
 
-- `classification` — Sort items into categories (use `possible-responses` for the draggable items, `categories` for column headings):
+- `classification` — Drag items into a grid. The layout lives in `ui-style`:
+  `column-count` and `column-titles`, plus `row-count` and `row-titles` for a
+  two-dimensional grid. `valid-response`'s value is one array of
+  `possible-responses` indices per cell, in reading order:
   ```
   classification [
-    stimulus "Sort the animals"
+    stimulus "Sort the animals."
     possible-responses ["Dog", "Snake", "Cat", "Lizard"]
-    categories ["Mammals", "Reptiles"]
-    valid-response [[0, 2], [1, 3]]
+    ui-style [column-count 2 column-titles ["Mammals", "Reptiles"]]
+    validation [
+      valid-response [score 1 value [[0, 2], [1, 3]]]
+    ]
   ]
   ```
-
-- `bowtie` — NGN/NCLEX bow-tie. Three source pools feed three drop zones
-  in a 2-1-2 layout. `column-titles` labels both the source pools and the
-  drop zones. `possible-responses` is a list of three lists (one per column),
-  and `valid-response` is three lists of option *strings* (2-1-2) that the
-  compiler resolves against each column's pool. A bow-tie whose
-  `valid-response` is not 2-1-2, whose strings don't appear in the matching
-  pool, or whose pools are too small is rejected at compile time:
+- `bowtie` — NGN/NCLEX bow-tie. `possible-response-groups` gives each source
+  pool a `title` and its `responses`; `ui-style` carries the `column-titles`
+  above the drop zones. `valid-response`'s value is one array of indices per drop
+  zone, indexing into the groups flattened in order:
   ```
   bowtie [
     stimulus "65-year-old with chest pain and diaphoresis."
-    column-titles ["Actions to Take", "Condition Most Likely", "Parameters to Monitor"]
-    possible-responses [
-      ["give aspirin", "give nitro", "call cardiology", "obtain 12-lead ECG"],
-      ["myocardial infarction", "pulmonary embolism", "pericarditis"],
-      ["ST segment changes", "blood pressure", "troponin", "respiratory rate"]
+    group-possible-responses true
+    possible-response-groups [
+      [title "Actions to Take" responses ["give aspirin", "give nitro"]]
+      [title "Condition" responses ["myocardial infarction", "pericarditis"]]
+      [title "Parameters" responses ["ST changes", "troponin"]]
     ]
-    valid-response [
-      ["give aspirin", "obtain 12-lead ECG"],
-      ["myocardial infarction"],
-      ["ST segment changes", "troponin"]
+    ui-style [column-titles ["Actions to Take", "Condition", "Parameters"]]
+    validation [
+      valid-response [score 1 value [[0], [2], [4, 5]]]
     ]
   ]
   ```
-
-- `token-highlight` — Highlight tokens in a passage.
-  List the correct clickable tokens with `valid-response` and the
-  clickable-but-wrong ones with `distractors`; only listed tokens are
-  clickable. The compiler wraps each whole-word occurrence in
-  `<span class="lrn_token">` and scores correct tokens by span index. Matching
-  is case-insensitive and whole-word; a repeated correct token is scored at
-  every occurrence. Optional `max-selection` caps the learner's selections. A
-  token not present in the passage, or one listed in both `valid-response` and
-  `distractors`, is rejected at compile time:
+  Nothing validates those indices, and Learnosity's own worked example does not
+  decode — render one before trusting it.
+- `token-highlight` — Click tokens in a passage. `template` is the passage with
+  each clickable token wrapped in `<span class="lrn_token">`, and
+  `valid-response`'s value is the indices of the correct spans in document order,
+  from zero. `max-selection` caps how many the learner may pick:
   ```
   token-highlight [
     stimulus "Highlight the verbs."
-    passage "The cat runs then jumps high."
-    valid-response ["runs", "jumps"]
-    distractors ["cat", "high"]
-    max-selection 2
+    template "The <span class=\"lrn_token\">cat</span> <span class=\"lrn_token\">runs</span>."
+    tokenization "custom"
+    validation [
+      valid-response [score 1 value [1]]
+    ]
   ]
   ```
-
+  `tokenization` may instead be `"word"`, `"sentence"` or `"paragraph"`, in which
+  case Learnosity splits the passage and the template needs no spans.
 - `custom` — Embed a separately deployed Graffiticode-language interaction.
   `lang` is required and identifies the deployed interaction (the compiler
   synthesizes URLs and `custom_type` from `https://l<lang>.graffiticode.org/...`).

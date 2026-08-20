@@ -46,6 +46,7 @@ type at a time.
 | C6 | `custom`'s response `type` is boilerplate from another article | RESOLVED — table loses |
 | C7 | `distractor_rationale_response_level` is typed three ways | RESOLVED — refinement |
 | C8 | The bow-tie example's indices do not decode | OPEN — needs a render |
+| C9 | `classification` omits `possible_responses` from its own table | RESOLVED — omission |
 
 ---
 
@@ -220,6 +221,31 @@ L0158, not with Learnosity.
 **To close it:** render a bow-tie with known correct answers and see which options come back
 marked correct. Until then, do not "fix" L0176 toward the example.
 
+### C9 — `classification` omits `possible_responses` from its own table · RESOLVED (omission)
+
+`Classification-classification.md` documents 13 top-level attributes.
+`possible_responses` — the draggable items, without which the type does nothing —
+is not among them.
+
+It is everywhere else in the same article: the worked example sets it, the
+`validation.valid_response.value` description says "the response index is based
+on the index value in the `possible_responses` attribute" (three times, once per
+scoring section), and `duplicate_responses` is defined as "the items from the
+`possible_responses` will be reusable".
+
+**Resolution.** The attribute exists and is required. This is an omission from the
+table rather than a contradiction between sources — precedence rule 2 ranks the
+table above the example, but rule 2 is about which source to believe when they
+*disagree*, and here the table simply says nothing.
+
+Recorded because it is the sharpest case yet against treating the attribute
+tables as complete: implementing `classification` from its table alone yields a
+question with no items to drag. Compare C2, where the tables are likewise
+incomplete about the `options` bag but at least list something.
+
+**Depends on it:** `validAttributes.CLASSIFICATION` includes `possible_responses`
+even though it is absent from the article the rest of that list was taken from.
+
 ---
 
 ## Caveat on evidence
@@ -238,7 +264,8 @@ consistent enough to prefer one reading, not that Learnosity's implementation ha
 to agree. A RESOLVED entry here is a decision about which source to trust, and should be
 overturned the moment a render says otherwise.
 
-Coverage is also uneven: the conflicts found so far come from the types L0176 already emits,
+Coverage is also uneven: the conflicts found so far come from the types L0176 already emits
+(C9 surfaced only when `classification` was actually converted, not when its article was read),
 plus the math and chemistry family read for C1 and C2. The 27 documented types L0176 does not
 map have been read once and not audited. Expect this register to grow, and prefer growing it to
 quietly resolving a conflict in favour of whichever article was read last.
