@@ -113,22 +113,28 @@ programmatically by looping over the registries in `question-types.ts`; only the
 nodes have hand-written methods.
 
 **Member lists.** Every attribute is an arity-1 member returning a single-key record, and a
-question is a bracketed member list — `mcq [ stimulus "..." valid-response [1] ]`. Objects nest
-the same way at any depth (`validation [ scoring-type "exactMatch" ]`), and an array of objects
-is a list of member lists. `{}` survives only on the arity-2 blocks (`items`, `questions`) and
-the control-flow attributes `id` and `save-to-itembank` that chain onto them. A word gets one
-arity, which is why `item` takes a member list too: `metadata` is a member at both item and
-question level.
+question is a bracketed member list — `mcq [ stimulus "..." validation [ ... ] ]`. Objects nest
+the same way at any depth, and an array of objects is a list of member lists. `{}` survives only
+on the arity-2 blocks (`items`, `questions`) and the control-flow attributes `id` and
+`save-to-itembank` that chain onto them. A word gets one arity, which is why `item` takes a
+member list too: `metadata` is a member at both item and question level.
 
-**The aligned vocabulary.** Question types are being converted, one at a time, to a vocabulary
-in which an attribute is named for the Learnosity field it emits and the program nests the way
-the object nests — so an aligned attribute needs no builder code, it lands on the question by
-name via `memberFields`. `clozetext` is converted; the other 13 keep the older flat spellings
-(`valid-response` as a bare array, the synthetic `partial-credit`, `alternative-response`) until
-each is done, which is what `isMemberList` in `question-types.ts` exists to tell apart. A
-converted type also enforces `validAttributes`, rejecting attributes that are not its own;
-unconverted types do not. See `docs/learnosity-audit.md` for the per-type queue and
-`packages/core/spec/conflict-resolution.md` for where the Learnosity docs contradict each other.
+**An attribute is named for the Learnosity field it emits**, and the program nests the way the
+object nests, so a question is a transcription of its JSON. That means a builder has almost
+nothing to do — the generated member transformer accumulates the record and the builder stamps
+the type, applies defaults, and checks the attribute set against `validAttributes` and the
+`scoring-type` against `SCORING_TYPES`, both taken from the type's Learnosity article. All 13
+types work this way; there is no second form.
+
+Two words carry different Learnosity types on different question types — `options` and `value` —
+and `inferShape` in `question-types.ts` decides which reading applies from the element types,
+which do not overlap. Scoring-rule `options` keys are camelCase (`decimalPlaces`), alone among
+Learnosity's fields.
+
+Because the language transcribes rather than derives, L0176 validates very little of what it
+emits: no index is range-checked, no `method` is recognised, no `options` key is known. See
+`packages/core/spec/conflict-resolution.md` for where the Learnosity documentation contradicts
+itself, and `docs/learnosity-audit.md` for the per-type record of what was decided.
 
 ### Data Flow
 

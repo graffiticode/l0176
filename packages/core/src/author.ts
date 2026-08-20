@@ -15,31 +15,35 @@ export const buildInitAuthor = ({
     user_id,
   };
 
+  // The widget types the Author Site offers. Taken from Learnosity's question-type
+  // catalog: `fillintheblanks`, `clozeinlinetext` and `highlighttext` were in this
+  // list and name no Learnosity type at all, and `longtext`, `formula`,
+  // `imageclozeassociation` and `sortlist` named deprecated ones (sortlist cannot
+  // be newly authored from v2026.1.LTS). Types L0176 itself emits are listed first.
   const allowedWidgetTypes = widgetTypes || [
+    // emitted by L0176
     "mcq",
     "shorttext",
-    "longtext",
-    "clozetext",
+    "longtextV2",
     "plaintext",
-    "fillintheblanks",
-    "association",
-    "choicematrix",
-    "classification",
+    "clozetext",
     "clozeassociation",
     "clozedropdown",
-    "clozeformula",
-    "clozeinlinetext",
-    "formula",
+    "clozeformulaV2",
+    "choicematrix",
+    "orderlist",
+    "classification",
+    "bowtie",
+    "tokenhighlight",
+    // authorable in the Author Site, not yet in L0176's vocabulary
+    "association",
     "graphplotting",
-    "highlighttext",
     "hotspot",
-    "imageclozeassociation",
+    "imageclozeassociationV2",
     "imageclozetext",
     "numberline",
-    "orderlist",
-    "sortlist",
-    "tokenhighlight",
   ];
+
 
   const requestData: any = {
     mode,

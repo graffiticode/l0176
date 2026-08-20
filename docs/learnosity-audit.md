@@ -8,6 +8,10 @@ at a time**.
 
 Work a section, decide what (if anything) to change, then flip its **Status**.
 
+**All sections are closed.** Every question type has been converted and every
+cross-cutting finding resolved; what is left is not reading but rendering. See
+"What is not settled" at the end.
+
 **Status legend:** `unreviewed` · `reviewed` (looked at, nothing to do) · `fixed` ·
 `wontfix` (understood and deliberately left).
 
@@ -42,9 +46,9 @@ Two articles carry more than their titles suggest:
 | Section | Status | Findings |
 | --- | --- | --- |
 | [Registries are declared but never enforced](#a-registries-are-declared-but-never-enforced) | **fixed** | 1 — enforced for all 13 types |
-| [Author API widget list](#b-author-api-widget-list) | unreviewed | 1 |
+| [Author API widget list](#b-author-api-widget-list) | **fixed** | 1 |
 | [Question metadata](#c-question-metadata) | **fixed** | 1 |
-| [`spec/` accuracy](#d-spec-accuracy) | unreviewed | 2 |
+| [`spec/` accuracy](#d-spec-accuracy) | **fixed** | 2 |
 | [`mcq`](#mcq--mcq) | **fixed** | — |
 | [`shorttext`](#shorttext--shorttext) | **fixed** | — |
 | [`longtext`](#longtext--longtextv2) | **fixed** | — |
@@ -58,7 +62,7 @@ Two articles carry more than their titles suggest:
 | [`classification`](#classification--classification) | **fixed** | — |
 | [`bowtie`](#bowtie--bowtie) | **fixed** | 2 |
 | [`token-highlight`](#token-highlight--tokenhighlight) | **fixed** | — |
-| [`custom`](#custom--custom) | unreviewed | — |
+| [`custom`](#custom--custom) | reviewed | — |
 
 ---
 
@@ -66,7 +70,7 @@ Two articles carry more than their titles suggest:
 
 ## A. Registries are declared but never enforced
 
-**Status:** unreviewed
+**Status:** **fixed** — enforced for all 13 types; the dead fields are gone
 
 Three declarations in `question-types.ts` describe validation that does not
 happen. Nothing imports or reads any of them:
@@ -99,14 +103,17 @@ This matters for the rest of this document: several per-type findings below are
 about entries in `validAttributes`. Those are wrong-as-documentation today, and
 would become wrong-as-behaviour the moment the table is wired up.
 
-**Options:** wire the tables into the Checker (this *adds* compile errors to
-programs that currently compile — parity-safe for the golden set only if none of
-them relied on the slack); or delete the dead fields and stop implying validation
-that isn't there; or leave and annotate.
+**Resolved.** `validAttributes` is consumed by every builder, so an attribute
+that is not the type's own is a compile error rather than a field riding silently
+onto the question. `attributeFields` became `memberFields`, and its unused
+`allowed` and `valueType` are gone — `method` is deliberately unchecked (C1) and
+value shapes are checked where they carry structure (`shape`) rather than
+declared and ignored. `scoring-type` is checked per type against `SCORING_TYPES`,
+which is the one piece of the old `allowed` idea that had evidence behind it.
 
 ## B. Author API widget list
 
-**Status:** unreviewed
+**Status:** **fixed** — list rebuilt from the question-type catalog
 
 `author.ts:18-41` hardcodes the `widgetTypes` offered by the Author Site. Seven of
 the 23 entries do not name a current Learnosity type:
@@ -122,6 +129,11 @@ the 23 entries do not name a current Learnosity type:
 | `sortlist` | deprecated — cannot be newly authored from v2026.1.LTS |
 
 The list also omits `bowtie`, which L0176 itself supports.
+
+**Resolved.** The list is rebuilt from the question-type catalog: the three
+non-types are gone, the four deprecated slugs are replaced by their current
+equivalents, and every type L0176 emits is present. Six types L0176 does not yet
+emit but the Author Site can author are kept, and marked as such.
 
 ## C. Question metadata
 
@@ -144,16 +156,23 @@ host environment must render it.
 
 ## D. `spec/` accuracy
 
-**Status:** unreviewed
+**Status:** **fixed** — both sections rewritten
 
 1. `spec/instructions.md:250-311` ("Scoring math responses") documents four
    methods — `equivLiteral`, `equivSymbolic`, `equivValue`, `isSimplified`. The
    `METHOD` registry entry names eight, and Learnosity documents two more on top
    of that (see [`clozeformula`](#clozeformula--clozeformulav2)). Undocumented
    methods are unreachable in practice: the generator writes from `instructions.md`.
-2. `spec/usage-guide.md:53` and `:94` say per-distractor rationale is shown "in
-   the Author Site review pane". See [C](#c-question-metadata) — true of the
-   Author Site, but the docs' caveat about the Questions API is worth carrying.
+2. `spec/usage-guide.md` said per-distractor rationale is shown "in the Author
+   Site review pane". True there, but the Questions API renders nothing for it at
+   delivery — the host must.
+
+**Resolved.** The math-methods section was rewritten for the rule-object form and
+now names the predicate methods (`isExpanded`, `isFactorised`, `isTrue`) that
+carry no `value`, closes with the warning that the method set is unsettled (C1,
+C2), and no longer documents the deleted nested-answer-list form.
+`usage-guide.md` carries the Questions API caveat, and seven of its cues were
+rewritten where they described vocabulary that no longer exists.
 
 ---
 
@@ -493,7 +512,7 @@ unreachable by design — L0176 always lists tokens explicitly.
 
 ## `custom` → `custom`
 
-**Status:** unreviewed
+**Status:** reviewed — no defect; the only type L0176 does not transcribe, by design
 **Docs:** `Custom-Draft.md` · **Builder:** `question-types.ts:737` ·
 **Attributes:** *(no `validAttributes` entry)*
 
@@ -568,3 +587,39 @@ emits `clozeformulaV2` — so Learnosity's own `clozeformula` ("Cloze math") is
 | Math formula v2 *(deprecated)* | `formulaV2` | — |
 | Sort list *(deprecated)* | `sortlist` | — |
 | Text highlight *(deprecated)* | `texthighlight` | — |
+
+---
+
+# What is not settled
+
+The per-type queue above is finished. Two things it cannot close:
+
+**Nothing here has been rendered.** Every conclusion in this document and in
+`packages/core/spec/conflict-resolution.md` comes from reading Learnosity's
+articles and from compiling L0176's output. No question produced by the converted
+language has been put in front of the Learnosity Questions API. That mattered less
+when the compiler derived fields and validated them; it matters more now, because
+transcription means L0176 checks very little of what it emits.
+
+**Three register entries stay open, and a single render session would close them.**
+C1 (which scoring methods exist), C2 (which `options` keys they honour) and C8
+(how bow-tie response indices are numbered) are all questions about behaviour that
+no amount of further reading will answer. C8 is the sharpest: `bowtie` now has no
+validation at all, and the docs' own worked example does not decode, so a
+mis-numbered answer produces a wrong question with nothing to catch it.
+
+What the language gives up by transcribing, deliberately, in one place so it is
+not a surprise:
+
+| Was checked | Now |
+| :---------- | :-- |
+| `bowtie` 2-1-2 shape, and answers present in their pool | nothing |
+| `token-highlight` tokens present in the passage | nothing |
+| `clozeformula` answer-combination count | nothing |
+| `method` against a known list | nothing — deliberately, see C1 |
+
+What it gained in exchange: the whole documented attribute surface of every type,
+per-type rejection of attributes that are not the type's own, per-type
+`scoring-type` validation, and several shapes that were previously unwritable —
+predicate methods with no `value`, `classification`'s two-dimensional grid,
+`token-highlight`'s non-custom tokenization, and `distractor_rationale_response_level`.

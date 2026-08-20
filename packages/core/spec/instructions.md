@@ -293,46 +293,49 @@ clozeformula [
 
 ### Scoring math responses (`method`)
 
-The response a student types is parsed as a **math expression**, never compared as
-a string. `method` decides which property of that expression is compared to
-`valid-response`. The choice is not cosmetic — it decides which responses are
-marked correct, and the wrong choice silently rejects answers that should score.
+The response a learner types is parsed as a **math expression**, never compared as
+a string. Each rule object inside `valid-response`'s `value` carries a `method`
+deciding which property of that expression is compared. The choice is not
+cosmetic — it decides which responses are marked correct, and the wrong choice
+silently rejects answers that should score.
 
 - **`equivLiteral`** — compares the expression *syntactically*. Notation and
-  whitespace are free: against `"1/2"` a student typing `1 / 2` or
-  `\\(\\frac{1}{2}\\)` is correct, because those are one expression written three
+  whitespace are free: against `"1/2"` a learner typing `1 / 2` or
+  `\(\frac{1}{2}\)` is correct, because those are one expression written three
   ways. A *different* expression is not: `0.5` and `2/4` each fail against
   `"1/2"`. **Every expression you intend to accept must be listed** — but its
   notational variants need not be.
 - **`equivSymbolic`** — accepts any expression symbolically equivalent to a listed
   one, so equivalent forms need not be enumerated.
-- **`equivValue`** — accepts any expression with the same math value as a listed one.
-- **`isSimplified`** — accepts the response only if it is in simplified form.
-  Use it when simplifying *is* the skill being assessed.
+- **`equivValue`** — accepts any expression with the same math value as a listed
+  one. `options [decimal-places 2]` bounds how far that comparison looks.
+- **`isSimplified`**, **`isExpanded`**, **`isFactorised`**, **`isTrue`** — these
+  are predicates on the response rather than comparisons against an answer, so a
+  rule using one carries no `value` at all:
+  `value [[[method "isExpanded"]]]`.
 
 **Rule: if the request names the expressions to accept, enumerate every one of
 them.** A request that says "1/2, 0.5, and 2/4 are all accepted" states three
 accepted expressions. Under `equivLiteral`, listing only `"1/2"` marks the other
-two wrong — the item compiles, renders, and scores real students incorrectly, and
+two wrong — the item compiles, renders, and scores real learners incorrectly, and
 nothing in the toolchain will warn you.
 
-To let one blank accept several expressions, **nest them in a list**. A
-`valid-response` entry is positional — one per `{{response}}` blank — so a bare
-string is that blank's only accepted expression, and a nested list is every
-expression it accepts:
+`valid-response` is one complete answer set, one rule array per `{{response}}`
+blank. To accept several *different* expressions for a blank, write each
+alternative as its own `alt-responses` entry — a whole answer set covering every
+blank:
 
 ```
 clozeformula [
-  stimulus "Simplify \\(\\frac{4}{8}\\) to lowest terms: {{response}}"
-  valid-response [["1/2", "0.5", "2/4"]]
-  method "equivLiteral"
+  stimulus "Simplify \(\frac{4}{8}\) to lowest terms: {{response}}"
+  template "{{response}}"
+  validation [
+    valid-response [value [[[method "equivLiteral" value "1/2"]]]]
+    alt-responses [[value [[[method "equivLiteral" value "0.5"]]]]
+                   [value [[[method "equivLiteral" value "2/4"]]]]]
+  ]
 ]
 ```
-
-Flat entries still mean one blank each — `valid-response ["11", "5"]` is a
-two-blank item, not one blank accepting `11` or `5`. The two forms mix:
-`valid-response [["2x", "x*2"], ["5"]]` is two blanks whose first accepts either
-expression.
 
 **An equivalence method accepts the whole equivalence class, and you cannot
 shrink it.** `equivSymbolic` on `"1/2"` accepts `0.5`, `2/4`, `4/8`, `8/16`,
@@ -340,19 +343,25 @@ shrink it.** `equivSymbolic` on `"1/2"` accepts `0.5`, `2/4`, `4/8`, `8/16`,
 expressions count — "1/2, 0.5, and 2/4 are accepted, 4/8 is not" — is describing
 an explicit set, not a mathematical class. `2/4` is in and `4/8` is out; no
 equivalence rule produces that split. Use `equivLiteral` and list the accepted
-expressions.
+expressions as alternates.
 
 Reach for `equivSymbolic` / `equivValue` only when the request genuinely means
 *any* equivalent response — "accept any correct form", "however they write it" —
-where the student is not being assessed on the form of the answer.
+where the learner is not being assessed on the form of the answer.
 
 Choose by what the request specifies:
 
 | the request says | method | why |
 |---|---|---|
-| these expressions are accepted | `equivLiteral` + every one listed | the accepted set is a list, not a class |
+| these expressions are accepted | `equivLiteral` + every one as an alternate | the accepted set is a list, not a class |
 | any equivalent form | `equivSymbolic` / `equivValue` | the class *is* the accepted set |
 | it must be simplified | `isSimplified` | the form of the answer is the skill |
+| it must be expanded / factorised | `isExpanded` / `isFactorised` | likewise, and neither takes a `value` |
+
+**Which methods exist is not settled.** Learnosity enumerates them on exactly one
+of its 51 question-type articles, and the `options` keys on none consistently.
+The compiler checks neither — see C1 and C2 in `conflict-resolution.md`. The
+methods above are the ones with evidence behind them; anything else is a guess.
 
 ### Metadata
 
@@ -511,15 +520,16 @@ rules cover the whole language:
 | array of objects | a list of member lists — `alt-responses [[value ["a"]] [value ["b"]]]` |
 | scalar, or array of scalars | the value itself — `case-sensitive false` |
 
-Common attributes: `stimulus`, `options`, `valid-response`, `alternative-response`, `instant-feedback`,
-`is-math`, `shuffle-options`, `multiple-responses`, `partial-credit`,
-`case-sensitive`, `max-length`, `max-word-count`, `placeholder`,
-`possible-responses`, `rows`, `columns`, `list`, `categories`, `method`.
+Common attributes: `stimulus`, `template`, `options`, `possible-responses`,
+`list`, `stems`, `instant-feedback`, `is-math`, `shuffle-options`,
+`multiple-responses`, `case-sensitive`, `max-length`, `placeholder`, `ui-style`,
+`metadata`, `validation`. Which of them a given type accepts is the set
+Learnosity documents for that widget, and anything else is a compile error.
 
-#### Two ways to write scoring
+#### Scoring
 
-Most types put scoring in a `validation` member that mirrors Learnosity's
-`validation` object:
+Scoring lives in a `validation` member mirroring Learnosity's `validation`
+object:
 
 ```
 clozetext [
@@ -539,39 +549,22 @@ object, so `valid-response` takes one member list; `alt_responses` is an array, 
 that are not their own — the legal set is the one Learnosity documents for that
 widget.
 
-`mcq`, `classification`, `token-highlight`, `bowtie`, `clozeformula` and `custom`
-still use an older, flatter spelling instead: `valid-response` directly on the
-question, `alternative-response` for alternates, and the boolean `partial-credit`
-in place of `scoring-type`. Mixing the two on one question is a compile error.
+`scoring-type` decides how a partly-correct response scores, and which values it
+takes depends on the type — the compiler rejects one the widget does not
+document:
 
-### Partial Credit
+| value | meaning |
+| :---- | :------ |
+| `exactMatch` | every part must be right (the default) |
+| `partialMatch` | a cumulative score per correct part |
+| `partialMatchV2` | the question's score divided between the parts |
+| `partialMatchPairwise` | `orderlist` only: adjacent entries compared in pairs |
+| `partialMatchElement`, `partialMatchElementV2` | `classification` and `bowtie`: per response element rather than per cell |
 
-Scored questions default to all-or-nothing scoring (`exactMatch`). When the
-request asks for partial credit — "give partial credit", "score each correct
-answer separately", "award points per correct selection" — chain
-`partial-credit true`:
-
-```
-mcq [
-  stimulus "Select all the prime numbers."
-  options ["2", "4", "7", "9"]
-  valid-response [0, 2]
-  multiple-responses true
-  partial-credit true
-]
-```
-
-This emits Learnosity's `partialMatch` scoring type, which awards a fraction of
-the score per correct response. The question's total score stays 1.
-
-Only emit it on the types still using the older spelling: `mcq`,
-`classification`, `token-highlight`. On `clozeformula`, `bowtie` and `custom` it
-is a compile error.
-
-Every other type has no `partial-credit` attribute at all: write `scoring-type`
-inside its `validation` member instead.
-That also reaches modes the boolean cannot express — `partialMatchV2` on the
-cloze types and `choicematrix`, and `partialMatchPairwise` on `orderlist`. On `mcq` it also requires `multiple-responses true`; if the
+When the request asks for partial credit — "give partial credit", "score each
+correct answer separately", "award points per correct selection" — write
+`scoring-type "partialMatch"`. Single-response types document only `exactMatch`
+and reject the rest.
 
 ### Instant Feedback
 

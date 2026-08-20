@@ -63,15 +63,12 @@ which take a continuation record.
 | `stimulus` | string | `stimulus` | All types |
 | `options` | string[] | `options` | mcq, choicematrix |
 | `valid-response` | varies | `validation.valid_response.value` | All scored types |
-| `alternative-response` | varies | `validation.alt_responses[*].value` | mcq, shorttext, clozetext, clozeassociation, clozedropdown, clozeformula, choicematrix, orderlist, classification, token-highlight |
 | `instant-feedback` | boolean | `instant_feedback` | All types |
 | `is-math` | boolean | `is_math` | All types (enables MathJax for LaTeX) |
 | `shuffle-options` | boolean | `shuffle_options` | mcq, choicematrix |
 | `multiple-responses` | boolean | `multiple_responses` | mcq |
-| `partial-credit` | boolean | `validation.scoring_type` | mcq (with `multiple-responses`), choicematrix, clozetext, clozeassociation, clozedropdown, orderlist, classification, token-highlight |
 | `case-sensitive` | boolean | `case_sensitive` | shorttext, clozetext |
 | `max-length` | number | `max_length` | shorttext |
-| `max-word-count` | number | `max_word_count` | longtext, plaintext |
 | `placeholder` | string | `placeholder` | longtext, plaintext, shorttext |
 | `possible-responses` | array | `possible_responses` | clozeassociation, clozedropdown, classification |
 | `columns` | string[] | `options` | choicematrix |
@@ -86,31 +83,35 @@ which take a continuation record.
 | `params` | record[] | `dynamic_content_data` | item chain |
 | `save-to-itembank` | boolean | — (compiler flag) | items chain |
 
-#### Partial Credit
+#### Scoring
 
-Scored questions default to Learnosity's `exactMatch` scoring: the learner must
-get every response right to earn the point. `partial-credit true` switches the
-question to `partialMatch`, which awards a fraction of the score for each
-correct response. The score itself stays `1`, so partial credit changes how the
-point is divided, not what the question is worth.
+Scored questions default to Learnosity's `exactMatch`: the learner must get every
+response right to earn the point. `scoring-type`, inside `validation`, chooses
+otherwise.
 
 ```
 mcq [
   stimulus "Select all the prime numbers."
-  options ["2", "4", "7", "9"]
-  valid-response [0, 2]
+  options [[label "2" value "2"] [label "4" value "4"] [label "7" value "7"]]
   multiple-responses true
-  partial-credit true
+  validation [
+    scoring-type "partialMatch"
+    valid-response [score 1 value ["2", "7"]]
+  ]
 ]
 ```
 
-Only types with more than one scorable response accept it: `mcq`,
-`choicematrix`, `clozetext`, `clozeassociation`, `clozedropdown`, `orderlist`,
-`classification`, and `token-highlight`. Anywhere else — including
-`shorttext`, `clozeformula`, `bowtie`, and the unscored `longtext` / `plaintext`
-— it is a compile error rather than a silently ignored attribute. On `mcq` it
-additionally requires `multiple-responses true`; a single-response mcq is
-all-or-nothing by construction.
+| value | meaning | accepted by |
+| :---- | :------ | :---------- |
+| `exactMatch` | every part must be right | every scored type |
+| `partialMatch` | a cumulative score per correct part | multi-response types |
+| `partialMatchV2` | the question's score divided between the parts | multi-response types |
+| `partialMatchPairwise` | adjacent entries compared in pairs | `orderlist` |
+| `partialMatchElement`, `partialMatchElementV2` | per response element rather than per cell | `classification`, `bowtie` |
+
+The accepted set is per type, taken from that type's Learnosity article, and a
+value the widget does not document is a compile error — Learnosity would silently
+fall back to `exactMatch`, mis-scoring the question without saying so.
 
 #### Metadata Member Constructors
 
