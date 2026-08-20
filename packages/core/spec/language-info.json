@@ -51,7 +51,7 @@
     {
       "prompt": "Multi-select MCQ: 'Select all the prime numbers.' Options: 2, 4, 7, 9. Correct: 2 and 7. Give partial credit for each correct selection.",
       "produces": "mcq",
-      "notes": "Asking for partial credit emits `partial-credit true`, switching the question from all-or-nothing (`exactMatch`) to Learnosity's `partialMatch` scoring — a fraction of the point per correct response. It applies only to types with more than one scorable response (multi-select mcq, choicematrix, the cloze family, orderlist, classification, token-highlight), and on mcq it requires multiple responses."
+      "notes": "Asking for partial credit sets scoring-type \"partialMatch\" inside the question's validation, switching it from all-or-nothing (exactMatch) to a fraction of the point per correct response. It applies only to types with more than one scorable response (multi-select mcq, choicematrix, the cloze family, orderlist, classification, token-highlight), and on mcq it requires multiple responses. Other modes exist per type: partialMatchV2, orderlist's partialMatchPairwise, and the per-element pair on classification and bowtie."
     },
     {
       "prompt": "Classification item: sort these animals into 'Mammals' and 'Reptiles' — dog, snake, cat, lizard.",
@@ -71,17 +71,17 @@
     {
       "prompt": "Token highlight item: 'Highlight the verbs.' Passage: 'The cat runs then jumps high.' Correct tokens to highlight: runs, jumps. Also make 'cat' and 'high' clickable as distractors. Let them pick at most two.",
       "produces": "token-highlight",
-      "notes": "Token highlight: only the listed tokens are clickable. valid-response holds the correct tokens, distractors the clickable wrong ones; the backend wraps each whole-word occurrence in a clickable span and scores correct tokens by position. Matching is case-insensitive; a repeated correct word counts at every occurrence. 'at most two' sets max-selection."
+      "notes": "Token highlight: the template is the passage with each clickable token wrapped in a span of class lrn_token, and the valid response is the indices of the correct spans in document order, counting from zero. Wrap both the correct tokens and the clickable wrong ones. 'at most two' sets max-selection."
     },
     {
       "prompt": "Token highlight item: 'Highlight the sentence that states an opinion.' Passage: 'The sky is blue. I think blue is the most beautiful color. Water boils at 100 degrees.' Correct sentence to highlight: 'I think blue is the most beautiful color.' Make the other two sentences clickable distractors.",
       "produces": "token-highlight",
-      "notes": "Sentence-level token highlight: a clickable token can be a whole sentence, not just a word. List the full sentence including its end punctuation as the valid-response token (and the other sentences as distractors); the backend wraps the entire sentence as one clickable span."
+      "notes": "Sentence-level token highlight: a clickable token can be a whole sentence. Either wrap each sentence in its own lrn_token span, or set tokenization \"sentence\" and let Learnosity split the passage, in which case the template needs no spans and the valid response indexes the sentences."
     },
     {
       "prompt": "Token highlight item: 'Highlight the paragraph that summarizes the passage.' Passage has three paragraphs separated by blank lines: 'Dogs are loyal animals. They have lived alongside humans for thousands of years.' / 'Cats are independent pets. They groom themselves and hunt small prey.' / 'In short, both dogs and cats make wonderful companions for different reasons.' Correct paragraph: the third one. Make the first two paragraphs clickable distractors.",
       "produces": "token-highlight",
-      "notes": "Paragraph-level token highlight: a clickable token can be a whole paragraph. List the full paragraph text as the valid-response token (and the other paragraphs as distractors); the backend wraps each entire paragraph as one clickable span."
+      "notes": "Paragraph-level token highlight: set tokenization \"paragraph\" and let Learnosity split the passage, with the valid response indexing the paragraphs; or wrap each paragraph in its own lrn_token span and index those."
     },
     {
       "prompt": "Create a spreadsheet question. Embed the L0166 spreadsheet as the interaction. Stem: 'Use the spreadsheet below to compute the column totals for the first quarter.'",
@@ -96,7 +96,7 @@
     {
       "prompt": "Cloze text item: 'The {{response}} of the United States is Washington, D.C.' Correct answer: 'capital'. Also accept 'seat of government' as an alternate synonym.",
       "produces": "clozetext",
-      "notes": "Asking to 'also accept' / 'accepts X or Y' / 'synonym answer' emits `alternative-response` with each alternate, scored like the primary. One entry per blank; for multi-blank items each alternate is a complete replacement (one answer per blank). Do not list multiple accepted answers as separate `valid-response` entries — that would be misinterpreted as multiple blanks."
+      "notes": "Asking to 'also accept' / 'accepts X or Y' / 'synonym answer' emits alt-responses inside validation, each alternate scored like the primary. Every alternate is a complete answer set (one answer per blank), not an extra answer for one blank. Do not list multiple accepted answers as separate valid-response entries; that reads as multiple blanks."
     }
   ]
 }
