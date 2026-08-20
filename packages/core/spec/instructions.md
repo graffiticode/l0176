@@ -339,10 +339,18 @@ silently rejects answers that should score.
   one, so equivalent forms need not be enumerated.
 - **`equivValue`** — accepts any expression with the same math value as a listed
   one. `options [decimal-places 2]` bounds how far that comparison looks.
-- **`isSimplified`**, **`isExpanded`**, **`isFactorised`**, **`isTrue`** — these
-  are predicates on the response rather than comparisons against an answer, so a
-  rule using one carries no `value` at all:
+- **`isSimplified`**, **`isExpanded`**, **`isFactorised`**, **`isTrue`**,
+  **`validSyntax`** — these are predicates on the response rather than
+  comparisons against an answer, so a rule using one carries no `value` at all:
   `value [[[method "isExpanded"]]]`.
+- **`isUnit`** — a predicate that *does* take a `value`, naming the unit:
+  `[method "isUnit" value "cm"]` accepts `5 cm`. Without a `value` it scores
+  every response 0.
+- **`equivSyntax`** — compares the syntactic form of the response.
+- **`stringMatch`** — the one method that is *not* a math comparison. It compares
+  literal characters, so notation is no longer free: against `"1/2"` a learner
+  typing `1 / 2` is **wrong**, where under `equivLiteral` it is right. Reach for
+  it only when the exact characters are the thing being assessed.
 
 **Rule: if the request names the expressions to accept, enumerate every one of
 them.** A request that says "1/2, 0.5, and 2/4 are all accepted" states three
@@ -388,10 +396,18 @@ Choose by what the request specifies:
 | it must be simplified | `isSimplified` | the form of the answer is the skill |
 | it must be expanded / factorised | `isExpanded` / `isFactorised` | likewise, and neither takes a `value` |
 
-**Which methods exist is not settled.** Learnosity enumerates them on exactly one
-of its 51 question-type articles, and the `options` keys on none consistently.
-The compiler checks neither — see C1 and C2 in `conflict-resolution.md`. The
-methods above are the ones with evidence behind them; anything else is a guess.
+**The full method set**, from Learnosity's own scorer rather than its docs:
+`equivValue`, `equivLiteral`, `equivSyntax`, `equivSymbolic`, `isFactorised`,
+`isSimplified`, `isExpanded`, `isUnit`, `isTrue`, `validSyntax`, and
+`stringMatch`. (`simplify`, `expand`, `variables`, `format` and `calculate` are
+also accepted, but they are math-engine actions rather than ways of scoring an
+answer.) A method outside this set is **rejected by Learnosity at render time and
+scores every response 0** — the item still renders, so the failure looks like a
+learner getting it wrong. The compiler rejects unknown methods for that reason.
+
+`options` behaves the opposite way: an unrecognised key is accepted in silence,
+with no error and no effect. Nothing downstream will tell you a key was
+misspelled. See C1 and C2 in `conflict-resolution.md` for the measurements.
 
 ### Metadata
 
@@ -635,9 +651,29 @@ mcq [
 ]
 ```
 
-This emits Learnosity's `instant_feedback` flag, which shows per-response
-feedback immediately in supported question types. The question's score and valid
-answer remain unchanged — only the feedback behavior changes.
+This emits Learnosity's `instant_feedback` flag, which adds a **Check Answer**
+button to the rendered question. The score and the valid answer are unchanged —
+only the feedback behaviour is.
+
+**It needs a scorable question.** Confirmed by rendering: the button appears
+whenever the flag is set, but pressing it does nothing unless the question can
+actually be scored — Learnosity needs both a `valid-response` to check against
+and a `scoring-type` to check it with. With either missing, `getScore()` returns
+`null`, nothing is marked correct or incorrect, and no error is reported
+anywhere. The flag reads as simply not working.
+
+Both come from the question type's defaults, and an authored `validation` merges
+into those defaults one level deep rather than replacing them — so writing
+
+```
+validation [valid-response [score 1 value ["1"]]]
+```
+
+keeps the type's `scoring-type` instead of silently dropping it. Write
+`scoring-type` explicitly when you want a mode other than the default.
+
+`longtext` and `plaintext` have no valid answer by construction, so they do not
+accept `instant-feedback` at all, and say so at compile time.
 request asks for partial credit on a single-answer MCQ, either the item is
 really multi-select (set both) or partial credit does not apply (omit it).
 

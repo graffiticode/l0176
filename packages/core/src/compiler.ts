@@ -21,6 +21,8 @@ import {
   mergeMembers,
   inferShape,
   partitionItemsList,
+  assertItemMembers,
+  assertItemsEntries,
   isMemberList,
 } from "./question-types.js";
 
@@ -283,6 +285,12 @@ export class Transformer extends BaseTransformer {
           resume(err, undefined);
           return;
         }
+        try {
+          assertItemsEntries(items);
+        } catch (e: any) {
+          resume([...err, String((e && e.message) || e)], undefined);
+          return;
+        }
         // Dry run during generation-time verification: credentials aren't
         // injected (and `get-val-private` of an absent value bakes encrypt("")),
         // so skip BOTH credential gates and the write — just validate structure.
@@ -329,7 +337,9 @@ export class Transformer extends BaseTransformer {
     this.visit(node.elts[0], options, async (e0: any, v0: any) => {
       const err = ([] as any[]).concat(e0 || []);
       try {
-        resume(err, mergeMembers(toPlainObject(v0), "item"));
+        const merged = mergeMembers(toPlainObject(v0), "item");
+        assertItemMembers(merged);
+        resume(err, merged);
       } catch (e: any) {
         resume(err.concat(String((e && e.message) || e)), {});
       }

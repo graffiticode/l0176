@@ -124,9 +124,35 @@ const DEFAULTS: Record<string, any> = {
   },
 };
 
+// Merged one level deep, which matters for the object-valued defaults —
+// `validation` and `ui_style`. A flat spread makes an authored member *replace*
+// the default wholesale, and the failure that causes is silent: a question
+// written as
+//
+//   validation [ valid-response [score 1 value ["1"]] ]
+//
+// loses the default `scoring_type`, and Learnosity cannot score a question with
+// no scoring type. It still renders, and `instant-feedback` still draws its
+// Check Answer button — the button just does nothing, because `getScore()`
+// returns null. Measured; see C2's neighbours in spec/conflict-resolution.md.
+//
+// One level only. An authored `valid-response` must still replace the default
+// answer rather than merge into it, or the default's `value` would survive
+// alongside the author's.
 function withDefaults(type: string, attrs: any) {
-  const defaults = DEFAULTS[type] || {};
-  return { ...defaults, ...attrs };
+  const defaults: any = DEFAULTS[type] || {};
+  const merged: any = { ...defaults, ...attrs };
+  for (const [key, base] of Object.entries(defaults)) {
+    const given = attrs?.[key];
+    if (isPlainRecord(base) && isPlainRecord(given)) {
+      merged[key] = { ...(base as any), ...given };
+    }
+  }
+  return merged;
+}
+
+function isPlainRecord(v: any) {
+  return v != null && typeof v === "object" && !Array.isArray(v);
 }
 
 // Learnosity scores a question either all-or-nothing (`exactMatch`) or awards a
@@ -253,16 +279,93 @@ const SCORING_TYPES: Record<string, string[]> = {
   // they are manually scored, and their validation carries max_score instead.
 };
 
-function assertScoringType(type: string, validation: any) {
+// Measured: Learnosity needs BOTH a `scoring_type` and a `valid_response` to
+// score a question. With either missing it still renders — and `instant-feedback`
+// still draws its Check Answer button — but `getScore()` returns null, nothing is
+// marked correct or incorrect, and no error is reported at any layer. The
+// question silently scores nobody.
+//
+// Learnosity's articles document `Default: "exactMatch"` for
+// `validation.scoring_type`, but its scorer does not apply that default — a
+// question sent without the key scores null, measured side by side against an
+// otherwise identical question that carries it. The default is documentation
+// only, so the key has to be on the wire. See C10 in
+// spec/conflict-resolution.md.
+//
+// Hence defaulted here rather than demanded: an author who omits it means the
+// ordinary thing, and every type's first supported mode is `exactMatch`.
+// `valid_response` cannot be defaulted the same way — there is no sensible
+// stand-in for the answer — so its absence is an error.
+//
+// Types absent from SCORING_TYPES (`longtext`, `plaintext`) are manually scored:
+// they document no scoring_type and carry `max_score` instead, so they are
+// exempt from all of this.
+function applyScoring(type: string, merged: any) {
   const allowed = SCORING_TYPES[type];
-  if (!allowed || validation == null || typeof validation !== "object") {
+  if (!allowed) {
     return;
+  }
+  const validation = merged.validation;
+  if (validation == null || typeof validation !== "object" || Array.isArray(validation)) {
+    throw new Error(
+      `${type}: needs a \`validation\` to be scorable — without one Learnosity ` +
+      `renders the question but scores every response as unattempted.`,
+    );
   }
   const given = validation.scoring_type;
   if (given !== undefined && !allowed.includes(given)) {
     throw new Error(
       `${type}: scoring-type "${given}" is not supported — use one of ${allowed.join(", ")}.`,
     );
+  }
+  if (validation.valid_response == null) {
+    throw new Error(
+      `${type}: \`validation\` has no \`valid-response\`. There is nothing for ` +
+      `Learnosity to score against, so every response is marked unattempted.`,
+    );
+  }
+  if (given === undefined) {
+    // A fresh object: `validation` may still be the shared DEFAULTS entry.
+    merged.validation = { scoring_type: allowed[0], ...validation };
+  }
+}
+
+// Learnosity's own scorer named these when handed a method that cannot exist —
+// see C1 in spec/conflict-resolution.md. The last five are math-engine actions
+// rather than ways of scoring, and `stringMatch` is the reverse: it is absent
+// from that list yet scores, because it compares characters and never reaches
+// the math API.
+const MATH_METHODS = new Set([
+  "equivValue", "equivLiteral", "equivSyntax", "equivSymbolic",
+  "isFactorised", "isSimplified", "isExpanded", "isUnit", "isTrue",
+  "validSyntax", "stringMatch",
+  "simplify", "expand", "variables", "format", "calculate",
+]);
+
+// A method Learnosity does not recognise is rejected at render time and scores
+// every response 0. The item still renders, so nothing downstream looks broken —
+// it reads as a learner getting the question wrong. Catching it here is the only
+// place it is visible. (`options` cannot be checked the same way: an
+// unrecognised key is accepted in silence, so there is no authority to check
+// against — C2.)
+function assertMethods(type: string, value: any, path: string) {
+  if (Array.isArray(value)) {
+    value.forEach((v, n) => assertMethods(type, v, `${path}[${n}]`));
+    return;
+  }
+  if (value == null || typeof value !== "object") {
+    return;
+  }
+  const given = value.method;
+  if (typeof given === "string" && !MATH_METHODS.has(given)) {
+    throw new Error(
+      `${type}: "${given}" is not a scoring method${path ? ` (at ${path})` : ""}. ` +
+      `Learnosity accepts ${[...MATH_METHODS].join(", ")}.`,
+    );
+  }
+  for (const [k, v] of Object.entries(value)) {
+    // `options` holds the method's own settings, not nested rules.
+    if (k !== "options") assertMethods(type, v, path ? `${path}.${k}` : k);
   }
 }
 
@@ -273,7 +376,7 @@ export function buildMcq(attrs: any) {
   const merged = withDefaults("mcq", attrs);
   assertKnownAttributes("mcq", "MCQ", merged);
   assertMemberShapes("mcq", merged, "");
-  assertScoringType("mcq", merged.validation);
+  applyScoring("mcq", merged);
   return {
     ...merged,
     type: "mcq",
@@ -284,7 +387,7 @@ export function buildShorttext(attrs: any) {
   const merged = withDefaults("shorttext", attrs);
   assertKnownAttributes("shorttext", "SHORTTEXT", merged);
   assertMemberShapes("shorttext", merged, "");
-  assertScoringType("shorttext", merged.validation);
+  applyScoring("shorttext", merged);
   return {
     ...merged,
     type: "shorttext",
@@ -297,7 +400,7 @@ export function buildLongtext(attrs: any) {
   const merged = withDefaults("longtext", attrs);
   assertKnownAttributes("longtext", "LONGTEXT", merged);
   assertMemberShapes("longtext", merged, "");
-  assertScoringType("longtext", merged.validation);
+  applyScoring("longtext", merged);
   return {
     ...merged,
     type: "longtextV2",
@@ -308,7 +411,7 @@ export function buildPlaintext(attrs: any) {
   const merged = withDefaults("plaintext", attrs);
   assertKnownAttributes("plaintext", "PLAINTEXT", merged);
   assertMemberShapes("plaintext", merged, "");
-  assertScoringType("plaintext", merged.validation);
+  applyScoring("plaintext", merged);
   return {
     ...merged,
     type: "plaintext",
@@ -319,7 +422,7 @@ export function buildClozetext(attrs: any) {
   const merged = withDefaults("clozetext", attrs);
   assertKnownAttributes("clozetext", "CLOZETEXT", merged);
   assertMemberShapes("clozetext", merged, "");
-  assertScoringType("clozetext", merged.validation);
+  applyScoring("clozetext", merged);
   return {
     type: "clozetext",
     ...merged,
@@ -332,7 +435,7 @@ export function buildClozeassociation(attrs: any) {
   const merged = withDefaults("clozeassociation", attrs);
   assertKnownAttributes("clozeassociation", "CLOZEASSOCIATION", merged);
   assertMemberShapes("clozeassociation", merged, "");
-  assertScoringType("clozeassociation", merged.validation);
+  applyScoring("clozeassociation", merged);
   return {
     ...merged,
     type: "clozeassociation",
@@ -344,7 +447,7 @@ export function buildClozedropdown(attrs: any) {
   const merged = withDefaults("clozedropdown", attrs);
   assertKnownAttributes("clozedropdown", "CLOZEDROPDOWN", merged);
   assertMemberShapes("clozedropdown", merged, "");
-  assertScoringType("clozedropdown", merged.validation);
+  applyScoring("clozedropdown", merged);
   return {
     ...merged,
     type: "clozedropdown",
@@ -360,14 +463,15 @@ export function buildClozedropdown(attrs: any) {
 //   value [ [[method "equivLiteral" value "1/2"]]
 //           [[method "equivValue" value "7" options [decimal-places 2]]] ]
 //
-// Which methods are real, and which `options` keys they honour, is unsettled —
-// see C1 and C2 in spec/conflict-resolution.md. Nothing here constrains either:
-// the author writes what Learnosity accepts.
+// `method` is checked against Learnosity's own enumeration; `options` is not,
+// because Learnosity ignores unrecognised keys without complaint and so offers
+// nothing to check against. See C1 and C2 in spec/conflict-resolution.md.
 export function buildClozeformula(attrs: any) {
   const merged = withDefaults("clozeformula", attrs);
   assertKnownAttributes("clozeformula", "CLOZEFORMULA", merged);
   assertMemberShapes("clozeformula", merged, "");
-  assertScoringType("clozeformula", merged.validation);
+  applyScoring("clozeformula", merged);
+  assertMethods("clozeformula", merged.validation, "validation");
   return {
     ...merged,
     type: "clozeformulaV2",
@@ -378,7 +482,7 @@ export function buildChoicematrix(attrs: any) {
   const merged = withDefaults("choicematrix", attrs);
   assertKnownAttributes("choicematrix", "CHOICEMATRIX", merged);
   assertMemberShapes("choicematrix", merged, "");
-  assertScoringType("choicematrix", merged.validation);
+  applyScoring("choicematrix", merged);
   return {
     ...merged,
     type: "choicematrix",
@@ -389,7 +493,7 @@ export function buildOrderlist(attrs: any) {
   const merged = withDefaults("orderlist", attrs);
   assertKnownAttributes("orderlist", "ORDERLIST", merged);
   assertMemberShapes("orderlist", merged, "");
-  assertScoringType("orderlist", merged.validation);
+  applyScoring("orderlist", merged);
   return {
     ...merged,
     type: "orderlist",
@@ -402,7 +506,7 @@ export function buildClassification(attrs: any) {
   const merged = withDefaults("classification", attrs);
   assertKnownAttributes("classification", "CLASSIFICATION", merged);
   assertMemberShapes("classification", merged, "");
-  assertScoringType("classification", merged.validation);
+  applyScoring("classification", merged);
   return {
     ...merged,
     type: "classification",
@@ -416,7 +520,7 @@ export function buildBowtie(attrs: any) {
   const merged = withDefaults("bowtie", attrs);
   assertKnownAttributes("bowtie", "BOWTIE", merged);
   assertMemberShapes("bowtie", merged, "");
-  assertScoringType("bowtie", merged.validation);
+  applyScoring("bowtie", merged);
   return {
     ...merged,
     type: "bowtie",
@@ -453,7 +557,7 @@ export function buildTokenHighlight(attrs: any) {
   const merged = withDefaults("tokenhighlight", attrs);
   assertKnownAttributes("tokenhighlight", "TOKEN_HIGHLIGHT", merged);
   assertMemberShapes("tokenhighlight", merged, "");
-  assertScoringType("tokenhighlight", merged.validation);
+  applyScoring("tokenhighlight", merged);
   return {
     ...merged,
     type: "tokenhighlight",
@@ -696,6 +800,55 @@ export function inferShape(raw: any, where: string): any {
 // `item [metadata [...]]` merges to `{metadata: ...}` and `metadata` is not in
 // this set, so it reads as an item — the two readings cannot overlap.
 const ITEMS_MEMBERS = new Set(["params", "save_to_itembank"]);
+
+// `item` and `items` merge whatever members they are given, and `createItems`
+// then reads only the handful it knows. Everything else used to vanish with no
+// error — an attribute written one level too high (`item [instant-feedback true
+// questions [...] {}]`) compiled clean, rendered clean, and simply did not do
+// what it said. The question builders have enforced their own attribute sets
+// since the conversion; the block levels did not, and this closes that gap.
+//
+// `questions [...] {}` contributes the whole `createQuestions` result when it
+// merges into the item — `type`, `data`, `templateVariablesRecords` and
+// `questionRefs` — so those are members of an item as much as `metadata` is.
+const ITEM_MEMBERS = new Set([
+  "type", "data", "templateVariablesRecords", "questionRefs", "metadata",
+]);
+
+function kebab(field: string) {
+  return field.replace(/_/g, "-");
+}
+
+export function assertItemMembers(merged: any) {
+  if (merged == null || typeof merged !== "object") return;
+  const stray = Object.keys(merged).filter((k) => !ITEM_MEMBERS.has(k));
+  if (stray.length === 0) return;
+  const names = stray.map((k) => `\`${kebab(k)}\``).join(", ");
+  throw new Error(
+    `item: ${names} ${stray.length === 1 ? "is not a member" : "are not members"} of ` +
+    `\`item\`. An item takes \`questions [...] {}\` and \`metadata\`. Question ` +
+    `attributes belong inside the question type — e.g. ` +
+    `\`questions [mcq [${kebab(stray[0])} ...]] {}\`, not on the item.`,
+  );
+}
+
+// The same hazard one level further out. `partitionItemsList` treats anything
+// that is not a known items-level member as an item, so a stray attribute became
+// an "item" with no questions and crashed `createItems` with a bare TypeError
+// about reading 'questions' of undefined.
+export function assertItemsEntries(items: any[]) {
+  const stray = items.filter((e) => e == null || typeof e !== "object" || e.data == null);
+  if (stray.length === 0) return;
+  const names = stray
+    .flatMap((e) => (e && typeof e === "object" ? Object.keys(e) : []))
+    .map((k) => `\`${kebab(k)}\``);
+  const what = names.length ? names.join(", ") + " is not an" : "an entry in the items list is not an";
+  throw new Error(
+    `items: ${what} \`item\`. The items list takes \`item [...]\` entries plus ` +
+    `\`params\` and \`save-to-itembank\`. Question attributes belong inside the ` +
+    `question type, not at items level.`,
+  );
+}
 
 export function partitionItemsList(entries: any[]) {
   const members: any = {};

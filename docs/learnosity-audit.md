@@ -168,9 +168,12 @@ host environment must render it.
    delivery — the host must.
 
 **Resolved.** The math-methods section was rewritten for the rule-object form and
-now names the predicate methods (`isExpanded`, `isFactorised`, `isTrue`) that
-carry no `value`, closes with the warning that the method set is unsettled (C1,
-C2), and no longer documents the deleted nested-answer-list form.
+now names the predicate methods (`isExpanded`, `isFactorised`, `isTrue`,
+`validSyntax`) that carry no `value` and `isUnit`, which does take one. Since C1
+and C2 were closed by rendering it also carries the measured method set, the
+warning that an unknown method scores every response 0, and the warning that an
+unknown `options` key is ignored in silence. It no longer documents the deleted
+nested-answer-list form.
 `usage-guide.md` carries the Questions API caveat, and seven of its cues were
 rewritten where they described vocabulary that no longer exists.
 
@@ -341,8 +344,11 @@ they are legacy math methods carried over from L0158, not currently enumerated.
 
 Nothing enforces the list either way — see [A](#a-registries-are-declared-but-never-enforced).
 
-Whether chemistry's six are *the* method set or *chemistry's* method set is unsettled and
-tracked as **C1** in `packages/core/spec/conflict-resolution.md`. Do not widen or narrow
+**Closed by rendering.** Chemistry's six were neither: the real set is the eleven
+scoring methods Learnosity's own scorer names (plus five math-engine actions), and
+all three of L0176's supposedly-invented methods are real. `question-types.ts`
+now enforces it — see **C1** in `packages/core/spec/conflict-resolution.md`.
+Superseded guidance follows; do not widen or narrow
 `METHOD.allowed` until that closes.
 
 ### Finding 2: value-less predicate methods cannot be expressed
@@ -488,8 +494,10 @@ L0176 computes cumulative offsets across the groups
 output already passed golden parity against L0158. **Recording only — do not
 "fix" toward the example.**
 
-Tracked as **C8** in `packages/core/spec/conflict-resolution.md`, which stays OPEN until a
-bow-tie is rendered: a parity gate proves agreement with L0158, not with Learnosity.
+Tracked as **C8** in `packages/core/spec/conflict-resolution.md`, now **RESOLVED** by
+rendering: cumulative global indexing is confirmed, and the article's example is
+wrong. The parity gate proved agreement with L0158; the render proves agreement
+with Learnosity.
 
 Also note: the 2-1-2 answer shape L0176 enforces (`BOWTIE_AREA_COUNTS`,
 `question-types.ts:635`) is not stated anywhere in the article — the docs say only
@@ -657,29 +665,42 @@ vocabulary should.
 
 The per-type queue above is finished. Two things it cannot close:
 
-**Nothing here has been rendered.** Every conclusion in this document and in
-`packages/core/spec/conflict-resolution.md` comes from reading Learnosity's
-articles and from compiling L0176's output. No question produced by the converted
-language has been put in front of the Learnosity Questions API. That mattered less
-when the compiler derived fields and validated them; it matters more now, because
-transcription means L0176 checks very little of what it emits.
-
-**Three register entries stay open, and a single render session would close them.**
+**The register's three behavioural questions have been rendered and closed.**
 C1 (which scoring methods exist), C2 (which `options` keys they honour) and C8
-(how bow-tie response indices are numbered) are all questions about behaviour that
-no amount of further reading will answer. C8 is the sharpest: `bowtie` now has no
-validation at all, and the docs' own worked example does not decode, so a
-mis-numbered answer produces a wrong question with nothing to catch it.
+(how bow-tie response indices are numbered) were all questions no amount of
+further reading would answer. A render session against the live Questions API
+answered all three, and overturned the corpus on each — see
+`packages/core/spec/conflict-resolution.md`, which now records the measurements
+and the technique.
+
+- **C1**: Learnosity's scorer, handed an impossible method name, printed its own
+  enumeration. `isSimplified`, `isFactorised` and `isUnit` — the three L0176
+  inherited from L0158 that appear in no Learnosity article — are all real.
+  `stringMatch` is real too and is *not* `equivLiteral`: it compares characters,
+  so `1 / 2` fails against `1/2`. An unknown method is rejected at render time
+  and scores every response 0, which is why the compiler now checks it.
+- **C2**: the two-set split is a documentation artifact — `options` is one shared
+  bag, and keys documented only for chemistry are honoured on `clozeformulaV2`.
+  Unknown keys are ignored in silence, so there is nothing to check against.
+- **C8**: cumulative global indexing, confirmed twice, including on uneven groups
+  where a per-group scheme cannot express the indices at all. The docs' worked
+  example is simply wrong.
+
+**The converted question types themselves still have not been rendered.** The
+probes were hand-built activity JSON signed directly, precisely so they could
+take shapes L0176 cannot emit. Compiling proves the shape; only a render proves
+the behaviour, and that matters more now than it did, because transcription means
+L0176 checks very little of what it emits.
 
 What the language gives up by transcribing, deliberately, in one place so it is
 not a surprise:
 
 | Was checked | Now |
 | :---------- | :-- |
-| `bowtie` 2-1-2 shape, and answers present in their pool | nothing |
+| `bowtie` 2-1-2 shape, and answers present in their pool | nothing — but the index scheme is now confirmed, C8 |
 | `token-highlight` tokens present in the passage | nothing |
 | `clozeformula` answer-combination count | nothing |
-| `method` against a known list | nothing — deliberately, see C1 |
+| `method` against a known list | **restored** — checked against Learnosity's own enumeration, C1 |
 
 What it gained in exchange: the whole documented attribute surface of every type,
 per-type rejection of attributes that are not the type's own, per-type

@@ -41,7 +41,15 @@ describe("questions path", () => {
       { label: "Red", value: "red" },
       { label: "Violet", value: "violet" },
     ]);
-    expect(d.validation).toEqual({ valid_response: { score: 1, value: ["violet"] } });
+    // scoring_type comes from mcq's default and survives an authored validation:
+    // `withDefaults` merges one level deep precisely so that it does. A flat
+    // spread dropped it, and a question with no scoring_type cannot be scored —
+    // `getScore()` returns null, so `instant-feedback` draws a Check Answer
+    // button that does nothing.
+    expect(d.validation).toEqual({
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: ["violet"] },
+    });
   });
 
   test("scoring-type replaces the partial-credit boolean", async () => {
@@ -329,6 +337,8 @@ describe("the mechanical types (aligned vocabulary)", () => {
       stimulus: "What is the capital of Ireland?",
       case_sensitive: true,
       validation: {
+        // From shorttext's default, kept by the one-level-deep merge.
+        scoring_type: "exactMatch",
         valid_response: { value: "Dublin" },
         alt_responses: [{ score: 2, value: "Baile Atha Cliath" }],
       },
@@ -546,4 +556,161 @@ describe("items", () => {
       expect(lexicon[word], word).toBeUndefined();
     }
   });
+});
+
+// C1: Learnosity rejects an unknown method at render time and scores every
+// response 0, which reads as a learner getting the question wrong rather than
+// as a broken item. The compile error is the only place it is visible.
+test("an unknown scoring method is rejected", async () => {
+  await expect(compile(`set-var "lrn-id" "t" questions [clozeformula [
+      stimulus "{{response}}"
+      template "{{response}}"
+      validation [valid-response [score 1 value [[[method "equivalent" value "1/2"]]]]]
+    ]] {}..`)).rejects.toContainEqual(expect.objectContaining({
+    message: expect.stringContaining('"equivalent" is not a scoring method'),
+  }));
+});
+
+test("every method Learnosity's own scorer named is accepted", async () => {
+  for (const method of ["equivValue", "equivLiteral", "equivSyntax", "equivSymbolic",
+    "isFactorised", "isSimplified", "isExpanded", "isUnit", "isTrue", "validSyntax",
+    "stringMatch"]) {
+    await expect(compile(`set-var "lrn-id" "t" questions [clozeformula [
+        stimulus "{{response}}"
+        template "{{response}}"
+        validation [valid-response [score 1 value [[[method "${method}" value "1/2"]]]]]
+      ]] {}..`)).resolves.toBeTruthy();
+  }
+});
+
+// The check has to reach alt-responses too — an author enumerating accepted
+// expressions writes the method once per alternative, and a typo in the fourth
+// one is exactly as fatal as a typo in the first.
+test("the method check reaches alt-responses", async () => {
+  await expect(compile(`set-var "lrn-id" "t" questions [clozeformula [
+      stimulus "{{response}}"
+      template "{{response}}"
+      validation [
+        valid-response [score 1 value [[[method "equivLiteral" value "1/2"]]]]
+        alt-responses [[value [[[method "equivLiterally" value "0.5"]]]]]
+      ]
+    ]] {}..`)).rejects.toContainEqual(expect.objectContaining({
+    message: expect.stringContaining('"equivLiterally" is not a scoring method'),
+  }));
+});
+
+// C2: Learnosity ignores an unrecognised options key in silence — no error, no
+// effect — so there is no authority for the compiler to check against. What
+// guards options here is the lexicon: an unknown key has no keyword, so it
+// cannot be written at all. `decimal-places` is the one that governs equivValue,
+// and it must survive camelCased into the rule.
+test("options keys reach the rule, since Learnosity validates none of them", async () => {
+  const out = await compile(`set-var "lrn-id" "t" questions [clozeformula [
+      stimulus "{{response}}"
+      template "{{response}}"
+      validation [valid-response [score 1 value
+        [[[method "equivValue" value "1/2" options [decimal-places 2]]]]]]
+    ]] {}..`);
+  expect(out.data.questions[0].data.validation.valid_response.value)
+    .toEqual([[{ method: "equivValue", value: "1/2", options: { decimalPlaces: 2 } }]]);
+});
+
+// instant-feedback needs an answer to check against, or Learnosity draws its
+// Check Answer button and the button does nothing. Every scorable type supplies
+// a default valid_response and `withDefaults` merges one level deep, so an
+// authored validation can no longer strip it — the case that used to bite is
+// covered by "an authored validation keeps the default scoring_type" above.
+// The manually-scored types have no valid answer by construction and so do not
+// accept the attribute at all.
+test("instant-feedback is not an attribute of the manually-scored types", async () => {
+  for (const type of ["longtext", "plaintext"]) {
+    await expect(compile(`set-var "lrn-id" "t" questions [${type} [
+        stimulus "Explain your reasoning."
+        instant-feedback true
+      ]] {}..`)).rejects.toContainEqual(expect.objectContaining({
+      message: expect.stringContaining(`\`instant-feedback\` is not an attribute of ${type}`),
+    }));
+  }
+});
+
+test("instant-feedback with a valid-response compiles", async () => {
+  const out = await compile(`set-var "lrn-id" "t" questions [mcq [
+      stimulus "2 + 2 = ?"
+      options [[label "3" value "0"] [label "4" value "1"]]
+      instant-feedback true
+      validation [scoring-type "exactMatch" valid-response [score 1 value ["1"]]]
+    ]] {}..`);
+  expect(out.data.questions[0].data.instant_feedback).toBe(true);
+});
+
+// The bug this guards: `withDefaults` used a flat spread, so an authored
+// `validation` replaced the type's default wholesale and took `scoring_type`
+// with it. Measured against a live render — a question with no scoring_type
+// still renders and still draws the instant-feedback Check Answer button, but
+// `getScore()` returns null and pressing the button does nothing.
+test("an authored validation keeps the default scoring-type", async () => {
+  const out = await compile(`set-var "lrn-id" "t" items [item [questions [mcq [
+      stimulus "Which president served two non-consecutive terms?"
+      options [[label "Theodore Roosevelt" value "0"] [label "Grover Cleveland" value "1"]]
+      instant-feedback true
+      validation [valid-response [score 1 value ["1"]]]
+    ]] {}]] {}..`);
+  expect(out.data.questions[0].validation).toEqual({
+    scoring_type: "exactMatch",
+    valid_response: { score: 1, value: ["1"] },
+  });
+});
+
+// One level only. An authored valid-response replaces the default answer rather
+// than merging into it — otherwise the default's `value` would survive beside
+// the author's and the question would accept answers nobody wrote.
+test("an authored valid-response replaces the default rather than merging", async () => {
+  const out = await compile(`set-var "lrn-id" "t" questions [orderlist [
+      list ["a" "b"]
+      validation [valid-response [score 5 value [1 0]]]
+    ]] {}..`);
+  expect(out.data.questions[0].data.validation).toEqual({
+    scoring_type: "exactMatch",
+    valid_response: { score: 5, value: [1, 0] },
+  });
+});
+
+// The same hazard for the other object-valued default.
+test("an authored ui-style keeps the rest of the default", async () => {
+  const out = await compile(`set-var "lrn-id" "t" questions [classification [
+      ui-style [column-count 3]
+    ]] {}..`);
+  expect(out.data.questions[0].data.ui_style).toEqual({
+    column_count: 3,
+    column_titles: ["Category A", "Category B"],
+  });
+});
+
+// The guarantee, stated once for every scorable type: an author who writes a
+// validation without a scoring-type still gets one. Two layers supply it — the
+// one-level-deep merge in `withDefaults` carries the type's own default through,
+// and `applyScoring` backstops with exactMatch for a type that has none. A
+// question with no scoring_type renders and scores nobody, so this must hold for
+// all of them, not just the one that was reported.
+test("every scorable type keeps a scoring-type when the author writes a bare validation", async () => {
+  const cases: Record<string, string> = {
+    mcq: 'options [[label "a" value "0"]] validation [valid-response [score 1 value ["0"]]]',
+    shorttext: 'validation [valid-response [value "Dublin"]]',
+    clozetext: 'template "{{response}}" validation [valid-response [score 1 value [["a"]]]]',
+    clozeassociation: 'template "{{response}}" possible-responses [["a"]] validation [valid-response [score 1 value [["a"]]]]',
+    clozedropdown: 'template "{{response}}" possible-responses [["a"]] validation [valid-response [score 1 value [["a"]]]]',
+    clozeformula: 'template "{{response}}" validation [valid-response [score 1 value [[[method "equivLiteral" value "1"]]]]]',
+    choicematrix: 'stems ["s"] options ["a"] validation [valid-response [score 1 value [[0]]]]',
+    orderlist: 'list ["a" "b"] validation [valid-response [score 1 value [0 1]]]',
+    classification: 'possible-responses ["a"] validation [valid-response [score 1 value [[0]]]]',
+    bowtie: 'validation [valid-response [score 1 value [[0 1] [4] [7 8]]]]',
+    "token-highlight": 'template "<span class=\\"lrn_token\\">a</span>" validation [valid-response [score 1 value [0]]]',
+  };
+  for (const [type, body] of Object.entries(cases)) {
+    const out = await compile(
+      `set-var "lrn-id" "t" questions [${type} [stimulus "s" ${body}]] {}..`);
+    const validation = out.data.questions[0].data.validation;
+    expect(validation.scoring_type, `${type} lost its scoring_type`).toBeDefined();
+    expect(validation.valid_response, `${type} lost its valid_response`).toBeDefined();
+  }
 });

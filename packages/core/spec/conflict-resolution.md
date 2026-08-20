@@ -38,19 +38,20 @@ type at a time.
 
 | # | Conflict | Status |
 | :-: | :--- | :--- |
-| C1 | The scoring-method enumeration exists on exactly one article | OPEN |
-| C2 | `validation.*.options` is documented as two disjoint sets | OPEN — load-bearing |
+| C1 | The scoring-method enumeration exists on exactly one article | RESOLVED — measured |
+| C2 | `validation.*.options` is documented as two disjoint sets | RESOLVED — measured, the split is not real |
 | C3 | Four articles' examples declare a sibling question type | RESOLVED — table wins |
 | C4 | `alt_responses[ ][ ]` documents a shape that does not exist | RESOLVED — artifact |
 | C5 | `orderlist`'s example contradicts its own `ui_style` table | RESOLVED — table wins |
 | C6 | `custom`'s response `type` is boilerplate from another article | RESOLVED — table loses |
 | C7 | `distractor_rationale_response_level` is typed three ways | RESOLVED — refinement |
-| C8 | The bow-tie example's indices do not decode | OPEN — needs a render |
+| C8 | The bow-tie example's indices do not decode | RESOLVED — measured, the example is wrong |
 | C9 | `classification` omits `possible_responses` from its own table | RESOLVED — omission |
+| C10 | `scoring_type`'s documented default is not applied by the scorer | RESOLVED — measured, emit it explicitly |
 
 ---
 
-### C1 — The scoring-method enumeration exists on exactly one article · OPEN
+### C1 — The scoring-method enumeration exists on exactly one article · RESOLVED (measured)
 
 `Chemistry-formula-chemistry.md` documents `validation.valid_response.value[].method` with a
 *Possible values* list of six: `equivSymbolic`, `equivLiteral`, `equivValue`, `stringMatch`,
@@ -60,31 +61,65 @@ type at a time.
 Eleven articles document a `method` field. Nine of them are the math and chemistry types —
 `clozeformula`, `clozeformulaV2`, `imageclozeformula`, `imageclozeformulaV2`, `clozechemistry`,
 `imageclozechemistry`, `multistepmath`, and the deprecated `formula` and `formulaV2` — and every
-one gives only `Default: "equivLiteral"` with no enumeration at all.
+one gives only `Default: "equivLiteral"` with no enumeration at all. The remaining two document
+a `method` from an entirely different vocabulary: `simpleshading` takes `byLocation` or
+`byCount`, `fillshape` takes `countByValue`.
 
-The remaining two document a `method` from an entirely different vocabulary: `simpleshading`
-takes `byLocation` or `byCount`, `fillshape` takes `countByValue`. So `method` is already known
-to be per-family rather than global, which is exactly the reading that would make chemistry's
-list chemistry's own.
+**How it was closed.** A `clozeformulaV2` scored on a method name that cannot exist
+(`definitelyNotAMethod`). Learnosity refused it and printed its own enumeration:
 
-**Why it is not resolved.** Precedence rule 3 cuts both ways here. Either the six are the
-method set and the other nine articles simply omit the list, or they are *chemistry's* method
-set and the math types accept a different one. Nothing in the corpus discriminates, and the
-evidence is mixed: the deprecated `formula`/`formulaV2` examples use `isExpanded`, which is in
-no enumeration, and `clozeformula`'s own example uses `isTrue`, which is in chemistry's.
+```
+10019: Failed validating math (Detail: invalid method - can be one of:
+equivValue, equivLiteral, equivSyntax, equivSymbolic, isFactorised, isSimplified,
+isExpanded, isUnit, isTrue, simplify, expand, variables, format, calculate, validSyntax.
+```
 
-**What L0176 does meanwhile.** `question-types.ts` accepts eight —
-`equivLiteral`, `equivSymbolic`, `equivValue`, `isSimplified`, `isFactorised`, `isExpanded`,
-`stringMatch`, `isUnit` — a set that appears nowhere. Three of them (`isSimplified`,
-`isFactorised`, `isUnit`) occur in no enumeration and no example anywhere in the corpus; they
-arrived with the L0158 port. Two documented methods, `equivSyntax` and `isTrue`, are absent
-from L0176's list. Nothing enforces the list either way, so today any string reaches the
-emitted JSON.
+Fifteen names, from the scorer itself. The same probe settles the question the corpus could
+not: an unrecognised method **errors and scores 0**, so it never silently degrades to the
+`equivLiteral` default — which is what makes every other reading below meaningful.
 
-**To close it:** render a `clozeformulaV2` scoring on `equivSyntax`, and one on `isUnit`, and
-see which are honoured.
+**Measured, one `clozeformulaV2` per method, response pre-set and `getScore()` read.** Each
+equivalence probe uses a response that is correct under its own method and *wrong* under
+`equivLiteral`, so a score of 1 proves the method was honoured rather than defaulted:
 
-### C2 — `validation.*.options` is documented as two disjoint sets · OPEN, and load-bearing
+| probe | value | response | score |
+| :-- | :-- | :-- | :-- |
+| `equivLiteral` | `1/2` | `1/2` | 1 |
+| `equivLiteral` | `1/2` | `0.5` | 0 |
+| `equivSymbolic` | `1/2` | `0.5` | **1** |
+| `equivValue` | `1/2` | `0.5` | **1** |
+| `equivSyntax` | `1/2` | `1/2` | 1 |
+| `isTrue` | — | `1+1=2` / `1+1=3` | 1 / 0 |
+| `isSimplified` | — | `1/2` / `2/4` | 1 / 0 |
+| `isExpanded` | — | `x^2+2x+1` | 1 |
+| `isFactorised` | — | `(x+1)^2` | 1 |
+| `isUnit` | `cm` | `5 cm` | 1 |
+| `validSyntax` | — | `1/2` | 1 |
+| `definitelyNotAMethod` | `1/2` | `1/2` | **0 + error** |
+
+**The chemistry list is not the enumeration**, and the corpus was wrong in both directions.
+`isSimplified`, `isFactorised` and `isUnit` — the three L0176 inherited from L0158 that appear
+in no Learnosity enumeration and no example anywhere — are all real and all score. The
+predicates take no `value`, as `Math-formula-Deprecated.md` shows; `isUnit` is the exception,
+scoring 0 without one and 1 with `value: "cm"` against a response of `5 cm`.
+
+**`stringMatch` is real but is not in the enumeration**, and it is not a math method. It scores,
+and unlike every name outside the list it raises no error — because it never reaches the math
+API. It is also observably *not* `equivLiteral`: against a value of `1/2`, a response of
+`1 / 2` scores 1 under `equivLiteral` and **0** under `stringMatch`. Literal characters, not a
+parsed expression. The one article that documents it is the chemistry one, and that is
+consistent with it being handled outside the math engine.
+
+**Five of the fifteen are not scoring methods.** `simplify`, `expand`, `variables`, `format` and
+`calculate` are math-engine *actions*; the enumeration is the math API's method list, not a
+list of things sensible to score on. They were not probed as scorers. `validSyntax` was, and
+returns 1 — it behaves as a predicate.
+
+**Consequence for L0176.** The accepted set is the fifteen above plus `stringMatch`. L0176's
+inherited list of eight was wrong by omission (`equivSyntax`, `isTrue`, `validSyntax`) and
+right about the three that looked invented. Nothing in the compiler checks `method` today, so
+a typo reaches the learner as a rendered question that scores every response 0.
+### C2 — `validation.*.options` is documented as two disjoint sets · RESOLVED (measured; the split is not real)
 
 Every math and chemistry type nests an `options` bag inside each validation rule. Across the
 corpus it is documented as two sets that do not overlap:
@@ -99,29 +134,41 @@ Neither table matches its own article's example. `clozeformula`'s example passes
 `setDecimalSeparator` and `ignoreOrder`. `ignoreOrder` and `setThousandsSeparator` appear in
 **no** attribute table in the corpus.
 
-**Why it is not resolved.** Rule 2 says the tables win, but here the tables are demonstrably
-incomplete — each one is missing options its own examples use. The split is more plausibly an
-artifact of which options each doc author happened to list than a real per-type restriction,
-but "more plausibly" is not evidence.
+**How it was closed.** Each option was rendered on `clozeformulaV2` — a type whose table
+documents only the *second* set — paired with a control differing in nothing but the option, so
+that the contrast is the evidence rather than the score:
 
-**Load-bearing.** L0176 emits, on every `clozeformulaV2` rule:
+| option | documented for | pair | scores |
+| :-- | :-- | :-- | :-- |
+| `decimalPlaces: 2` | set 2 (this type) | `equivValue`, `1/3` vs `0.33`, with / without | **1 / 0** |
+| `inverseResult: true` | set 1, *chemistry only* | `equivLiteral`, `1/2` vs `1/2`, true / false | **0 / 1** |
+| `ignoreLeadingAndTrailingSpaces` | set 1 | `stringMatch`, `1/2` vs `" 1/2 "`, true / false | **1 / 0** |
+| `setThousandsSeparator: [","]` | **no table anywhere** | `equivValue`, `1000` vs `1,000`, with / without | **1 / 0** |
+| `notARealOption: true` | — | `equivLiteral`, exact answer | 1, **silently ignored** |
 
-```json
-"options": { "ignoreOrder": false, "setDecimalSeparator": ".",
-             "setThousandsSeparator": [], "inverseResult": false }
-```
+**The two-set split is a documentation artifact.** `options` is one shared bag. Keys documented
+only for the chemistry family are honoured on `clozeformulaV2`, and `setThousandsSeparator` —
+which no attribute table in all 51 articles documents — is honoured too. `inverseResult` is the
+sharpest of these: it turns a correct answer into a 0, so it cannot have been ignored.
 
-That mixes both sets, includes two keys no table documents, and omits `decimalPlaces` — which
-is the one option `clozeformulaV2`'s own table does document, and which governs how
-`equivValue` compares. Without it, `equivValue` always runs at Learnosity's default of 10
-significant decimal places, whether or not that is what the author wanted.
+**Unknown keys are accepted in silence.** A key that is not an option produces no error, no
+console warning, and no change in score. This is the opposite of `method`, where an
+unrecognised value is rejected loudly — so an options typo is invisible at every layer,
+including this one, and only shows up as scoring that quietly does not do what was asked.
 
-**This gates the `clozeformula` redesign.** Deciding what an aligned `clozeformula` emits means
-deciding which of these options are real.
+**Two probes were inconclusive and are not claimed either way.** `setDecimalSeparator: ","`
+against a response of `0,5` scored 0 and raised `Expected operator between numbers: 0.5` — the
+response failed to parse, so the probe tested parsing rather than the option; it may govern
+output rather than input. `ignoreOrder` needs two blanks to mean anything, and the two-blank
+`valid_response` shape used scored 0 both with and without it, which more likely indicts the
+probe than the option.
 
-**To close it:** render a `clozeformulaV2` with `equivValue` and `decimalPlaces: 2`, and one
-with a deliberately bogus option key, and see which are honoured and which are rejected.
-
+**Consequence for L0176.** The old emission was
+`{ignoreOrder, setDecimalSeparator, setThousandsSeparator, inverseResult}` on every rule —
+which is now known to be *valid* (all four are real keys on this type) but was hard-coded and
+omitted `decimalPlaces`, the one key that governs `equivValue`. The redesign made `options` an
+authored member list, so the author writes exactly the keys they mean. Given that unknown keys
+vanish silently, a check against a known-key list is worth more here than it looks.
 ### C3 — Four articles' examples declare a sibling question type · RESOLVED (table wins)
 
 Four worked examples set a `"type"` that contradicts their own article's normative statement:
@@ -198,7 +245,7 @@ Edit dates do not discriminate, and were checked in case they did: both the `arr
 an open item — it currently joins the list into one numbered string in `distractor_rationale`
 instead.
 
-### C8 — The bow-tie example's indices do not decode · OPEN
+### C8 — The bow-tie example's indices do not decode · RESOLVED (measured; the example is wrong)
 
 `Bow-tie-bowtie.md`'s example defines three response groups of 5, 2 and 5 options — twelve in
 total, indices 0–11 — and gives `validation.valid_response.value` as `[[0, 4], [7], [10, 12]]`.
@@ -208,19 +255,22 @@ drop zone, names an option in the third group, and `12` is out of range entirely
 not decodable under that scheme, and no other scheme is described: the article says only "an
 array with three elements representing each drop zone".
 
-**Why it is not resolved.** The example is the only worked bow-tie in the corpus, so rule 2 has
-nothing to prefer it to — there is no attribute table statement about how indices are numbered.
-Either the indices are per-group rather than global (which `[10, 12]` also fails, the third
-group having only five), or the example is simply wrong.
+**How it was closed.** A bow-tie was rendered in `review` state, which makes Learnosity print
+the correct answer, and the rendered text read back:
 
-**What L0176 does meanwhile.** Cumulative global offsets, computed in `resolveBowtieResponse`
-in `question-types.ts`. That output passed the 117/117 golden-parity gate against L0158, so the
-scheme is very likely right and the example wrong — but a parity gate proves agreement with
-L0158, not with Learnosity.
+| groups | `valid_response.value` | Learnosity rendered |
+| :-- | :-- | :-- |
+| `A1 A2` / `B1 B2` / `C1 C2` (2-2-2) | `[[0], [2], [4]]` | `1 A1  2 B1  3 C1` |
+| `A1 A2 A3` / `B1` / `C1 C2` (3-1-2) | `[[2], [3], [5]]` | `1 A3  2 B1  3 C2` |
 
-**To close it:** render a bow-tie with known correct answers and see which options come back
-marked correct. Until then, do not "fix" L0176 toward the example.
+**Cumulative global indexing, confirmed.** The second case is the decisive one: with groups of
+3, 1 and 2 a per-group scheme cannot even express index 3 or 5, and the indices land exactly
+where a running offset across all groups puts them.
 
+**The example is simply wrong** — not a different scheme. L0176's `resolveBowtieResponse`
+computed cumulative global offsets and passed the 117/117 golden-parity gate against L0158;
+that gate proved agreement with L0158, and this render proves agreement with Learnosity. The
+instruction to not "fix" L0176 toward the example stands, and now has a measurement behind it.
 ### C9 — `classification` omits `possible_responses` from its own table · RESOLVED (omission)
 
 `Classification-classification.md` documents 13 top-level attributes.
@@ -246,26 +296,85 @@ incomplete about the `options` bag but at least list something.
 **Depends on it:** `validAttributes.CLASSIFICATION` includes `possible_responses`
 even though it is absent from the article the rest of that list was taken from.
 
+### C10 — `scoring_type`'s documented default is not applied by the scorer · RESOLVED (measured)
+
+Every article that documents `validation.scoring_type` gives it a default:
+`Default: "exactMatch"`. Taken at face value, a validation that omits the key scores the same
+as one that sets it to `exactMatch`.
+
+**It does not.** Measured with two questions identical but for that one key, rendered in the
+same harness, the correct option selected, and the instant-feedback Check Answer button
+pressed:
+
+| `validation` sent | `getResponse()` | `getScore()` | rendered |
+| :-- | :-- | :-- | :-- |
+| `{valid_response: {score: 1, value: ["1"]}}` | `["1"]` | **`null`** | nothing marked |
+| `{scoring_type: "exactMatch", valid_response: ...}` | `["1"]` | `{score: 1, max_score: 1}` | `Grover Cleveland - correct` |
+
+The response is recorded either way — `feedbackAttemptsCount` increments, the option shows as
+selected — so the question is live. Only the scoring is absent, and **nothing reports it**: no
+error, no console warning, no `errorListener` call. The documented default exists in the
+articles and not in the scorer.
+
+**Why it matters more than it looks.** This is the failure with no symptom. A question with no
+`scoring_type` renders correctly, accepts responses, and looks finished. `instant-feedback` even
+draws its Check Answer button — the button simply does nothing when pressed. An author
+reviewing the preview sees a working item.
+
+**How L0176 hit it.** The redesign gave each type a default `validation`, and `withDefaults`
+spread it flat. A flat spread makes an authored `validation` *replace* the default rather than
+merge into it, so a question written as `validation [valid-response [...]]` — the ordinary
+thing to write — silently shipped without a `scoring_type`.
+
+**What L0176 does now.** `scoring_type` is always on the wire. Two layers put it there:
+`withDefaults` merges one level deep, so an authored `validation` keeps the type's default
+scoring mode; and `applyScoring` backstops with the type's first supported mode for any type
+whose defaults lack one. A missing `valid_response` is an error instead — there is no honest
+stand-in for the answer.
+
+**Precedence.** Rule 1: the render wins over the table. Do not "simplify" by relying on the
+documented default.
+
 ---
 
 ## Caveat on evidence
 
-**Nothing in this register is measured.** L0178's equivalent register leans on live calls to a
-real item bank; this one does not yet have a single render behind it. Every entry above is
-doc-versus-doc, or doc-versus-what-L0176-emits. Precedence rule 1 is written down for when that
-changes, and currently decides nothing.
+**Four entries are measured; the other six are not.** C1, C2, C8 and C10 were closed against a live
+Learnosity render — questions signed and initialised in a browser with responses pre-set, and
+`getScore()` read back — so precedence rule 1 decided them, and in all three cases it overruled
+what the corpus said. That is the reason to keep rule 1 at the top: the two entries that most
+affect the emitted JSON both turned out to rest on documentation that is incomplete (C1) or
+describes a restriction that does not exist (C2), and the one worked bow-tie example in the
+corpus (C8) is simply wrong. C10 is the sharpest of the four: a documented *default* that the
+scorer does not apply, failing silently in a way no layer reports.
 
-That is why the two entries that most affect the emitted JSON — C1 and C2, both about how math
-answers are scored — are the two that stay OPEN. They cannot be closed by reading, and reading
-is all that has been done.
+Everything else here is doc-versus-doc, or doc-versus-what-L0176-emits. Where a resolution says
+a table or an example "wins", it means the corpus is internally consistent enough to prefer one
+reading, not that Learnosity's implementation has been observed to agree. Those entries are
+decisions about which source to trust, and should be overturned the moment a render says
+otherwise — which is exactly what happened to C1, C2 and C8.
 
-Where a resolution says a table or an example "wins", it means the corpus is internally
-consistent enough to prefer one reading, not that Learnosity's implementation has been observed
-to agree. A RESOLVED entry here is a decision about which source to trust, and should be
-overturned the moment a render says otherwise.
+**How the render session worked**, since it is worth repeating rather than reinventing:
 
-Coverage is also uneven: the conflicts found so far come from the types L0176 already emits
-(C9 surfaced only when `classification` was actually converted, not when its article was read),
+- Sign the activity JSON directly with `learnosity-sdk-nodejs` rather than going through the
+  compiler, so a probe can be any shape — including shapes L0176 cannot emit.
+- The activity-level key for `resume` / `review` is **`state`**, not `type`. Learnosity's error
+  message names the values but not the key, and rejects both when given as `type`.
+- With `state: "review"` plus a `responses` map keyed by `response_id`, a probe scores without
+  the UI being driven at all, and the correct answer is rendered — which is what decodes C8.
+- The SDK's `errorListener` surfaces nothing useful. Patch `console.error` **before** the SDK
+  script loads; that is where the C1 enumeration came from.
+- **Always probe a deliberately invalid value alongside the real ones.** Whether an unknown
+  value errors or is silently ignored is the difference between a score of 1 meaning something
+  and meaning nothing — and it split the two ways here: `method` rejects loudly, `options`
+  swallows in silence.
+- Sign every probe into **one** activity. Nineteen questions in a single request answered the
+  whole register in one page load.
+- Rendering is safe to repeat; **item-bank writes are not**. Nothing in a render session should
+  reach `save-to-itembank`.
+
+Coverage is uneven: the conflicts found so far come from the types L0176 already emits (C9
+surfaced only when `classification` was actually converted, not when its article was read),
 plus the math and chemistry family read for C1 and C2. The 27 documented types L0176 does not
 map have been read once and not audited. Expect this register to grow, and prefer growing it to
 quietly resolving a conflict in favour of whichever article was read last.
