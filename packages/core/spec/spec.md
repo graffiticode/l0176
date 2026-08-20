@@ -49,6 +49,9 @@ complete renderable question.
 
 ### Attribute Keywords
 
+An attribute keyword is named for the Learnosity field it emits, so the program
+reads as a transcription of the question JSON.
+
 Attribute keywords are arity-1 members. A question is a bracketed member list —
 `mcq [ stimulus "..." options [...] ]` — and every object inside it is written the
 same way, so the same keyword works at any depth. An array of objects is a list of
@@ -280,13 +283,16 @@ mcq [
 
 ### shorttext
 
-Creates a short text response question.
+A short typed answer — a word or two, or a number. Note `valid-response`'s
+`value` is a bare string here, not a list: this type has one response box.
 
 ```
 shorttext [
   stimulus "What is the chemical symbol for water?"
-  valid-response "H2O"
   case-sensitive false
+  validation [
+    valid-response [score 1 value "H2O"]
+  ]
 ]
 ```
 
@@ -297,8 +303,9 @@ Creates an essay question with a rich text editor. No auto-scoring.
 ```
 longtext [
   stimulus "Describe the water cycle in your own words."
-  max-word-count 300
+  max-length 300
   placeholder "Write your essay here..."
+  show-word-count true
 ]
 ```
 
@@ -309,7 +316,7 @@ Creates an essay question with a plain text editor. No auto-scoring.
 ```
 plaintext [
   stimulus "Explain your reasoning."
-  max-word-count 200
+  max-length 200
 ]
 ```
 
@@ -317,9 +324,8 @@ plaintext [
 
 Fill-in-the-blank: the learner types into response boxes placed in a passage.
 
-Every attribute is named for the Learnosity field it emits, and the program nests
-the way the object nests. `stimulus` is the prompt shown above the response area;
-`template` is the passage, with `{{response}}` marking each blank.
+`stimulus` is the prompt shown above the response area; `template` is the passage,
+with `{{response}}` marking each blank.
 
 ```
 clozetext [
@@ -370,30 +376,35 @@ unless this is raised. The maximum is 250.
 
 ### clozeassociation
 
-Creates a fill-in-the-blank question where students drag responses from
-a pool of options into blanks. Use `possible-responses` (not `options`)
-to provide the draggable choices.
+Fill-in-the-blank where the learner drags responses from a pool into blanks.
+`stimulus` is the prompt, `template` the passage carrying the `{{response}}`
+markers, and `possible-responses` the draggable choices.
 
 ```
 clozeassociation [
-  stimulus "Drag the correct answer: {{response}} is the capital of France."
+  stimulus "Drag the correct answer into the blank."
+  template "{{response}} is the capital of France."
   possible-responses ["Paris", "London", "Berlin"]
-  valid-response ["Paris"]
+  validation [
+    valid-response [score 1 value ["Paris"]]
+  ]
 ]
 ```
 
 ### clozedropdown
 
-Creates a fill-in-the-blank question with dropdown selects. Use
-`possible-responses` (not `options`) to provide the dropdown choices.
-Each blank gets its own list of choices, so `possible-responses` is
-a list of lists.
+Fill-in-the-blank with drop-down selects. `stimulus` is the prompt and
+`template` the passage. Each drop-down gets its own list of choices, in order of
+appearance, so `possible-responses` is a list of lists.
 
 ```
 clozedropdown [
-  stimulus "Select the answer: The sky is {{response}}."
+  stimulus "Select the answer."
+  template "The sky is {{response}}."
   possible-responses [["blue", "red", "green"]]
-  valid-response ["blue"]
+  validation [
+    valid-response [score 1 value ["blue"]]
+  ]
 ]
 ```
 
@@ -445,26 +456,35 @@ genuinely different expressions.
 
 ### choicematrix
 
-Creates a grid question where students select an option for each row.
+A grid of prompts and choices. Learnosity's names: `stems` are the row prompts,
+`options` the column choices. Set `multiple-responses true` to turn each row's
+radio buttons into checkboxes.
 
 ```
 choicematrix [
   stimulus "Classify each statement as true or false."
-  rows ["The sun is a star", "The moon is a planet"]
-  columns ["True", "False"]
-  valid-response [[0], [1]]
+  stems ["The sun is a star", "The moon is a planet"]
+  options ["True", "False"]
+  validation [
+    valid-response [score 1 value [[0], [1]]]
+  ]
 ]
 ```
 
 ### orderlist
 
-Creates a question where students drag items into the correct order.
+Drag items into the correct order. Alone among the types, its `scoring-type`
+reaches `partialMatchPairwise`, which compares adjacent entries rather than
+scoring each position outright.
 
 ```
 orderlist [
   stimulus "Arrange these events in chronological order."
   list ["World War II", "World War I", "Moon Landing", "Internet"]
-  valid-response [1, 0, 2, 3]
+  validation [
+    scoring-type "partialMatchPairwise"
+    valid-response [score 1 value [1, 0, 2, 3]]
+  ]
 ]
 ```
 

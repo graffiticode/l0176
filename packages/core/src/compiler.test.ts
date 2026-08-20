@@ -63,9 +63,9 @@ describe("questions path", () => {
   });
 
   test("partial-credit applies to the multi-blank cloze types", async () => {
-    // clozetext is excluded: it is on the aligned vocabulary and writes
-    // scoring-type directly. See the clozetext describe block below.
-    const out = await compile('set-var "lrn-id" "t" questions [clozeassociation [valid-response ["a", "b"] partial-credit true]] {}..');
+    // Converted types are excluded: they write scoring-type directly. This
+    // covers what is left on the flat spelling.
+    const out = await compile('set-var "lrn-id" "t" questions [classification [valid-response [[0], [1]] partial-credit true]] {}..');
     expect(out.data.questions[0].data.validation.scoring_type).toBe("partialMatch");
   });
 
@@ -289,10 +289,131 @@ describe("clozetext (aligned vocabulary)", () => {
   });
 
   test("the other question types keep the flat spelling until converted", async () => {
-    const out = await compile('set-var "lrn-id" "t" questions [clozedropdown [valid-response ["a"] partial-credit true]] {}..');
+    const out = await compile('set-var "lrn-id" "t" questions [mcq [valid-response [0] multiple-responses true partial-credit true]] {}..');
     expect(out.data.questions[0].data.validation).toEqual({
       scoring_type: "partialMatch",
-      valid_response: { score: 1, value: ["a"] },
+      valid_response: { score: 1, value: ["0"] },
     });
+  });
+});
+
+// The seven types whose builders did nothing but rename and lift. Each is now a
+// transcription of the Learnosity object, so the test for each is that the
+// program and the emitted JSON have the same shape.
+describe("the mechanical types (aligned vocabulary)", () => {
+  const q = async (src: string) => (await compile(`set-var "lrn-id" "t" questions [${src}] {}..`)).data.questions[0].data;
+
+  test("shorttext: valid_response.value is a bare string, not an array", async () => {
+    expect(await q(`shorttext [
+      stimulus "What is the capital of Ireland?"
+      case-sensitive true
+      validation [
+        valid-response [value "Dublin"]
+        alt-responses [[score 2 value "Baile Atha Cliath"]]
+      ]
+    ]`)).toEqual({
+      type: "shorttext",
+      stimulus: "What is the capital of Ireland?",
+      case_sensitive: true,
+      validation: {
+        valid_response: { value: "Dublin" },
+        alt_responses: [{ score: 2, value: "Baile Atha Cliath" }],
+      },
+    });
+  });
+
+  test("longtext emits longtextV2, the current type for the bare slug's widget", async () => {
+    const d = await q('longtext [stimulus "Write about your hobbies." max-length 400]');
+    expect(d.type).toBe("longtextV2");
+    expect(d.max_length).toBe(400);
+  });
+
+  test("plaintext carries its own clipboard controls", async () => {
+    const d = await q('plaintext [stimulus "Write." show-copy true show-paste false]');
+    expect(d).toMatchObject({ type: "plaintext", show_copy: true, show_paste: false });
+  });
+
+  test("orderlist reaches partialMatchPairwise, which no other type documents", async () => {
+    const d = await q(`orderlist [
+      stimulus "Order them."
+      list ["a", "b", "c"]
+      validation [scoring-type "partialMatchPairwise" valid-response [score 1 value [2, 0, 1]]]
+    ]`);
+    expect(d.validation).toEqual({
+      scoring_type: "partialMatchPairwise",
+      valid_response: { score: 1, value: [2, 0, 1] },
+    });
+  });
+
+  test("clozeassociation carries a prompt and a passage as separate fields", async () => {
+    const d = await q(`clozeassociation [
+      stimulus "Drag each word into place."
+      template "The {{response}} sat on the {{response}}."
+      possible-responses ["cat", "mat", "hat"]
+      validation [valid-response [value ["cat", "mat"]]]
+    ]`);
+    expect(d.stimulus).toBe("Drag each word into place.");
+    expect(d.template).toContain("{{response}}");
+    expect(d.possible_responses).toEqual(["cat", "mat", "hat"]);
+  });
+
+  test("clozedropdown takes one list of options per drop-down", async () => {
+    const d = await q(`clozedropdown [
+      template "The {{response}} sat on the {{response}}."
+      possible-responses [["cat", "dog"], ["mat", "rug"]]
+      validation [valid-response [value ["cat", "mat"]]]
+    ]`);
+    expect(d.possible_responses).toEqual([["cat", "dog"], ["mat", "rug"]]);
+  });
+
+  test("choicematrix uses Learnosity's stems and options, not rows and columns", async () => {
+    const d = await q(`choicematrix [
+      stimulus "True or false?"
+      stems ["Sydney is the capital of Australia." "Darwin is in the NT."]
+      options ["True", "False"]
+      multiple-responses false
+      validation [valid-response [score 1 value [[1], [0]]]]
+    ]`);
+    expect(d).toMatchObject({
+      type: "choicematrix",
+      stems: ["Sydney is the capital of Australia.", "Darwin is in the NT."],
+      options: ["True", "False"],
+    });
+    expect(d.rows).toBeUndefined();
+    expect(d.columns).toBeUndefined();
+  });
+
+  test("each rejects an attribute that belongs to another type", async () => {
+    await expect(q('shorttext [stimulus "x" template "y"]'))
+      .rejects.toContainEqual(expect.objectContaining({
+        message: expect.stringContaining("`template` is not an attribute of shorttext"),
+      }));
+    await expect(q('choicematrix [stimulus "x" rows ["a"]]'))
+      .rejects.toContainEqual(expect.objectContaining({
+        message: expect.stringContaining("`rows` is not an attribute of choicematrix"),
+      }));
+  });
+
+  test("an unsupported scoring-type is rejected per type", async () => {
+    // partialMatchPairwise is orderlist's alone.
+    await expect(q('clozedropdown [template "a {{response}}" validation [scoring-type "partialMatchPairwise"]]'))
+      .rejects.toContainEqual(expect.objectContaining({
+        message: expect.stringContaining("use one of exactMatch, partialMatchV2, partialMatch"),
+      }));
+    // shorttext documents only one mode.
+    await expect(q('shorttext [stimulus "x" validation [scoring-type "partialMatch"]]'))
+      .rejects.toContainEqual(expect.objectContaining({
+        message: expect.stringContaining("use one of exactMatch"),
+      }));
+  });
+
+  test("defaults still produce a complete question for each", async () => {
+    for (const [kw, type] of [["shorttext", "shorttext"], ["longtext", "longtextV2"],
+                              ["plaintext", "plaintext"], ["orderlist", "orderlist"],
+                              ["clozeassociation", "clozeassociation"],
+                              ["clozedropdown", "clozedropdown"], ["choicematrix", "choicematrix"]]) {
+      const d = await q(`${kw} []`);
+      expect(d.type, kw).toBe(type);
+    }
   });
 });

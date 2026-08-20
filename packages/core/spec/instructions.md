@@ -27,13 +27,13 @@ provide a higher-level interface with sensible defaults:
 
 - `mcq` — Multiple choice questions
 - `shorttext` — Short typed responses
-- `longtext` — Rich text essays (manually scored)
-- `plaintext` — Plain text essays (manually scored)
-- `clozetext` — Fill-in-the-blank with typed responses (aligned vocabulary)
-- `clozeassociation` — Fill-in-the-blank with drag and drop (use `possible-responses`, not `options`)
-- `clozedropdown` — Fill-in-the-blank with dropdown select (use `possible-responses`, not `options`)
+- `longtext` — Rich text essays, manually scored
+- `plaintext` — Plain text essays, manually scored
+- `clozetext` — Fill-in-the-blank with typed responses
+- `clozeassociation` — Fill-in-the-blank with drag and drop
+- `clozedropdown` — Fill-in-the-blank with dropdown select
 - `clozeformula` — Fill-in-the-blank with math/formula input
-- `choicematrix` — Grid of options by stems
+- `choicematrix` — Grid of prompts (`stems`) by choices (`options`)
 - `orderlist` — Drag items into correct order
 - `classification` — Sort items into categories
 - `bowtie` — NGN/NCLEX bow-tie: 2-1-2 drag-and-drop (actions, condition, monitor)
@@ -54,15 +54,19 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   ]
   ```
 
-- `shorttext` — Short typed response:
+- `shorttext` — Short typed response. `valid-response`'s
+  `value` is a bare string here, not a list — the type has one response box:
   ```
   shorttext [
     stimulus "What is the capital of France?"
-    valid-response "Paris"
+    validation [
+      valid-response [score 1 value "Paris"]
+    ]
   ]
   ```
 
-- `longtext` — Rich text essay (manually scored):
+- `longtext` — Rich text essay (manually scored). Emits
+  Learnosity's `longtextV2`; `max-length` counts words:
   ```
   longtext [
     stimulus "Explain the water cycle."
@@ -80,8 +84,7 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   ]
   ```
 
-- `clozetext` — Fill-in-the-blank with typed responses. **On the aligned
-  vocabulary** (see below): `stimulus` is the prompt, `template` is the passage
+- `clozetext` — Fill-in-the-blank with typed responses. `stimulus` is the prompt, `template` is the passage
   carrying the `{{response}}` blanks, and scoring sits inside `validation`:
   ```
   clozetext [
@@ -97,21 +100,28 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   set under `alt-responses`. `max-length` defaults to **15 characters per blank**,
   so raise it for longer answers.
 
-- `clozeassociation` — Fill-in-the-blank with drag and drop (use `possible-responses`, not `options`):
+- `clozeassociation` — Fill-in-the-blank with drag and drop. `stimulus` is the prompt, `template` the passage carrying the
+  blanks, and `possible-responses` (not `options`) the draggable choices:
   ```
   clozeassociation [
-    stimulus "Drag the correct {{response}} here."
-    possible-responses ["correct", "incorrect", "maybe"]
-    valid-response ["correct"]
+    stimulus "Drag each word into place."
+    template "The {{response}} sat on the mat."
+    possible-responses ["cat", "dog", "hat"]
+    validation [
+      valid-response [score 1 value ["cat"]]
+    ]
   ]
   ```
 
-- `clozedropdown` — Fill-in-the-blank with dropdown select (use `possible-responses`, not `options`; each blank gets its own list):
+- `clozedropdown` — Fill-in-the-blank with drop-down select. One list of choices per drop-down, in order of appearance:
   ```
   clozedropdown [
-    stimulus "Select the correct {{response}}."
-    possible-responses [["correct", "incorrect", "maybe"]]
-    valid-response ["correct"]
+    stimulus "Select the correct answer."
+    template "The sky is {{response}}."
+    possible-responses [["blue", "red", "green"]]
+    validation [
+      valid-response [score 1 value ["blue"]]
+    ]
   ]
   ```
 
@@ -127,22 +137,29 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   ]
   ```
 
-- `choicematrix` — Grid of options by stems:
+- `choicematrix` — Grid of prompts and choices. Learnosity's names: `stems` are the row prompts, `options` the column choices.
+  `multiple-responses true` turns each row's radio buttons into checkboxes:
   ```
   choicematrix [
     stimulus "Select the correct answer for each row."
-    rows ["Statement 1", "Statement 2"]
-    columns ["True", "False"]
-    valid-response [[0], [1]]
+    stems ["Statement 1", "Statement 2"]
+    options ["True", "False"]
+    validation [
+      valid-response [score 1 value [[0], [1]]]
+    ]
   ]
   ```
 
-- `orderlist` — Drag items into correct order:
+- `orderlist` — Drag items into correct order. Alone in
+  reaching `partialMatchPairwise`, which compares adjacent entries rather than
+  scoring each position outright:
   ```
   orderlist [
     stimulus "Arrange in order."
     list ["First", "Second", "Third", "Fourth"]
-    valid-response [0, 1, 2, 3]
+    validation [
+      valid-response [score 1 value [0, 1, 2, 3]]
+    ]
   ]
   ```
 
@@ -477,16 +494,10 @@ Common attributes: `stimulus`, `options`, `valid-response`, `alternative-respons
 `case-sensitive`, `max-length`, `max-word-count`, `placeholder`,
 `possible-responses`, `rows`, `columns`, `list`, `categories`, `method`.
 
-#### The aligned vocabulary
+#### Two ways to write scoring
 
-Question types are being converted, one at a time, to a vocabulary in which **an
-attribute is named for the Learnosity field it emits and the program nests the way
-the object nests**. `clozetext` is converted; the rest still use the flat spellings
-listed above, and mixing the two on one question is a compile error.
-
-On a converted type there is no `alternative-response` and no `partial-credit`:
-scoring lives in a `validation` member that mirrors Learnosity's `validation`
-object.
+Most types put scoring in a `validation` member that mirrors Learnosity's
+`validation` object:
 
 ```
 clozetext [
@@ -502,10 +513,14 @@ clozetext [
 
 `score` and `value` are members like any other. `valid_response` is a single
 object, so `valid-response` takes one member list; `alt_responses` is an array, so
-`alt-responses` takes a list of member lists.
+`alt-responses` takes a list of member lists. These types also reject attributes
+that are not their own — the legal set is the one Learnosity documents for that
+widget.
 
-A converted type rejects attributes that are not its own — the legal set is the
-one Learnosity documents for that widget.
+`mcq`, `classification`, `token-highlight`, `bowtie`, `clozeformula` and `custom`
+still use an older, flatter spelling instead: `valid-response` directly on the
+question, `alternative-response` for alternates, and the boolean `partial-credit`
+in place of `scoring-type`. Mixing the two on one question is a compile error.
 
 ### Partial Credit
 
@@ -527,16 +542,14 @@ mcq [
 This emits Learnosity's `partialMatch` scoring type, which awards a fraction of
 the score per correct response. The question's total score stays 1.
 
-Only emit it for types with more than one scorable response: `mcq`,
-`choicematrix`, `clozeassociation`, `clozedropdown`, `orderlist`,
-`classification`, `token-highlight`. On any other type — including
-`shorttext`, `clozeformula`, `bowtie`, `longtext`, `plaintext`, `custom` — it is
-a compile error.
+Only emit it on the types still using the older spelling: `mcq`,
+`classification`, `token-highlight`. On `clozeformula`, `bowtie` and `custom` it
+is a compile error.
 
-`clozetext` is not in that list because it is on the aligned vocabulary and has no
-`partial-credit` attribute: write `scoring-type "partialMatch"` inside its
-`validation` block instead, which also reaches `partialMatchV2` — a third mode the
-boolean cannot express. On `mcq` it also requires `multiple-responses true`; if the
+Every other type has no `partial-credit` attribute at all: write `scoring-type`
+inside its `validation` member instead.
+That also reaches modes the boolean cannot express — `partialMatchV2` on the
+cloze types and `choicematrix`, and `partialMatchPairwise` on `orderlist`. On `mcq` it also requires `multiple-responses true`; if the
 
 ### Instant Feedback
 

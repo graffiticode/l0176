@@ -12,7 +12,10 @@ const DEFAULTS: Record<string, any> = {
   },
   shorttext: {
     stimulus: "Type your answer below.",
-    valid_response: "answer",
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: "answer" },
+    },
   },
   longtext: {
     stimulus: "Write a detailed response.",
@@ -32,14 +35,20 @@ const DEFAULTS: Record<string, any> = {
     },
   },
   clozeassociation: {
-    stimulus: "Drag the correct {{response}} here.",
+    template: "Drag the correct {{response}} here.",
     possible_responses: ["correct", "incorrect", "maybe"],
-    valid_response: ["correct"],
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: ["correct"] },
+    },
   },
   clozedropdown: {
-    stimulus: "Select the correct {{response}}.",
+    template: "Select the correct {{response}}.",
     possible_responses: [["correct", "incorrect", "maybe"]],
-    valid_response: ["correct"],
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: ["correct"] },
+    },
   },
   clozeformula: {
     stimulus: "Solve: {{response}}",
@@ -48,14 +57,20 @@ const DEFAULTS: Record<string, any> = {
   },
   choicematrix: {
     stimulus: "Select the correct answer for each row.",
-    rows: ["Statement 1", "Statement 2"],
-    columns: ["True", "False"],
-    valid_response: [[0], [1]],
+    stems: ["Statement 1", "Statement 2"],
+    options: ["True", "False"],
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: [[0], [1]] },
+    },
   },
   orderlist: {
     stimulus: "Arrange the items in the correct order.",
     list: ["First", "Second", "Third", "Fourth"],
-    valid_response: [0, 1, 2, 3],
+    validation: {
+      scoring_type: "exactMatch",
+      valid_response: { score: 1, value: [0, 1, 2, 3] },
+    },
   },
   classification: {
     stimulus: "Sort the items into the correct categories.",
@@ -99,15 +114,13 @@ function withDefaults(type: string, attrs: any) {
 // Only types with more than one scorable response accept it — the rest are
 // all-or-nothing by construction, and silently ignoring the attribute there
 // would emit a question that scores differently than the author asked for.
-// `clozetext` is absent: it takes `scoring-type` directly, so there is no
-// synthetic boolean to gate. The remaining types keep the older spelling until
-// each is converted.
+// Only the types still on the older spelling. A converted type writes
+// `scoring-type` directly inside `validation`, so it has no synthetic boolean to
+// gate — and reaches modes the boolean cannot express, such as orderlist's
+// partialMatchPairwise. This set empties as the remaining types are converted,
+// at which point `partial-credit` and `scoringType()` go with it.
 const PARTIAL_CREDIT_TYPES = new Set([
   "mcq",
-  "choicematrix",
-  "clozeassociation",
-  "clozedropdown",
-  "orderlist",
   "classification",
   "tokenhighlight",
 ]);
@@ -148,6 +161,15 @@ function assertKnownAttributes(type: string, key: string, attrs: any) {
 // turns a typo into a silently mis-scored question.
 const SCORING_TYPES: Record<string, string[]> = {
   clozetext: ["exactMatch", "partialMatchV2", "partialMatch"],
+  clozeassociation: ["exactMatch", "partialMatchV2", "partialMatch"],
+  clozedropdown: ["exactMatch", "partialMatchV2", "partialMatch"],
+  choicematrix: ["exactMatch", "partialMatchV2", "partialMatch"],
+  // The only mode this widget documents.
+  shorttext: ["exactMatch"],
+  // Alone in offering pairwise comparison of adjacent entries.
+  orderlist: ["exactMatch", "partialMatchV2", "partialMatch", "partialMatchPairwise"],
+  // longtext and plaintext are absent: neither documents scoring_type at all —
+  // they are manually scored, and their validation carries max_score instead.
 };
 
 function assertScoringType(type: string, validation: any) {
@@ -248,104 +270,37 @@ export function buildMcq(attrs: any) {
 }
 
 export function buildShorttext(attrs: any) {
-  const {
-    stimulus,
-    valid_response,
-    alternative_response,
-    max_length,
-    case_sensitive,
-    instant_feedback,
-    placeholder,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("shorttext", attrs);
-  const question: any = {
+  const merged = withDefaults("shorttext", attrs);
+  assertKnownAttributes("shorttext", "SHORTTEXT", merged);
+  assertScoringType("shorttext", merged.validation);
+  return {
+    ...merged,
     type: "shorttext",
-    stimulus,
-    ...rest,
   };
-  if (max_length != null) {
-    question.max_length = max_length;
-  }
-  if (case_sensitive != null) {
-    question.case_sensitive = case_sensitive;
-  }
-  if (instant_feedback != null) {
-    question.instant_feedback = instant_feedback;
-  }
-  if (placeholder != null) {
-    question.placeholder = placeholder;
-  }
-  if (valid_response != null) {
-    question.validation = {
-      scoring_type: scoringType("shorttext", partial_credit),
-      valid_response: {
-        score: 1,
-        value: valid_response,
-      },
-    };
-    if (alternative_response != null) {
-      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
-    }
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
+// The bare `longtext` slug is Learnosity's deprecated type; the current one is
+// longtextV2, which is what the keyword emits.
 export function buildLongtext(attrs: any) {
-  const {
-    stimulus,
-    max_length,
-    placeholder,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("longtext", attrs);
-  // Unscored type — reject partial-credit rather than let it reach the output.
-  scoringType("longtext", partial_credit);
-  const question: any = {
+  const merged = withDefaults("longtext", attrs);
+  assertKnownAttributes("longtext", "LONGTEXT", merged);
+  assertScoringType("longtext", merged.validation);
+  return {
+    ...merged,
     type: "longtextV2",
-    stimulus,
-    ...rest,
   };
-  if (max_length != null) {
-    question.max_length = max_length;
-  }
-  if (placeholder != null) {
-    question.placeholder = placeholder;
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
 export function buildPlaintext(attrs: any) {
-  const {
-    stimulus,
-    max_length,
-    placeholder,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("plaintext", attrs);
-  // Unscored type — reject partial-credit rather than let it reach the output.
-  scoringType("plaintext", partial_credit);
-  const question: any = {
+  const merged = withDefaults("plaintext", attrs);
+  assertKnownAttributes("plaintext", "PLAINTEXT", merged);
+  assertScoringType("plaintext", merged.validation);
+  return {
+    ...merged,
     type: "plaintext",
-    stimulus,
-    ...rest,
   };
-  if (max_length != null) {
-    question.max_length = max_length;
-  }
-  if (placeholder != null) {
-    question.placeholder = placeholder;
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
-// clozetext is the first type converted to the aligned vocabulary: every
-// attribute is named for the Learnosity field it emits and nests the way the
-// field nests, so there is nothing left to rename or lift. The builder stamps
-// the type, applies defaults, and checks what the docs say is checkable.
 export function buildClozetext(attrs: any) {
   const merged = withDefaults("clozetext", attrs);
   assertKnownAttributes("clozetext", "CLOZETEXT", merged);
@@ -356,74 +311,27 @@ export function buildClozetext(attrs: any) {
   };
 }
 
+// `stimulus` is the prompt and `template` the passage carrying the blanks —
+// two fields, as Learnosity documents them.
 export function buildClozeassociation(attrs: any) {
-  const {
-    stimulus,
-    possible_responses,
-    valid_response,
-    alternative_response,
-    instant_feedback,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("clozeassociation", attrs);
-  const question: any = {
+  const merged = withDefaults("clozeassociation", attrs);
+  assertKnownAttributes("clozeassociation", "CLOZEASSOCIATION", merged);
+  assertScoringType("clozeassociation", merged.validation);
+  return {
+    ...merged,
     type: "clozeassociation",
-    template: stimulus,
-    possible_responses,
-    ...rest,
   };
-  if (instant_feedback != null) {
-    question.instant_feedback = instant_feedback;
-  }
-  if (valid_response != null) {
-    question.validation = {
-      scoring_type: scoringType("clozeassociation", partial_credit),
-      valid_response: {
-        score: 1,
-        value: valid_response,
-      },
-    };
-    if (alternative_response != null) {
-      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
-    }
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
+// possible_responses is an array per drop-down, in order of appearance.
 export function buildClozedropdown(attrs: any) {
-  const {
-    stimulus,
-    possible_responses,
-    valid_response,
-    alternative_response,
-    instant_feedback,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("clozedropdown", attrs);
-  const question: any = {
+  const merged = withDefaults("clozedropdown", attrs);
+  assertKnownAttributes("clozedropdown", "CLOZEDROPDOWN", merged);
+  assertScoringType("clozedropdown", merged.validation);
+  return {
+    ...merged,
     type: "clozedropdown",
-    template: stimulus,
-    possible_responses,
-    ...rest,
   };
-  if (instant_feedback != null) {
-    question.instant_feedback = instant_feedback;
-  }
-  if (valid_response != null) {
-    question.validation = {
-      scoring_type: scoringType("clozedropdown", partial_credit),
-      valid_response: {
-        score: 1,
-        value: valid_response,
-      },
-    };
-    if (alternative_response != null) {
-      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
-    }
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
 // Learnosity scores a clozeformula against one answer *set* — `valid_response.value`
@@ -533,80 +441,25 @@ export function buildClozeformula(attrs: any) {
   return attachQuestionMetadata(question, metadata);
 }
 
+// Learnosity's names: `stems` are the row prompts, `options` the column choices.
 export function buildChoicematrix(attrs: any) {
-  const {
-    stimulus,
-    rows,
-    columns,
-    valid_response,
-    alternative_response,
-    instant_feedback,
-    shuffle_options,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("choicematrix", attrs);
-  const question: any = {
+  const merged = withDefaults("choicematrix", attrs);
+  assertKnownAttributes("choicematrix", "CHOICEMATRIX", merged);
+  assertScoringType("choicematrix", merged.validation);
+  return {
+    ...merged,
     type: "choicematrix",
-    stimulus,
-    options: columns,
-    stems: rows,
-    ...rest,
   };
-  if (shuffle_options != null) {
-    question.shuffle_options = shuffle_options;
-  }
-  if (instant_feedback != null) {
-    question.instant_feedback = instant_feedback;
-  }
-  if (valid_response != null) {
-    question.validation = {
-      scoring_type: scoringType("choicematrix", partial_credit),
-      valid_response: {
-        score: 1,
-        value: valid_response,
-      },
-    };
-    if (alternative_response != null) {
-      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
-    }
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
 export function buildOrderlist(attrs: any) {
-  const {
-    stimulus,
-    list,
-    valid_response,
-    alternative_response,
-    instant_feedback,
-    partial_credit,
-    metadata,
-    ...rest
-  } = withDefaults("orderlist", attrs);
-  const question: any = {
+  const merged = withDefaults("orderlist", attrs);
+  assertKnownAttributes("orderlist", "ORDERLIST", merged);
+  assertScoringType("orderlist", merged.validation);
+  return {
+    ...merged,
     type: "orderlist",
-    stimulus,
-    list,
-    ...rest,
   };
-  if (instant_feedback != null) {
-    question.instant_feedback = instant_feedback;
-  }
-  if (valid_response != null) {
-    question.validation = {
-      scoring_type: scoringType("orderlist", partial_credit),
-      valid_response: {
-        score: 1,
-        value: valid_response,
-      },
-    };
-    if (alternative_response != null) {
-      question.validation.alt_responses = alternative_response.map((v: any) => ({ score: 1, value: v }));
-    }
-  }
-  return attachQuestionMetadata(question, metadata);
 }
 
 export function buildClassification(attrs: any) {
@@ -970,6 +823,36 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   INPUT_TYPE: { field: "input_type" },
   ARIA_LABEL: { field: "aria_label" },
 
+  // Seven mechanical types
+  DISABLE_AUTO_LINK: { field: "disable_auto_link" },
+  FORMATTING_OPTIONS: { field: "formatting_options" },
+  HORIZONTAL_LAYOUT: { field: "horizontal_layout" },
+  SHOW_WORD_COUNT: { field: "show_word_count" },
+  SHOW_WORD_LIMIT: { field: "show_word_limit" },
+  SUBMIT_OVER_LIMIT: { field: "submit_over_limit" },
+  TEXT_BLOCKS: { field: "text_blocks" },
+  SHOW_COPY: { field: "show_copy" },
+  SHOW_CUT: { field: "show_cut" },
+  SHOW_PASTE: { field: "show_paste" },
+  DUPLICATE_RESPONSES: { field: "duplicate_responses" },
+  GROUP_POSSIBLE_RESPONSES: { field: "group_possible_responses" },
+  STEMS: { field: "stems" },
+  HORIZONTAL_LINES: { field: "horizontal_lines" },
+  MAX_HEIGHT: { field: "max_height" },
+  MIN_HEIGHT: { field: "min_height" },
+  OPTION_ROW_TITLE: { field: "option_row_title" },
+  OPTION_WIDTH: { field: "option_width" },
+  POSSIBILITY_LIST_POSITION: { field: "possibility_list_position" },
+  SHOW_DRAG_HANDLE: { field: "show_drag_handle" },
+  STEM_TITLE: { field: "stem_title" },
+  STEM_WIDTH: { field: "stem_width" },
+  TYPE: { field: "type" },
+  WORDWRAP: { field: "wordwrap" },
+  MATCHING_RULE: { field: "matching_rule" },
+  MAX_SCORE: { field: "max_score" },
+  SCORE_WITH_FEEDBACKAIDE: { field: "score_with_feedbackaide" },
+  FEEDBACKAIDE_PASSAGES: { field: "feedbackaide_passages" },
+
   // Item level. `metadata` is a member at both question and item level, which is
   // why `item` takes a member list too — a word has one arity.
   METADATA: { field: "metadata" },
@@ -1032,9 +915,26 @@ export const metadataMembers: Record<string, { kind: string }> = {
 // Which attributes are valid for each question type
 export const validAttributes: Record<string, string[]> = {
   MCQ: ["stimulus", "options", "valid_response", "alternative_response", "instant_feedback", "is_math", "shuffle_options", "multiple_responses", "partial_credit", "metadata"],
-  SHORTTEXT: ["stimulus", "valid_response", "alternative_response", "instant_feedback", "is_math", "case_sensitive", "max_length", "placeholder", "metadata"],
-  LONGTEXT: ["stimulus", "is_math", "max_length", "placeholder", "metadata"],
-  PLAINTEXT: ["stimulus", "is_math", "max_length", "placeholder", "metadata"],
+  SHORTTEXT: [
+    "case_sensitive", "character_map", "feedback_attempts",
+    "ignore_leading_and_trailing_spaces", "instant_feedback",
+    "instructor_stimulus", "is_math", "max_length", "metadata",
+    "placeholder", "response_container", "spellcheck", "stimulus",
+    "stimulus_review", "ui_style", "validation",
+  ],
+  LONGTEXT: [
+    "character_map", "disable_auto_link", "formatting_options",
+    "horizontal_layout", "instructor_stimulus", "is_math", "max_length",
+    "metadata", "placeholder", "show_word_count", "show_word_limit",
+    "spellcheck", "stimulus", "stimulus_review", "submit_over_limit",
+    "text_blocks", "ui_style", "validation",
+  ],
+  PLAINTEXT: [
+    "character_map", "instructor_stimulus", "is_math", "max_length",
+    "metadata", "placeholder", "show_copy", "show_cut", "show_paste",
+    "spellcheck", "stimulus", "stimulus_review", "submit_over_limit",
+    "ui_style", "validation",
+  ],
   // From Cloze-text-clozetext.md's attribute table. `description` is omitted
   // (deprecated in favour of stimulus_review) and `type` is emitted, not authored.
   CLOZETEXT: [
@@ -1046,11 +946,32 @@ export const validAttributes: Record<string, string[]> = {
     "case_sensitive", "ignore_leading_and_trailing_spaces",
     "match_all_possible_responses",
   ],
-  CLOZEASSOCIATION: ["stimulus", "possible_responses", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
-  CLOZEDROPDOWN: ["stimulus", "possible_responses", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
+  CLOZEASSOCIATION: [
+    "duplicate_responses", "feedback_attempts", "group_possible_responses",
+    "instant_feedback", "instructor_stimulus", "is_math",
+    "match_all_possible_responses", "metadata", "possible_responses",
+    "response_container", "response_containers", "shuffle_options",
+    "stimulus", "stimulus_review", "template", "ui_style", "validation",
+  ],
+  CLOZEDROPDOWN: [
+    "case_sensitive", "feedback_attempts", "instant_feedback",
+    "instructor_stimulus", "is_math", "match_all_possible_responses",
+    "metadata", "possible_responses", "response_container",
+    "response_containers", "shuffle_options", "stimulus", "stimulus_review",
+    "template", "ui_style", "validation",
+  ],
   CLOZEFORMULA: ["stimulus", "valid_response", "alternative_response", "instant_feedback", "is_math", "method", "metadata"],
-  CHOICEMATRIX: ["stimulus", "rows", "columns", "valid_response", "alternative_response", "instant_feedback", "is_math", "shuffle_options", "partial_credit", "metadata"],
-  ORDERLIST: ["stimulus", "list", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
+  CHOICEMATRIX: [
+    "feedback_attempts", "instant_feedback", "instructor_stimulus",
+    "is_math", "metadata", "multiple_responses", "options",
+    "shuffle_options", "stems", "stimulus", "stimulus_review", "ui_style",
+    "validation",
+  ],
+  ORDERLIST: [
+    "feedback_attempts", "instant_feedback", "instructor_stimulus",
+    "is_math", "list", "metadata", "shuffle_options", "stimulus",
+    "stimulus_review", "ui_style", "validation",
+  ],
   CLASSIFICATION: ["stimulus", "categories", "possible_responses", "valid_response", "alternative_response", "instant_feedback", "is_math", "partial_credit", "metadata"],
   BOWTIE: ["stimulus", "column_titles", "possible_responses", "valid_response", "alternative_response", "is_math", "metadata"],
   TOKEN_HIGHLIGHT: ["stimulus", "passage", "valid_response", "alternative_response", "distractors", "max_selection", "partial_credit", "metadata"],

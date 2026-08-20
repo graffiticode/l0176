@@ -41,20 +41,20 @@ Two articles carry more than their titles suggest:
 
 | Section | Status | Findings |
 | --- | --- | --- |
-| [Registries are declared but never enforced](#a-registries-are-declared-but-never-enforced) | partly fixed | 1 — enforced for `clozetext` only |
+| [Registries are declared but never enforced](#a-registries-are-declared-but-never-enforced) | partly fixed | 1 — enforced for the 8 converted types |
 | [Author API widget list](#b-author-api-widget-list) | unreviewed | 1 |
 | [Question metadata](#c-question-metadata) | unreviewed | 1 |
 | [`spec/` accuracy](#d-spec-accuracy) | unreviewed | 2 |
 | [`mcq`](#mcq--mcq) | unreviewed | — |
-| [`shorttext`](#shorttext--shorttext) | unreviewed | — |
-| [`longtext`](#longtext--longtextv2) | unreviewed | — |
-| [`plaintext`](#plaintext--plaintext) | unreviewed | — |
+| [`shorttext`](#shorttext--shorttext) | **fixed** | — |
+| [`longtext`](#longtext--longtextv2) | **fixed** | — |
+| [`plaintext`](#plaintext--plaintext) | **fixed** | — |
 | [`clozetext`](#clozetext--clozetext) | **fixed** | 1 (shared) — resolved for this type |
-| [`clozeassociation`](#clozeassociation--clozeassociation) | unreviewed | 1 (shared) |
-| [`clozedropdown`](#clozedropdown--clozedropdown) | unreviewed | 1 (shared) |
+| [`clozeassociation`](#clozeassociation--clozeassociation) | **fixed** | 1 (shared) |
+| [`clozedropdown`](#clozedropdown--clozedropdown) | **fixed** | 1 (shared) |
 | [`clozeformula`](#clozeformula--clozeformulav2) | unreviewed | 4 |
-| [`choicematrix`](#choicematrix--choicematrix) | unreviewed | 1 |
-| [`orderlist`](#orderlist--orderlist) | unreviewed | — |
+| [`choicematrix`](#choicematrix--choicematrix) | **fixed** | 1 |
+| [`orderlist`](#orderlist--orderlist) | **fixed** | — |
 | [`classification`](#classification--classification) | unreviewed | — |
 | [`bowtie`](#bowtie--bowtie) | unreviewed | 2 |
 | [`token-highlight`](#token-highlight--tokenhighlight) | unreviewed | — |
@@ -73,7 +73,7 @@ happen. Nothing imports or reads any of them:
 
 | Declaration | Line | Consumers |
 | --- | --- | --- |
-| `validAttributes` | `question-types.ts:923-937` | **`clozetext` only** — enforced in its builder; the other 13 types are unchecked |
+| `validAttributes` | `question-types.ts` | **the 8 converted types** — enforced in each builder; `mcq`, `classification`, `bowtie`, `token-highlight`, `clozeformula` and `custom` are still unchecked |
 | `attributeFields[*].allowed` | `question-types.ts:901` | none |
 | `attributeFields[*].valueType` | `question-types.ts:877-906` | none |
 
@@ -177,7 +177,7 @@ Documented and unexposed, for later: `min_selection` / `max_selection` (gated on
 
 ## `shorttext` → `shorttext`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Short-text-shorttext.md` · **Builder:** `question-types.ts:206` ·
 **Attributes:** `question-types.ts:925`
 
@@ -195,7 +195,7 @@ out-of-range value is Learnosity's to reject.
 
 ## `longtext` → `longtextV2`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Essay-with-rich-text-longtextV2.md` · **Builder:** `question-types.ts:251` ·
 **Attributes:** `question-types.ts:926`
 
@@ -209,7 +209,7 @@ the Feedback Aide AI-scoring pair `validation.score_with_feedbackaide` /
 
 ## `plaintext` → `plaintext`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Essay-with-plain-text-plaintext.md` · **Builder:** `question-types.ts:276` ·
 **Attributes:** `question-types.ts:927`
 
@@ -236,9 +236,9 @@ blanks. Its own example sets both — `"stimulus": "fill in the blanks"` plus a
 L0176 assigned the DSL's `stimulus` to `template` and never emitted a `stimulus`,
 so a cloze question could not carry a prompt distinct from its passage.
 
-**Resolved for `clozetext`.** It now has both attributes, each emitting its own
-field. Still open for `clozeassociation`, `clozedropdown` and `clozeformula`,
-which are unconverted.
+**Resolved for `clozetext`, `clozeassociation` and `clozedropdown`.** Each now has
+both attributes, emitting their own fields. Still open for `clozeformula`, which
+is unconverted.
 
 ### What the conversion changed
 
@@ -268,7 +268,7 @@ doing so would inject a value the author did not write.
 
 ## `clozeassociation` → `clozeassociation`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Cloze-with-drag-drop-clozeassociation.md` · **Builder:** `question-types.ts:338` ·
 **Attributes:** `question-types.ts:929`
 
@@ -282,7 +282,7 @@ Documented and unexposed: `duplicate_responses`, `shuffle_options`,
 
 ## `clozedropdown` → `clozedropdown`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Cloze-with-drop-down-clozedropdown.md` · **Builder:** `question-types.ts:373` ·
 **Attributes:** `question-types.ts:930`
 
@@ -381,7 +381,7 @@ ever emitting the `hints` object it controls.
 
 ## `choicematrix` → `choicematrix`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Choice-matrix-choicematrix.md` · **Builder:** `question-types.ts:515` ·
 **Attributes:** `question-types.ts:932`
 
@@ -411,7 +411,7 @@ supporting the NGN/NCLEX `bowtie`.
 
 ## `orderlist` → `orderlist`
 
-**Status:** unreviewed
+**Status:** **fixed** — converted to the aligned vocabulary, 2026-08-20
 **Docs:** `Order-list-orderlist.md` · **Builder:** `question-types.ts:556` ·
 **Attributes:** `question-types.ts:933`
 

@@ -105,6 +105,39 @@ const additions = {
   "input-type": { tk: 1, name: "INPUT_TYPE", cls: "function", length: 1, arity: 1 },
   "aria-label": { tk: 1, name: "ARIA_LABEL", cls: "function", length: 1, arity: 1 },
 
+  // Added with the seven mechanical types (shorttext, longtext, plaintext,
+  // orderlist, clozeassociation, clozedropdown, choicematrix). `type` is a
+  // ui_style member (orderlist's button/list/inline, choicematrix's
+  // inline/table); the question's own type is emitted, never authored.
+  "disable-auto-link": { tk: 1, name: "DISABLE_AUTO_LINK", cls: "function", length: 1, arity: 1 },
+  "formatting-options": { tk: 1, name: "FORMATTING_OPTIONS", cls: "function", length: 1, arity: 1 },
+  "horizontal-layout": { tk: 1, name: "HORIZONTAL_LAYOUT", cls: "function", length: 1, arity: 1 },
+  "show-word-count": { tk: 1, name: "SHOW_WORD_COUNT", cls: "function", length: 1, arity: 1 },
+  "show-word-limit": { tk: 1, name: "SHOW_WORD_LIMIT", cls: "function", length: 1, arity: 1 },
+  "submit-over-limit": { tk: 1, name: "SUBMIT_OVER_LIMIT", cls: "function", length: 1, arity: 1 },
+  "text-blocks": { tk: 1, name: "TEXT_BLOCKS", cls: "function", length: 1, arity: 1 },
+  "show-copy": { tk: 1, name: "SHOW_COPY", cls: "function", length: 1, arity: 1 },
+  "show-cut": { tk: 1, name: "SHOW_CUT", cls: "function", length: 1, arity: 1 },
+  "show-paste": { tk: 1, name: "SHOW_PASTE", cls: "function", length: 1, arity: 1 },
+  "duplicate-responses": { tk: 1, name: "DUPLICATE_RESPONSES", cls: "function", length: 1, arity: 1 },
+  "group-possible-responses": { tk: 1, name: "GROUP_POSSIBLE_RESPONSES", cls: "function", length: 1, arity: 1 },
+  stems: { tk: 1, name: "STEMS", cls: "function", length: 1, arity: 1 },
+  "horizontal-lines": { tk: 1, name: "HORIZONTAL_LINES", cls: "function", length: 1, arity: 1 },
+  "max-height": { tk: 1, name: "MAX_HEIGHT", cls: "function", length: 1, arity: 1 },
+  "min-height": { tk: 1, name: "MIN_HEIGHT", cls: "function", length: 1, arity: 1 },
+  "option-row-title": { tk: 1, name: "OPTION_ROW_TITLE", cls: "function", length: 1, arity: 1 },
+  "option-width": { tk: 1, name: "OPTION_WIDTH", cls: "function", length: 1, arity: 1 },
+  "possibility-list-position": { tk: 1, name: "POSSIBILITY_LIST_POSITION", cls: "function", length: 1, arity: 1 },
+  "show-drag-handle": { tk: 1, name: "SHOW_DRAG_HANDLE", cls: "function", length: 1, arity: 1 },
+  "stem-title": { tk: 1, name: "STEM_TITLE", cls: "function", length: 1, arity: 1 },
+  "stem-width": { tk: 1, name: "STEM_WIDTH", cls: "function", length: 1, arity: 1 },
+  type: { tk: 1, name: "TYPE", cls: "function", length: 1, arity: 1 },
+  wordwrap: { tk: 1, name: "WORDWRAP", cls: "function", length: 1, arity: 1 },
+  "matching-rule": { tk: 1, name: "MATCHING_RULE", cls: "function", length: 1, arity: 1 },
+  "max-score": { tk: 1, name: "MAX_SCORE", cls: "function", length: 1, arity: 1 },
+  "score-with-feedbackaide": { tk: 1, name: "SCORE_WITH_FEEDBACKAIDE", cls: "function", length: 1, arity: 1 },
+  "feedbackaide-passages": { tk: 1, name: "FEEDBACKAIDE_PASSAGES", cls: "function", length: 1, arity: 1 },
+
   // Leaf-object members (arity 1). Each returns a single-key record; the
   // enclosing collector merges a list of them into one object. Modelled on
   // L0169's `assess [method "value" expected 42]`.
