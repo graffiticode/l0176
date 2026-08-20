@@ -47,49 +47,49 @@ All attributes have defaults, so `mcq {}` produces a complete question.
 
 - `mcq` — Multiple choice:
   ```
-  mcq
+  mcq [
     stimulus "What is 2 + 2?"
     options ["3", "4", "5"]
     valid-response [1]
-    {}
+  ]
   ```
 
 - `shorttext` — Short typed response:
   ```
-  shorttext
+  shorttext [
     stimulus "What is the capital of France?"
     valid-response "Paris"
-    {}
+  ]
   ```
 
 - `longtext` — Rich text essay (manually scored):
   ```
-  longtext
+  longtext [
     stimulus "Explain the water cycle."
     max-length 500
     placeholder "Start writing here..."
-    {}
+  ]
   ```
 
 - `plaintext` — Plain text essay (manually scored):
   ```
-  plaintext
+  plaintext [
     stimulus "Describe your favorite book."
     max-length 300
     placeholder "Start writing here..."
-    {}
+  ]
   ```
 
 - `clozetext` — Fill-in-the-blank with typed responses. **On the aligned
   vocabulary** (see below): `stimulus` is the prompt, `template` is the passage
   carrying the `{{response}}` blanks, and scoring sits inside `validation`:
   ```
-  clozetext
+  clozetext [
     stimulus "Complete the sentence."
     template "The {{response}} is the powerhouse of the cell."
     validation
       valid-response [score 1 value ["mitochondria"]]
-      {}
+  ]
     {}
   ```
   One `valid-response` entry per `{{response}}` blank, in order. Do not list
@@ -99,20 +99,20 @@ All attributes have defaults, so `mcq {}` produces a complete question.
 
 - `clozeassociation` — Fill-in-the-blank with drag and drop (use `possible-responses`, not `options`):
   ```
-  clozeassociation
+  clozeassociation [
     stimulus "Drag the correct {{response}} here."
     possible-responses ["correct", "incorrect", "maybe"]
     valid-response ["correct"]
-    {}
+  ]
   ```
 
 - `clozedropdown` — Fill-in-the-blank with dropdown select (use `possible-responses`, not `options`; each blank gets its own list):
   ```
-  clozedropdown
+  clozedropdown [
     stimulus "Select the correct {{response}}."
     possible-responses [["correct", "incorrect", "maybe"]]
     valid-response ["correct"]
-    {}
+  ]
   ```
 
 - `clozeformula` — Fill-in-the-blank with math/formula input. One
@@ -120,40 +120,40 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   accept several expressions. `method` picks how the response is compared — see
   Scoring math responses:
   ```
-  clozeformula
+  clozeformula [
     stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\) {{response}}"
     valid-response ["4"]
     method "equivLiteral"
-    {}
+  ]
   ```
 
 - `choicematrix` — Grid of options by stems:
   ```
-  choicematrix
+  choicematrix [
     stimulus "Select the correct answer for each row."
     rows ["Statement 1", "Statement 2"]
     columns ["True", "False"]
     valid-response [[0], [1]]
-    {}
+  ]
   ```
 
 - `orderlist` — Drag items into correct order:
   ```
-  orderlist
+  orderlist [
     stimulus "Arrange in order."
     list ["First", "Second", "Third", "Fourth"]
     valid-response [0, 1, 2, 3]
-    {}
+  ]
   ```
 
 - `classification` — Sort items into categories (use `possible-responses` for the draggable items, `categories` for column headings):
   ```
-  classification
+  classification [
     stimulus "Sort the animals"
     possible-responses ["Dog", "Snake", "Cat", "Lizard"]
     categories ["Mammals", "Reptiles"]
     valid-response [[0, 2], [1, 3]]
-    {}
+  ]
   ```
 
 - `bowtie` — NGN/NCLEX bow-tie. Three source pools feed three drop zones
@@ -164,7 +164,7 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   `valid-response` is not 2-1-2, whose strings don't appear in the matching
   pool, or whose pools are too small is rejected at compile time:
   ```
-  bowtie
+  bowtie [
     stimulus "65-year-old with chest pain and diaphoresis."
     column-titles ["Actions to Take", "Condition Most Likely", "Parameters to Monitor"]
     possible-responses [
@@ -177,7 +177,7 @@ All attributes have defaults, so `mcq {}` produces a complete question.
       ["myocardial infarction"],
       ["ST segment changes", "troponin"]
     ]
-    {}
+  ]
   ```
 
 - `token-highlight` — Highlight tokens in a passage.
@@ -190,13 +190,13 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   token not present in the passage, or one listed in both `valid-response` and
   `distractors`, is rejected at compile time:
   ```
-  token-highlight
+  token-highlight [
     stimulus "Highlight the verbs."
     passage "The cat runs then jumps high."
     valid-response ["runs", "jumps"]
     distractors ["cat", "high"]
     max-selection 2
-    {}
+  ]
   ```
 
 - `custom` — Embed a separately deployed Graffiticode-language interaction.
@@ -209,11 +209,11 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   node, read it with `data use "<lang>"` (preferred) or `data {default}`
   and pass to `model` (see Pipeline Composition):
   ```
-  custom
+  custom [
     lang "0166"
     stimulus "Use the spreadsheet to compute the column totals."
     model data use "0166"
-    {}
+  ]
   ```
 
 ### Math Notation
@@ -240,20 +240,20 @@ attribute is an arity-2 boolean valid on every built-in question type
 (`clozeformula` sets it automatically). Example:
 
 ```
-mcq
+mcq [
   stimulus "Which product equals \\(3 \\times 4\\)?"
   options ["\\(10\\)", "\\(12\\)", "\\(14\\)"]
   valid-response [1]
   is-math true
-  {}
+]
 ```
 
 ```
-clozeformula
+clozeformula [
   stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\) {{response}}"
   valid-response ["4"]
   method "equivLiteral"
-  {}
+]
 ```
 
 ### Scoring math responses (`method`)
@@ -287,11 +287,11 @@ string is that blank's only accepted expression, and a nested list is every
 expression it accepts:
 
 ```
-clozeformula
+clozeformula [
   stimulus "Simplify \\(\\frac{4}{8}\\) to lowest terms: {{response}}"
   valid-response [["1/2", "0.5", "2/4"]]
   method "equivLiteral"
-  {}
+]
 ```
 
 Flat entries still mean one blank each — `valid-response ["11", "5"]` is a
@@ -360,13 +360,13 @@ list members are recognized:
 
 ```
 items [
-  item
+  item [
     metadata [
       tags { NGSS: "MS-LS1-2", Difficulty: "medium", DOK: 2, topic: "cellular-respiration" }
       notes "Variant A of the organelle misconception set"
     ]
     questions [
-      mcq
+      mcq [
         stimulus "What is the primary function of the mitochondria?"
         options [
           "To produce energy (ATP) through cellular respiration"
@@ -375,9 +375,9 @@ items [
           "To store and protect the cell's DNA"
         ]
         valid-response [0]
-        {}
-    ]
-    {}
+      ]
+    ] {}
+  ]
 ]..
 ```
 
@@ -393,7 +393,7 @@ Place a `metadata` block inside any question constructor's chain, alongside
 - `acknowledgements` — attribution string.
 
 ```
-mcq
+mcq [
   stimulus "What is the primary function of the mitochondria?"
   options [
     "To produce energy (ATP) through cellular respiration"
@@ -411,28 +411,28 @@ mcq
     ]
     notes "Targets the three most common organelle confusions."
   ]
-  {}
+]
 ```
 
 #### Both levels in one item
 
 ```
 items [
-  item
+  item [
     metadata [
       tags { NGSS: "MS-LS1-2", Difficulty: "medium", DOK: 2 }
     ]
     questions [
-      mcq
+      mcq [
         stimulus "..."
         options [...]
         valid-response [0]
         metadata [
           distractor-rationale ["..." "..." "..." "..."]
         ]
-        {}
-    ]
-    {}
+      ]
+    ] {}
+  ]
 ]..
 ```
 
@@ -448,18 +448,29 @@ items [
   (`distractor-rationale`, `acknowledgements`, question `notes`). These
   travel with the question if it is reused in a different item.
 
-### Attribute Chaining
+### Member lists
 
-Attributes are arity-2 functions that chain together, terminated by `{}`:
+A question is a **member list**: a bracketed sequence of attributes, each applied
+to its value. There is no `{}` inside a question — the terminator survives only on
+the blocks (`items`, `questions`), which are arity-2 and take a continuation.
 
 ```
-mcq
+mcq [
   stimulus "What is 2 + 2?"
   options ["3", "4", "5"]
   valid-response [1]
   instant-feedback true
-  {}
+]
 ```
+
+Every attribute is an arity-1 member, so the same word works at any depth. Three
+rules cover the whole language:
+
+| Learnosity shape | How to write it |
+| :--------------- | :-------------- |
+| object | a member list — `validation [scoring-type "exactMatch"]` |
+| array of objects | a list of member lists — `alt-responses [[value ["a"]] [value ["b"]]]` |
+| scalar, or array of scalars | the value itself — `case-sensitive false` |
 
 Common attributes: `stimulus`, `options`, `valid-response`, `alternative-response`, `instant-feedback`,
 `is-math`, `shuffle-options`, `multiple-responses`, `partial-credit`,
@@ -474,23 +485,24 @@ the object nests**. `clozetext` is converted; the rest still use the flat spelli
 listed above, and mixing the two on one question is a compile error.
 
 On a converted type there is no `alternative-response` and no `partial-credit`:
-scoring lives in a `validation` block that mirrors Learnosity's `validation` object.
+scoring lives in a `validation` member that mirrors Learnosity's `validation`
+object.
 
 ```
-clozetext
+clozetext [
   stimulus "Fill in the blanks."
   template "The {{response}} is the {{response}}."
-  validation
+  validation [
     scoring-type "partialMatch"
     valid-response [score 1 value ["cat", "mat"]]
     alt-responses [[score 1 value ["feline", "mat"]]]
-    {}
-  {}
+  ]
+]
 ```
 
-`score` and `value` are arity-1 members: a list of them merges into one object.
-`valid_response` is a single object, so `valid-response` takes one member list;
-`alt_responses` is an array, so `alt-responses` takes a list of member lists.
+`score` and `value` are members like any other. `valid_response` is a single
+object, so `valid-response` takes one member list; `alt_responses` is an array, so
+`alt-responses` takes a list of member lists.
 
 A converted type rejects attributes that are not its own — the legal set is the
 one Learnosity documents for that widget.
@@ -503,13 +515,13 @@ answer separately", "award points per correct selection" — chain
 `partial-credit true`:
 
 ```
-mcq
+mcq [
   stimulus "Select all the prime numbers."
   options ["2", "4", "7", "9"]
   valid-response [0, 2]
   multiple-responses true
   partial-credit true
-  {}
+]
 ```
 
 This emits Learnosity's `partialMatch` scoring type, which awards a fraction of
@@ -534,12 +546,12 @@ students check their work", "show a check button", "submit for feedback",
 "immediate feedback" — chain `instant-feedback true`:
 
 ```
-mcq
+mcq [
   stimulus "Which planet is closest to the Sun?"
   options ["Mercury", "Venus", "Earth", "Mars"]
   valid-response [0]
   instant-feedback true
-  {}
+]
 ```
 
 This emits Learnosity's `instant_feedback` flag, which shows per-response
@@ -593,11 +605,11 @@ set-var "learnosity-key" get-val-public "learnosity-key"
 set-var "learnosity-secret" get-val-private "learnosity-secret"
 learnosity
   items [
-    item
+    item [
       questions [mcq stimulus "Which planet is closest to the Sun?"
         options ["Mercury", "Venus", "Earth", "Mars"]
-        valid-response [0] {}]
-      {}
+        valid-response [0] {}] {}
+    ]
   ]
   save-to-itembank true
   {}..
@@ -639,15 +651,15 @@ right dialect.
 set-var "lrn-id" get-val-public "itemId"
 learnosity
   items [
-    item
+    item [
       questions [
-        custom
+        custom [
           lang "0166"
           stimulus "Use the spreadsheet to compute the column totals."
           model data use "0166"
-          {}
-      ]
-      {}
+        ]
+      ] {}
+    ]
   ] {}..
 ```
 
@@ -696,15 +708,15 @@ substitutes one row into the question text via `{{colname}}` placeholders.
   set-var "lrn-id" get-val-public "itemId"
   learnosity
     items [
-      item
+      item [
         params [
           { A1: "50", A2: "25" }
           { A1: "100", A2: "75" }
         ]
         questions [
           shorttext stimulus "What is {{A1}} + {{A2}}?" {}
-        ]
-        {}
+        ] {}
+      ]
     ] {}..
   ```
 
@@ -718,15 +730,15 @@ substitutes one row into the question text via `{{colname}}` placeholders.
   set-var "lrn-id" get-val-public "itemId"
   learnosity
     items [
-      item
+      item [
         questions [
-          mcq
+          mcq [
             stimulus "What color means go?"
             options ["Red", "Yellow", "Green"]
             valid-response [2]
-            {}
-        ]
-        {}
+          ]
+        ] {}
+      ]
     ] {}..
   ```
 
@@ -751,14 +763,14 @@ substitutes one row into the question text via `{{colname}}` placeholders.
   set-var "lrn-id" get-val-public "itemId"
   learnosity
     items [
-      item
+      item [
         questions [
-          clozetext
+          clozetext [
             stimulus "The {{response}} is the powerhouse of the cell."
             valid-response ["mitochondria"]
-            {}
-        ]
-        {}
+          ]
+        ] {}
+      ]
     ] {}..
   ```
 
@@ -767,15 +779,15 @@ substitutes one row into the question text via `{{colname}}` placeholders.
   set-var "lrn-id" get-val-public "itemId"
   learnosity
     items [
-      item
+      item [
         questions [
-          clozeformula
+          clozeformula [
             stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\) {{response}}"
             valid-response ["4"]
             method "equivLiteral"
-            {}
-        ]
-        {}
+          ]
+        ] {}
+      ]
     ] {}..
   ```
 
@@ -784,19 +796,19 @@ substitutes one row into the question text via `{{colname}}` placeholders.
   set-var "lrn-id" get-val-public "itemId"
   learnosity
     items [
-      item
+      item [
         questions [
           mcq
             stimulus "Pick one"
             options ["A", "B", "C"]
             valid-response [0]
             {},
-          shorttext
+          shorttext [
             stimulus "Type the answer"
             valid-response "answer"
-            {}
-        ]
-        {}
+          ]
+        ] {}
+      ]
     ] {}..
   ```
 
@@ -805,15 +817,15 @@ substitutes one row into the question text via `{{colname}}` placeholders.
   set-var "lrn-id" get-val-public "itemId"
   learnosity
     items [
-      item
+      item [
         questions [
-          custom
+          custom [
             lang "0166"
             stimulus "Use the spreadsheet to compute the column totals."
             model data use "0166"
-            {}
-        ]
-        {}
+          ]
+        ] {}
+      ]
     ] {}..
   ```
 

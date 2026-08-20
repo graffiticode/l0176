@@ -896,108 +896,124 @@ export const questionTypeBuilders: Record<string, (attrs: any) => any> = {
 
 // Registry mapping AST names to attribute field names and expected types
 // valueType: "string" | "number" | "boolean" | "array" | "any"
-export const attributeFields: Record<string, any> = {
-  STIMULUS: { field: "stimulus", valueType: "string" },
-  OPTIONS: { field: "options", valueType: "array" },
-  // VALID_RESPONSE is hand-written in compiler.ts: it accepts either a bare
-  // value (the older flat spelling) or a member list to merge.
-  ALTERNATIVE_RESPONSE: { field: "alternative_response", valueType: "array" },
-  INSTANT_FEEDBACK: { field: "instant_feedback", valueType: "boolean" },
-  IS_MATH: { field: "is_math", valueType: "boolean" },
-  SHUFFLE_OPTIONS: { field: "shuffle_options", valueType: "boolean" },
-  MULTIPLE_RESPONSES: { field: "multiple_responses", valueType: "boolean" },
-  PARTIAL_CREDIT: { field: "partial_credit", valueType: "boolean" },
-  CASE_SENSITIVE: { field: "case_sensitive", valueType: "boolean" },
-  MAX_LENGTH: { field: "max_length", valueType: "number" },
-  MAX_WORD_COUNT: { field: "max_length", valueType: "number" },
-  PLACEHOLDER: { field: "placeholder", valueType: "string" },
-  POSSIBLE_RESPONSES: { field: "possible_responses", valueType: "array" },
-  ROWS: { field: "rows", valueType: "array" },
-  COLUMNS: { field: "columns", valueType: "array" },
-  ORDER_LIST: { field: "list", valueType: "array" },
-  CATEGORIES: { field: "categories", valueType: "array" },
-  COLUMN_TITLES: { field: "column_titles", valueType: "array" },
-  PASSAGE: { field: "passage", valueType: "string" },
-  DISTRACTORS: { field: "distractors", valueType: "array" },
-  MAX_SELECTION: { field: "max_selection", valueType: "number" },
-  METHOD: { field: "method", valueType: "string", allowed: ["equivLiteral", "equivSymbolic", "equivValue", "isSimplified", "isFactorised", "isExpanded", "stringMatch", "isUnit"] },
-  ID: { field: "id", valueType: "string" },
-  LANG: { field: "lang", valueType: "string" },
-  MODEL: { field: "data", valueType: "any" },
-  METADATA: { field: "metadata", valueType: "array" },
-  PARAMS: { field: "params", valueType: "array" },
+// Every attribute is an arity-1 member returning a single-key record, so a
+// question, and every object inside it, is written as a member list. `shape`
+// says how to read the member's argument:
+//
+//   (none)        the value as written — a scalar, or a list of scalars
+//   "object"      a member list, merged into one object
+//   "objectArray" a list of member lists, each merged
+//
+// A member needs no builder involvement: the question-type transformer merges
+// the list and the field lands by name.
+export type MemberShape = "object" | "objectArray";
+export const memberFields: Record<string, { field: string; shape?: MemberShape }> = {
+  // Question-level content
+  STIMULUS: { field: "stimulus" },
+  STIMULUS_REVIEW: { field: "stimulus_review" },
+  INSTRUCTOR_STIMULUS: { field: "instructor_stimulus" },
+  TEMPLATE: { field: "template" },
+  IS_MATH: { field: "is_math" },
+  OPTIONS: { field: "options" },
+  POSSIBLE_RESPONSES: { field: "possible_responses" },
+  ORDER_LIST: { field: "list" },
+  PASSAGE: { field: "passage" },
+  DISTRACTORS: { field: "distractors" },
+  ROWS: { field: "rows" },
+  COLUMNS: { field: "columns" },
+  CATEGORIES: { field: "categories" },
+  COLUMN_TITLES: { field: "column_titles" },
 
-  // --- Aligned Learnosity fields ------------------------------------------
-  // Named for the field they emit, so the generated transformer places them
-  // with no builder involvement. Values that are records (validation,
-  // ui_style, response_container) need nothing special: the generic
-  // transformer already accepts a record built by a nested attribute chain.
-  TEMPLATE: { field: "template", valueType: "string" },
-  STIMULUS_REVIEW: { field: "stimulus_review", valueType: "string" },
-  INSTRUCTOR_STIMULUS: { field: "instructor_stimulus", valueType: "string" },
-  CHARACTER_MAP: { field: "character_map", valueType: "any" },
-  MULTIPLE_LINE: { field: "multiple_line", valueType: "boolean" },
-  SPELLCHECK: { field: "spellcheck", valueType: "boolean" },
-  IGNORE_LEADING_AND_TRAILING_SPACES: { field: "ignore_leading_and_trailing_spaces", valueType: "boolean" },
-  MATCH_ALL_POSSIBLE_RESPONSES: { field: "match_all_possible_responses", valueType: "boolean" },
-  FEEDBACK_ATTEMPTS: { field: "feedback_attempts", valueType: "number" },
+  // Behaviour
+  INSTANT_FEEDBACK: { field: "instant_feedback" },
+  FEEDBACK_ATTEMPTS: { field: "feedback_attempts" },
+  SHUFFLE_OPTIONS: { field: "shuffle_options" },
+  MULTIPLE_RESPONSES: { field: "multiple_responses" },
+  MAX_SELECTION: { field: "max_selection" },
+  CASE_SENSITIVE: { field: "case_sensitive" },
+  MAX_LENGTH: { field: "max_length" },
+  MAX_WORD_COUNT: { field: "max_length" },
+  PLACEHOLDER: { field: "placeholder" },
+  MULTIPLE_LINE: { field: "multiple_line" },
+  CHARACTER_MAP: { field: "character_map" },
+  SPELLCHECK: { field: "spellcheck" },
+  IGNORE_LEADING_AND_TRAILING_SPACES: { field: "ignore_leading_and_trailing_spaces" },
+  MATCH_ALL_POSSIBLE_RESPONSES: { field: "match_all_possible_responses" },
+  METHOD: { field: "method" },
+  PARTIAL_CREDIT: { field: "partial_credit" },
+  ALTERNATIVE_RESPONSE: { field: "alternative_response" },
 
-  VALIDATION: { field: "validation", valueType: "any" },
-  SCORING_TYPE: { field: "scoring_type", valueType: "string" },
-  ALLOW_NEGATIVE_SCORES: { field: "allow_negative_scores", valueType: "boolean" },
-  PENALTY: { field: "penalty", valueType: "number" },
-  MIN_SCORE_IF_ATTEMPTED: { field: "min_score_if_attempted", valueType: "number" },
-  UNSCORED: { field: "unscored", valueType: "boolean" },
-  AUTOMARKABLE: { field: "automarkable", valueType: "boolean" },
-  ENABLE_FULLWIDTH_SCORING: { field: "enable_fullwidth_scoring", valueType: "boolean" },
-  ACCENT_SENSITIVITY: { field: "accent_sensitivity", valueType: "any" },
-  ENABLED: { field: "enabled", valueType: "boolean" },
-  ACCENT_PENALTY_POINTS: { field: "accent_penalty_points", valueType: "number" },
-
-  UI_STYLE: { field: "ui_style", valueType: "any" },
-  FONTSIZE: { field: "fontsize", valueType: "string" },
-  VALIDATION_STEM_NUMERATION: { field: "validation_stem_numeration", valueType: "string" },
-  RESPONSE_CONTAINER: { field: "response_container", valueType: "any" },
-  RESPONSE_CONTAINERS: { field: "response_containers", valueType: "array" },
-  HEIGHT: { field: "height", valueType: "string" },
-  WIDTH: { field: "width", valueType: "string" },
-  INPUT_TYPE: { field: "input_type", valueType: "string" },
-  ARIA_LABEL: { field: "aria_label", valueType: "string" },
-};
-
-// Leaf-object members (arity 1). Each returns a single-key record; the
-// enclosing collector merges a list of them into one object. Modelled on
-// L0169's ASSESS/METHOD/EXPECTED (l0169/packages/api/src/compiler.js:328).
-export const validationMembers: Record<string, { field: string }> = {
+  // Nested objects
+  VALIDATION: { field: "validation", shape: "object" },
+  SCORING_TYPE: { field: "scoring_type" },
+  VALID_RESPONSE: { field: "valid_response", shape: "object" },
+  ALT_RESPONSES: { field: "alt_responses", shape: "objectArray" },
+  ALLOW_NEGATIVE_SCORES: { field: "allow_negative_scores" },
+  PENALTY: { field: "penalty" },
+  MIN_SCORE_IF_ATTEMPTED: { field: "min_score_if_attempted" },
+  UNSCORED: { field: "unscored" },
+  AUTOMARKABLE: { field: "automarkable" },
+  ENABLE_FULLWIDTH_SCORING: { field: "enable_fullwidth_scoring" },
+  ACCENT_SENSITIVITY: { field: "accent_sensitivity", shape: "object" },
+  ENABLED: { field: "enabled" },
+  ACCENT_PENALTY_POINTS: { field: "accent_penalty_points" },
   SCORE: { field: "score" },
   VALUE: { field: "value" },
+
+  UI_STYLE: { field: "ui_style", shape: "object" },
+  FONTSIZE: { field: "fontsize" },
+  VALIDATION_STEM_NUMERATION: { field: "validation_stem_numeration" },
+  RESPONSE_CONTAINER: { field: "response_container", shape: "object" },
+  RESPONSE_CONTAINERS: { field: "response_containers", shape: "objectArray" },
+  HEIGHT: { field: "height" },
+  WIDTH: { field: "width" },
+  INPUT_TYPE: { field: "input_type" },
+  ARIA_LABEL: { field: "aria_label" },
+
+  // Item level. `metadata` is a member at both question and item level, which is
+  // why `item` takes a member list too — a word has one arity.
+  METADATA: { field: "metadata" },
+  PARAMS: { field: "params" },
+
+  // custom
+  LANG: { field: "lang" },
+  MODEL: { field: "data" },
 };
 
-// The member field names, for the shape test that lets VALID_RESPONSE tell a
-// member list apart from a bare value.
-export const memberFields = new Set(Object.values(validationMembers).map((m) => m.field));
-
-// Merge a list of single-key member records into one object, per L0169.
-export function mergeMembers(members: any[]) {
-  return members.reduce((acc: any, item: any) => ({ ...acc, ...item }), {});
-}
-
-// True when every element is a single-key record whose key is a known member
-// field -- i.e. the list was written as `[score 1 value "x"]` rather than as a
-// bare array of answers.
+// True when every element is a single-key record — i.e. the list was written as
+// members (`[score 1 value "x"]`) rather than as a bare list of values.
+//
+// TRANSITIONAL. `valid-response` means a member list on a converted type and a
+// bare array on one that is not yet converted, and it is one word either way.
+// When the last type is converted this test goes and `object`-shaped members
+// become unconditional, which restores the sharper error message.
 export function isMemberList(v: any) {
   return (
     Array.isArray(v) &&
     v.length > 0 &&
     v.every(
       (e: any) =>
-        e != null &&
-        typeof e === "object" &&
-        !Array.isArray(e) &&
-        Object.keys(e).length === 1 &&
-        memberFields.has(Object.keys(e)[0]),
+        e != null && typeof e === "object" && !Array.isArray(e) && Object.keys(e).length === 1,
     )
   );
+}
+
+// Merge a list of single-key member records into one object, per L0169's ASSESS.
+// Throws rather than silently dropping, so a malformed list is a compile error.
+export function mergeMembers(members: any, where: string) {
+  if (!Array.isArray(members)) {
+    throw new Error(`${where}: expected a member list in [brackets], e.g. [score 1 value "x"].`);
+  }
+  const out: any = {};
+  for (const m of members) {
+    if (m == null || typeof m !== "object" || Array.isArray(m)) {
+      throw new Error(
+        `${where}: every entry must be an attribute applied to a value, e.g. [score 1 value "x"].`,
+      );
+    }
+    Object.assign(out, m);
+  }
+  return out;
 }
 
 // Metadata member constructors (arity 1). Each maps a DSL keyword to the
