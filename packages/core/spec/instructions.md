@@ -17,8 +17,8 @@ and renders them via a React frontend.
 - Use `author` to create Author API requests for item authoring
 - Use `init` to initialize a Learnosity API session by type
 - Use `hello` to display simple text output: `hello "Hello, world!"..`
-- `items` always takes a list of `item` objects: `items [item questions [...] {}]..`
-- When an assessment has multiple questions, place all questions in the same `item` rather than creating separate items: `items [item questions [mcq {}, shorttext {}] {}]..`
+- `items` always takes a list of `item` objects: `items [item [questions [...] {}]]..`
+- When an assessment has multiple questions, place all questions in the same `item` rather than creating separate items: `items [item [questions [mcq [], shorttext []] {}]]..`
 
 ### Question Type Functions
 
@@ -41,7 +41,7 @@ provide a higher-level interface with sensible defaults:
 - `custom` — Embed a separately deployed Graffiticode-language interaction (e.g. an L0166 spreadsheet). Set the interaction payload with the chained `model` attribute (preferred); see Pipeline Composition
 
 Each function takes a record built from chainable attribute keywords.
-All attributes have defaults, so `mcq {}` produces a complete question.
+All attributes have defaults, so `mcq []` produces a complete question.
 
 ### Question Type Templates
 
@@ -52,12 +52,15 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   mcq [
     stimulus "What is 2 + 2?"
     options [
-      [label "3" value "0"]
+      [label [label "3" value "0" value "0"]
+    ]
       [label "4" value "1"]
       [label "5" value "2"]
     ]
     validation [
-      valid-response [score 1 value ["1"]]
+    ]
+    validation [
+      valid-response [score 1 value ["score 1 value ["1""]]
     ]
   ]
   ```
@@ -70,7 +73,9 @@ All attributes have defaults, so `mcq {}` produces a complete question.
   shorttext [
     stimulus "What is the capital of France?"
     validation [
-      valid-response [score 1 value "Paris"]
+    ]
+    validation [
+      valid-response [score 1 value [score 1 value "Paris"]]
     ]
   ]
   ```
@@ -101,7 +106,9 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     stimulus "Complete the sentence."
     template "The {{response}} is the powerhouse of the cell."
     validation
-      valid-response [score 1 value ["mitochondria"]]
+    validation [
+      valid-response [score 1 value [score 1 value ["mitochondria"]]]
+    ]
   ]
     {}
   ```
@@ -118,7 +125,9 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     template "The {{response}} sat on the mat."
     possible-responses ["cat", "dog", "hat"]
     validation [
-      valid-response [score 1 value ["cat"]]
+    ]
+    validation [
+      valid-response [score 1 value [score 1 value ["cat"]]]
     ]
   ]
   ```
@@ -130,7 +139,9 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     template "The sky is {{response}}."
     possible-responses [["blue", "red", "green"]]
     validation [
-      valid-response [score 1 value ["blue"]]
+    ]
+    validation [
+      valid-response [score 1 value [score 1 value ["blue"]]]
     ]
   ]
   ```
@@ -144,11 +155,13 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     template "{{response}} minutes = {{response}} hour"
     is-math true
     validation [
-      valid-response [
         score 1
         value [ [[method "equivLiteral" value "60"]]
                 [[method "equivValue" value "1" options [decimal-places 2]]] ]
       ]
+    ]
+    validation [
+      valid-response [score 1 value []
     ]
   ]
   ```
@@ -165,7 +178,9 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     stems ["Statement 1", "Statement 2"]
     options ["True", "False"]
     validation [
-      valid-response [score 1 value [[0], [1]]]
+    ]
+    validation [
+      valid-response [score 1 value [score 1 value [[0], [1]]]]
     ]
   ]
   ```
@@ -178,7 +193,9 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     stimulus "Arrange in order."
     list ["First", "Second", "Third", "Fourth"]
     validation [
-      valid-response [score 1 value [0, 1, 2, 3]]
+    ]
+    validation [
+      valid-response [score 1 value [score 1 value [0, 1, 2, 3]]]
     ]
   ]
   ```
@@ -193,7 +210,9 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     possible-responses ["Dog", "Snake", "Cat", "Lizard"]
     ui-style [column-count 2 column-titles ["Mammals", "Reptiles"]]
     validation [
-      valid-response [score 1 value [[0, 2], [1, 3]]]
+    ]
+    validation [
+      valid-response [score 1 value [score 1 value [[0, 2], [1, 3]]]]
     ]
   ]
   ```
@@ -212,7 +231,9 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     ]
     ui-style [column-titles ["Actions to Take", "Condition", "Parameters"]]
     validation [
-      valid-response [score 1 value [[0], [2], [4, 5]]]
+    ]
+    validation [
+      valid-response [score 1 value [score 1 value [[0], [2], [4, 5]]]]
     ]
   ]
   ```
@@ -228,7 +249,9 @@ All attributes have defaults, so `mcq {}` produces a complete question.
     template "The <span class=\"lrn_token\">cat</span> <span class=\"lrn_token\">runs</span>."
     tokenization "custom"
     validation [
-      valid-response [score 1 value [1]]
+    ]
+    validation [
+      valid-response [score 1 value [score 1 value [1]]]
     ]
   ]
   ```
@@ -277,17 +300,26 @@ attribute is an arity-2 boolean valid on every built-in question type
 ```
 mcq [
   stimulus "Which product equals \\(3 \\times 4\\)?"
-  options ["\\(10\\)", "\\(12\\)", "\\(14\\)"]
-  valid-response [1]
+  options [
+    [label "\\(10\\)" value "0"]
+    [label "\\(12\\)" value "1"]
+    [label "\\(14\\)" value "2"]
+  ]
   is-math true
+  validation [
+    valid-response [score 1 value ["1"]]
+  ]
 ]
 ```
 
 ```
 clozeformula [
-  stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\) {{response}}"
-  valid-response ["4"]
-  method "equivLiteral"
+  stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\)"
+  template "{{response}}"
+  is-math true
+  validation [
+    valid-response [score 1 value [[[method "equivLiteral" value "4"]]]]
+  ]
 ]
 ```
 
@@ -330,7 +362,7 @@ clozeformula [
   stimulus "Simplify \(\frac{4}{8}\) to lowest terms: {{response}}"
   template "{{response}}"
   validation [
-    valid-response [value [[[method "equivLiteral" value "1/2"]]]]
+    valid-response [score 1 value [[[method "equivLiteral" value "1/2"]]]]
     alt-responses [[value [[[method "equivLiteral" value "0.5"]]]]
                    [value [[[method "equivLiteral" value "2/4"]]]]]
   ]
@@ -413,16 +445,18 @@ items [
       mcq [
         stimulus "What is the primary function of the mitochondria?"
         options [
-          "To produce energy (ATP) through cellular respiration"
+          [label "To produce energy (ATP) through cellular respiration"
           "To control what enters and exits the cell"
           "To build proteins using genetic instructions"
-          "To store and protect the cell's DNA"
+          "To store and protect the cell's DNA" value "0"]
         ]
-        valid-response [0]
+        validation [
+          valid-response [score 1 value ["0"]]
+        ]
       ]
     ] {}
   ]
-]..
+] {}..
 ```
 
 #### Question-level metadata
@@ -444,12 +478,11 @@ Place a `metadata` block inside any question constructor's chain, alongside
 mcq [
   stimulus "What is the primary function of the mitochondria?"
   options [
-    "To produce energy (ATP) through cellular respiration"
+    [label "To produce energy (ATP) through cellular respiration"
     "To control what enters and exits the cell"
     "To build proteins using genetic instructions"
-    "To store and protect the cell's DNA"
+    "To store and protect the cell's DNA" value "0"]
   ]
-  valid-response [0]
   metadata [
     distractor-rationale [
       "Correct — ATP production via cellular respiration."
@@ -458,6 +491,9 @@ mcq [
       "That's the role of the nucleus."
     ]
     notes "Targets the three most common organelle confusions."
+  ]
+  validation [
+    valid-response [score 1 value ["0"]]
   ]
 ]
 ```
@@ -473,15 +509,19 @@ items [
     questions [
       mcq [
         stimulus "..."
-        options [...]
-        valid-response [0]
+        options [
+          [label ... value "0"]
+        ]
         metadata [
           distractor-rationale ["..." "..." "..." "..."]
+        ]
+        validation [
+          valid-response [score 1 value ["0"]]
         ]
       ]
     ] {}
   ]
-]..
+] {}..
 ```
 
 #### Conventions
@@ -505,9 +545,15 @@ the blocks (`items`, `questions`), which are arity-2 and take a continuation.
 ```
 mcq [
   stimulus "What is 2 + 2?"
-  options ["3", "4", "5"]
-  valid-response [1]
+  options [
+    [label "3" value "0"]
+    [label "4" value "1"]
+    [label "5" value "2"]
+  ]
   instant-feedback true
+  validation [
+    valid-response [score 1 value ["1"]]
+  ]
 ]
 ```
 
@@ -537,8 +583,10 @@ clozetext [
   template "The {{response}} is the {{response}}."
   validation [
     scoring-type "partialMatch"
-    valid-response [score 1 value ["cat", "mat"]]
     alt-responses [[score 1 value ["feline", "mat"]]]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value ["cat", "mat"]]]
   ]
 ]
 ```
@@ -576,9 +624,16 @@ students check their work", "show a check button", "submit for feedback",
 ```
 mcq [
   stimulus "Which planet is closest to the Sun?"
-  options ["Mercury", "Venus", "Earth", "Mars"]
-  valid-response [0]
+  options [
+    [label "Mercury" value "0"]
+    [label "Venus" value "1"]
+    [label "Earth" value "2"]
+    [label "Mars" value "3"]
+  ]
   instant-feedback true
+  validation [
+    valid-response [score 1 value ["0"]]
+  ]
 ]
 ```
 
@@ -634,9 +689,20 @@ set-var "learnosity-secret" get-val-private "learnosity-secret"
 learnosity
   items [
     item [
-      questions [mcq stimulus "Which planet is closest to the Sun?"
-        options ["Mercury", "Venus", "Earth", "Mars"]
-        valid-response [0] {}] {}
+      questions [
+        mcq [
+          stimulus "Which planet is closest to the Sun?"
+          options [
+            [label "Mercury" value "mercury"]
+            [label "Venus" value "venus"]
+            [label "Earth" value "earth"]
+            [label "Mars" value "mars"]
+          ]
+          validation [
+            valid-response [score 1 value ["mercury"]]
+          ]
+        ]
+      ] {}
     ]
   ]
   save-to-itembank true
@@ -742,7 +808,7 @@ substitutes one row into the question text via `{{colname}}` placeholders.
           { A1: "100", A2: "75" }
         ]
         questions [
-          shorttext stimulus "What is {{A1}} + {{A2}}?" {}
+          shorttext [stimulus "What is {{A1}} + {{A2}}?"]
         ] {}
       ]
     ] {}..
@@ -762,8 +828,14 @@ substitutes one row into the question text via `{{colname}}` placeholders.
         questions [
           mcq [
             stimulus "What color means go?"
-            options ["Red", "Yellow", "Green"]
-            valid-response [2]
+            options [
+              [label "Red" value "0"]
+              [label "Yellow" value "1"]
+              [label "Green" value "2"]
+            ]
+            validation [
+              valid-response [score 1 value ["2"]]
+            ]
           ]
         ] {}
       ]
@@ -773,7 +845,7 @@ substitutes one row into the question text via `{{colname}}` placeholders.
 - MCQ with all defaults:
   ```
   set-var "lrn-id" get-val-public "itemId"
-  learnosity items [item questions [mcq {}] {}] {}..
+  learnosity items [item [questions [mcq []] {}]] {}..
   ```
 
 - Multiple items:
@@ -781,8 +853,8 @@ substitutes one row into the question text via `{{colname}}` placeholders.
   set-var "lrn-id" get-val-public "itemId"
   learnosity
     items [
-      item questions [mcq {}] {},
-      item questions [shorttext {}] {}
+      item [questions [mcq []] {}],
+      item [questions [shorttext []] {}]
     ] {}..
   ```
 
@@ -795,7 +867,9 @@ substitutes one row into the question text via `{{colname}}` placeholders.
         questions [
           clozetext [
             stimulus "The {{response}} is the powerhouse of the cell."
-            valid-response ["mitochondria"]
+            validation [
+              valid-response [score 1 value ["mitochondria"]]
+            ]
           ]
         ] {}
       ]
@@ -810,9 +884,12 @@ substitutes one row into the question text via `{{colname}}` placeholders.
       item [
         questions [
           clozeformula [
-            stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\) {{response}}"
-            valid-response ["4"]
-            method "equivLiteral"
+            stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\)"
+            template "{{response}}"
+            is-math true
+            validation [
+              valid-response [score 1 value [[[method "equivLiteral" value "4"]]]]
+            ]
           ]
         ] {}
       ]
@@ -826,14 +903,22 @@ substitutes one row into the question text via `{{colname}}` placeholders.
     items [
       item [
         questions [
-          mcq
+          mcq [
             stimulus "Pick one"
-            options ["A", "B", "C"]
-            valid-response [0]
-            {},
+            options [
+              [label "A" value "a"]
+              [label "B" value "b"]
+              [label "C" value "c"]
+            ]
+            validation [
+              valid-response [score 1 value ["a"]]
+            ]
+          ],
           shorttext [
             stimulus "Type the answer"
-            valid-response "answer"
+            validation [
+              valid-response [score 1 value "answer"]
+            ]
           ]
         ] {}
       ]

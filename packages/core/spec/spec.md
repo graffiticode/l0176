@@ -27,7 +27,7 @@ semantics and base library can be found here:
 
 Each question type function takes a record of attributes (built via chainable
 attribute keywords) and produces a Learnosity question JSON object. Attributes
-not provided are filled with sensible defaults, so `mcq {}` produces a
+not provided are filled with sensible defaults, so `mcq []` produces a
 complete renderable question.
 
 | Function | Arity | Learnosity Type | Description |
@@ -92,11 +92,15 @@ otherwise.
 ```
 mcq [
   stimulus "Select all the prime numbers."
-  options [[label "2" value "2"] [label "4" value "4"] [label "7" value "7"]]
+  options [
+    [label [label "2" value "2"] [label "4" value "4"] [label "7" value "7"] value "0"]
+  ]
   multiple-responses true
   validation [
     scoring-type "partialMatch"
-    valid-response [score 1 value ["2", "7"]]
+  ]
+  validation [
+    valid-response [score 1 value ["score 1 value ["2", "7""]]
   ]
 ]
 ```
@@ -148,8 +152,14 @@ learnosity
       questions [
         mcq [
           stimulus "What is 2 + 2?"
-          options ["3", "4", "5"]
-          valid-response [1]
+          options [
+            [label "3" value "0"]
+            [label "4" value "1"]
+            [label "5" value "2"]
+          ]
+          validation [
+            valid-response [score 1 value ["1"]]
+          ]
         ]
       ] {}
     ]
@@ -175,8 +185,15 @@ items [
     questions [
       mcq [
         stimulus "What is the capital of France?"
-        options ["Paris", "London", "Berlin", "Madrid"]
-        valid-response [0]
+        options [
+          [label "Paris" value "0"]
+          [label "London" value "1"]
+          [label "Berlin" value "2"]
+          [label "Madrid" value "3"]
+        ]
+        validation [
+          valid-response [score 1 value ["0"]]
+        ]
       ]
     ] {}
   ]
@@ -201,7 +218,7 @@ id "mitochondria-mcq"
 set-var "learnosity-key" get-val-public "learnosityKey"
 set-var "learnosity-secret" get-val-private "learnositySecret"
 items [
-  item questions [mcq stimulus "..." options [...] valid-response [0] {}] {}
+  item [questions [mcq stimulus "..." options [...] valid-response [0] {}] {}]
 ]
   save-to-itembank true
   {}
@@ -214,7 +231,7 @@ of chained attributes (questions, features, layout).
 
 ```
 item [
-  questions [mcq {}] {}
+  questions [mcq []] {}
 ]
 ```
 
@@ -227,8 +244,14 @@ list of question objects and a continuation.
 questions [
   mcq [
     stimulus "What is 2 + 2?"
-    options ["3", "4", "5"]
-    valid-response [1]
+    options [
+      [label "3" value "0"]
+      [label "4" value "1"]
+      [label "5" value "2"]
+    ]
+    validation [
+      valid-response [score 1 value ["1"]]
+    ]
   ]
 ] {}
 ```
@@ -303,7 +326,9 @@ shorttext [
   stimulus "What is the chemical symbol for water?"
   case-sensitive false
   validation [
-    valid-response [score 1 value "H2O"]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value "H2O"]]
   ]
 ]
 ```
@@ -346,7 +371,9 @@ clozetext [
   case-sensitive false
   validation [
     scoring-type "partialMatch"
-    valid-response [score 1 value ["cat", "mat"]]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value ["cat", "mat"]]]
   ]
 ]
 ```
@@ -364,8 +391,10 @@ is its own member list, and each must cover every `{{response}}` marker:
 clozetext [
   template "The capital of France is {{response}}."
   validation [
-    valid-response [score 1 value ["Paris"]]
     alt-responses [[score 1 value ["Paree"]]]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value ["Paris"]]]
   ]
 ]
 ```
@@ -398,7 +427,9 @@ clozeassociation [
   template "{{response}} is the capital of France."
   possible-responses ["Paris", "London", "Berlin"]
   validation [
-    valid-response [score 1 value ["Paris"]]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value ["Paris"]]]
   ]
 ]
 ```
@@ -415,7 +446,9 @@ clozedropdown [
   template "The sky is {{response}}."
   possible-responses [["blue", "red", "green"]]
   validation [
-    valid-response [score 1 value ["blue"]]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value ["blue"]]]
   ]
 ]
 ```
@@ -438,12 +471,14 @@ clozeformula [
   ui-style [type "block-on-focus-keyboard"]
   validation [
     scoring-type "exactMatch"
-    valid-response [
       score 1
       value [ [[method "equivLiteral" value "70"]]
               [[method "equivValue" value "1" options [decimal-places 2]]]
               [[method "equivLiteral" value "10"]] ]
     ]
+  ]
+  validation [
+    valid-response [score 1 value []
   ]
 ]
 ```
@@ -459,9 +494,11 @@ for: each entry is a complete answer set covering every blank.
 clozeformula [
   template "Simplify 4/8: {{response}}"
   validation [
-    valid-response [value [[[method "equivLiteral" value "1/2"]]]]
     alt-responses [[value [[[method "equivLiteral" value "0.5"]]]]
                    [value [[[method "equivLiteral" value "2/4"]]]]]
+  ]
+  validation [
+    valid-response [score 1 value [value [[[method "equivLiteral" value "1/2"]]]]]
   ]
 ]
 ```
@@ -493,7 +530,9 @@ choicematrix [
   stems ["The sun is a star", "The moon is a planet"]
   options ["True", "False"]
   validation [
-    valid-response [score 1 value [[0], [1]]]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value [[0], [1]]]]
   ]
 ]
 ```
@@ -510,7 +549,9 @@ orderlist [
   list ["World War II", "World War I", "Moon Landing", "Internet"]
   validation [
     scoring-type "partialMatchPairwise"
-    valid-response [score 1 value [1, 0, 2, 3]]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value [1, 0, 2, 3]]]
   ]
 ]
 ```
@@ -531,7 +572,9 @@ classification [
     column-titles ["Mammals", "Reptiles"]
   ]
   validation [
-    valid-response [score 1 value [[0, 2], [1, 3]]]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value [[0, 2], [1, 3]]]]
   ]
 ]
 ```
@@ -566,7 +609,9 @@ bowtie [
     column-titles ["Actions to Take", "Condition Most Likely", "Parameters to Monitor"]
   ]
   validation [
-    valid-response [score 1 value [[0, 3], [4], [7, 9]]]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value [[0, 3], [4], [7, 9]]]]
   ]
 ]
 ```
@@ -591,7 +636,9 @@ token-highlight [
   tokenization "custom"
   validation [
     scoring-type "partialMatch"
-    valid-response [score 1 value [1, 2]]
+  ]
+  validation [
+    valid-response [score 1 value [score 1 value [1, 2]]]
   ]
 ]
 ```
@@ -702,9 +749,15 @@ learnosity
       questions [
         mcq [
           stimulus "What color means go?"
-          options ["Red", "Yellow", "Green"]
-          valid-response [2]
+          options [
+            [label "Red" value "0"]
+            [label "Yellow" value "1"]
+            [label "Green" value "2"]
+          ]
           instant-feedback true
+          validation [
+            valid-response [score 1 value ["2"]]
+          ]
         ]
       ] {}
     ]
@@ -719,15 +772,23 @@ learnosity
   items [
     item [
       questions [
-        mcq
+        mcq [
           stimulus "What is 2 + 2?"
-          options ["3", "4", "5"]
-          valid-response [1]
-          {},
+          options [
+            [label "3" value "0"]
+            [label "4" value "1"]
+            [label "5" value "2"]
+          ]
+          validation [
+            valid-response [score 1 value ["1"]]
+          ]
+        ],
         shorttext [
           stimulus "Spell the word for the number 4."
-          valid-response "four"
           case-sensitive false
+          validation [
+            valid-response [score 1 value "four"]
+          ]
         ]
       ] {}
     ]
@@ -738,7 +799,7 @@ Question with all defaults (renders a mock MCQ):
 
 ```
 set-var "lrn-id" get-val-public "itemId"
-learnosity items [item questions [mcq {}] {}] {}..
+learnosity items [item [questions [mcq []] {}]] {}..
 ```
 
 Multiple items:
@@ -747,8 +808,8 @@ Multiple items:
 set-var "lrn-id" get-val-public "itemId"
 learnosity
   items [
-    item questions [mcq {}] {},
-    item questions [shorttext {}] {}
+    item [questions [mcq []] {}],
+    item [questions [shorttext []] {}]
   ] {}..
 ```
 

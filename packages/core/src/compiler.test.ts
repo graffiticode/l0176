@@ -286,7 +286,7 @@ describe("clozetext (aligned vocabulary)", () => {
     await expect(
       compile('set-var "lrn-id" "t" questions [clozetext [valid-response ["x"]]] {}..')
     ).rejects.toContainEqual(expect.objectContaining({
-      message: expect.stringContaining("valid-response: every entry must be an attribute applied to a value"),
+      message: expect.stringContaining("`valid-response` belongs inside `validation`"),
     }));
   });
 
@@ -304,7 +304,7 @@ describe("clozetext (aligned vocabulary)", () => {
     await expect(
       compile('set-var "lrn-id" "t" questions [clozetext [template "A {{response}}." validation [alt-responses ["x"]]]] {}..')
     ).rejects.toContainEqual(expect.objectContaining({
-      message: expect.stringContaining("alt-responses[1]: expected a member list"),
+      message: expect.stringContaining("validation.alt-responses takes a list of member lists"),
     }));
   });
 

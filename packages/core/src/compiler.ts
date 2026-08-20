@@ -20,6 +20,7 @@ import {
   memberFields,
   mergeMembers,
   inferShape,
+  isMemberList,
 } from "./question-types.js";
 
 // Unwrap L0000's internal Record representation ({_type:"record", _entries:Map})
@@ -527,13 +528,19 @@ for (const [name, meta] of Object.entries(memberFields)) {
       const where = meta.field.replace(/_/g, "-");
       try {
         let value = raw;
+        // A value that is not shaped the way this member expects is passed
+        // through rather than rejected here. The builder reports it instead,
+        // because it knows the question type: `valid-response [0]` on an mcq is
+        // an attribute in the wrong place, not a badly written member list, and
+        // only the builder can tell those apart.
         if (meta.shape === "object") {
-          value = mergeMembers(raw, where);
-        } else if (meta.shape === "objectArray") {
-          if (!Array.isArray(raw)) {
-            throw new Error(`${where}: expected a list of member lists, e.g. [[score 1 value "x"]].`);
+          if (Array.isArray(raw) && (raw.length === 0 || isMemberList(raw))) {
+            value = mergeMembers(raw, where);
           }
-          value = raw.map((entry: any, i: number) => mergeMembers(entry, `${where}[${i + 1}]`));
+        } else if (meta.shape === "objectArray") {
+          if (Array.isArray(raw) && raw.every(isMemberList)) {
+            value = raw.map((entry: any, i: number) => mergeMembers(entry, `${where}[${i + 1}]`));
+          }
         } else if (meta.shape === "infer") {
           value = inferShape(raw, where);
         }

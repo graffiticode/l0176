@@ -148,12 +148,83 @@ function assertKnownAttributes(type: string, key: string, attrs: any) {
     return;
   }
   const unknown = Object.keys(attrs).filter((k) => !allowed.includes(k));
-  if (unknown.length > 0) {
-    throw new Error(
-      `${type}: ${unknown.map((u) => `\`${u}\``).join(", ")} ` +
-        `${unknown.length === 1 ? "is not an attribute" : "are not attributes"} of ${type}. ` +
-        `It takes: ${allowed.join(", ")}.`,
-    );
+  if (unknown.length === 0) {
+    return;
+  }
+  const kebab = (s: string) => s.replace(/_/g, "-");
+  // The commonest way to get here is scoring written at the top of the question
+  // instead of inside `validation`, which is where every scored type keeps it.
+  const misplaced = unknown.filter((k) => fieldsOfValidation().has(k));
+  const hint = misplaced.length > 0
+    ? ` ${misplaced.map(kebab).map((m) => `\`${m}\``).join(" and ")} ` +
+      `${misplaced.length === 1 ? "belongs" : "belong"} inside \`validation\`, ` +
+      `e.g. validation [valid-response [score 1 value "x"]].`
+    : "";
+  throw new Error(
+    `${type}: ${unknown.map((u) => `\`${kebab(u)}\``).join(", ")} ` +
+      `${unknown.length === 1 ? "is not an attribute" : "are not attributes"} of ${type}. ` +
+      `It takes: ${allowed.map(kebab).join(", ")}.${hint}`,
+  );
+}
+
+// Fields whose value is an object, or an array of objects, per memberFields.
+// Derived rather than restated so the two cannot drift apart.
+// The members that live inside `validation`, for the misplacement hint.
+const VALIDATION_FIELDS = [
+  "scoring_type", "valid_response", "alt_responses", "allow_negative_scores",
+  "penalty", "min_score_if_attempted", "unscored", "automarkable", "max_score",
+  "enable_fullwidth_scoring", "accent_sensitivity",
+];
+let validationFields: Set<string> | undefined;
+function fieldsOfValidation() {
+  if (!validationFields) validationFields = new Set(VALIDATION_FIELDS);
+  return validationFields;
+}
+
+// Computed on first use: memberFields is declared further down the file.
+let shapeSets: { object: Set<string>; objectArray: Set<string> } | undefined;
+function fieldsByShape() {
+  if (!shapeSets) {
+    const of = (s: string) =>
+      new Set(Object.values(memberFields).filter((m) => m.shape === s).map((m) => m.field));
+    shapeSets = { object: of("object"), objectArray: of("objectArray") };
+  }
+  return shapeSets;
+}
+
+const isPlainObject = (v: any) => v != null && typeof v === "object" && !Array.isArray(v);
+
+function describe(v: any) {
+  if (Array.isArray(v)) return `a list of ${v.length} value${v.length === 1 ? "" : "s"}`;
+  if (v === null || v === undefined) return "nothing";
+  return `a ${typeof v}`;
+}
+
+// Report a member written with the wrong shape, naming the question type and the
+// path to it. Runs *after* assertKnownAttributes so that an attribute in the
+// wrong place is reported as misplaced rather than as misshapen —
+// `valid-response [0]` on an mcq is the former, and "expected a member list"
+// would send the author to fix the wrong thing.
+function assertMemberShapes(type: string, value: any, path: string) {
+  if (!isPlainObject(value)) return;
+  for (const [field, v] of Object.entries(value)) {
+    const name = field.replace(/_/g, "-");
+    const where = path ? `${path}.${name}` : name;
+    if (fieldsByShape().object.has(field) && !isPlainObject(v)) {
+      throw new Error(
+        `${type}: ${where} takes a member list — ${name} [score 1 value "x"] — got ${describe(v)}.`,
+      );
+    }
+    if (fieldsByShape().objectArray.has(field)) {
+      if (!Array.isArray(v) || !v.every(isPlainObject)) {
+        throw new Error(
+          `${type}: ${where} takes a list of member lists — ${name} [[score 1 value "x"]] — got ${describe(v)}.`,
+        );
+      }
+      v.forEach((entry: any, i: number) => assertMemberShapes(type, entry, `${where}[${i + 1}]`));
+      continue;
+    }
+    assertMemberShapes(type, v, where);
   }
 }
 
@@ -201,6 +272,7 @@ function assertScoringType(type: string, validation: any) {
 export function buildMcq(attrs: any) {
   const merged = withDefaults("mcq", attrs);
   assertKnownAttributes("mcq", "MCQ", merged);
+  assertMemberShapes("mcq", merged, "");
   assertScoringType("mcq", merged.validation);
   return {
     ...merged,
@@ -211,6 +283,7 @@ export function buildMcq(attrs: any) {
 export function buildShorttext(attrs: any) {
   const merged = withDefaults("shorttext", attrs);
   assertKnownAttributes("shorttext", "SHORTTEXT", merged);
+  assertMemberShapes("shorttext", merged, "");
   assertScoringType("shorttext", merged.validation);
   return {
     ...merged,
@@ -223,6 +296,7 @@ export function buildShorttext(attrs: any) {
 export function buildLongtext(attrs: any) {
   const merged = withDefaults("longtext", attrs);
   assertKnownAttributes("longtext", "LONGTEXT", merged);
+  assertMemberShapes("longtext", merged, "");
   assertScoringType("longtext", merged.validation);
   return {
     ...merged,
@@ -233,6 +307,7 @@ export function buildLongtext(attrs: any) {
 export function buildPlaintext(attrs: any) {
   const merged = withDefaults("plaintext", attrs);
   assertKnownAttributes("plaintext", "PLAINTEXT", merged);
+  assertMemberShapes("plaintext", merged, "");
   assertScoringType("plaintext", merged.validation);
   return {
     ...merged,
@@ -243,6 +318,7 @@ export function buildPlaintext(attrs: any) {
 export function buildClozetext(attrs: any) {
   const merged = withDefaults("clozetext", attrs);
   assertKnownAttributes("clozetext", "CLOZETEXT", merged);
+  assertMemberShapes("clozetext", merged, "");
   assertScoringType("clozetext", merged.validation);
   return {
     type: "clozetext",
@@ -255,6 +331,7 @@ export function buildClozetext(attrs: any) {
 export function buildClozeassociation(attrs: any) {
   const merged = withDefaults("clozeassociation", attrs);
   assertKnownAttributes("clozeassociation", "CLOZEASSOCIATION", merged);
+  assertMemberShapes("clozeassociation", merged, "");
   assertScoringType("clozeassociation", merged.validation);
   return {
     ...merged,
@@ -266,6 +343,7 @@ export function buildClozeassociation(attrs: any) {
 export function buildClozedropdown(attrs: any) {
   const merged = withDefaults("clozedropdown", attrs);
   assertKnownAttributes("clozedropdown", "CLOZEDROPDOWN", merged);
+  assertMemberShapes("clozedropdown", merged, "");
   assertScoringType("clozedropdown", merged.validation);
   return {
     ...merged,
@@ -288,6 +366,7 @@ export function buildClozedropdown(attrs: any) {
 export function buildClozeformula(attrs: any) {
   const merged = withDefaults("clozeformula", attrs);
   assertKnownAttributes("clozeformula", "CLOZEFORMULA", merged);
+  assertMemberShapes("clozeformula", merged, "");
   assertScoringType("clozeformula", merged.validation);
   return {
     ...merged,
@@ -298,6 +377,7 @@ export function buildClozeformula(attrs: any) {
 export function buildChoicematrix(attrs: any) {
   const merged = withDefaults("choicematrix", attrs);
   assertKnownAttributes("choicematrix", "CHOICEMATRIX", merged);
+  assertMemberShapes("choicematrix", merged, "");
   assertScoringType("choicematrix", merged.validation);
   return {
     ...merged,
@@ -308,6 +388,7 @@ export function buildChoicematrix(attrs: any) {
 export function buildOrderlist(attrs: any) {
   const merged = withDefaults("orderlist", attrs);
   assertKnownAttributes("orderlist", "ORDERLIST", merged);
+  assertMemberShapes("orderlist", merged, "");
   assertScoringType("orderlist", merged.validation);
   return {
     ...merged,
@@ -320,6 +401,7 @@ export function buildOrderlist(attrs: any) {
 export function buildClassification(attrs: any) {
   const merged = withDefaults("classification", attrs);
   assertKnownAttributes("classification", "CLASSIFICATION", merged);
+  assertMemberShapes("classification", merged, "");
   assertScoringType("classification", merged.validation);
   return {
     ...merged,
@@ -333,6 +415,7 @@ export function buildClassification(attrs: any) {
 export function buildBowtie(attrs: any) {
   const merged = withDefaults("bowtie", attrs);
   assertKnownAttributes("bowtie", "BOWTIE", merged);
+  assertMemberShapes("bowtie", merged, "");
   assertScoringType("bowtie", merged.validation);
   return {
     ...merged,
@@ -369,6 +452,7 @@ export function buildCustom(attrs: any) {
 export function buildTokenHighlight(attrs: any) {
   const merged = withDefaults("tokenhighlight", attrs);
   assertKnownAttributes("tokenhighlight", "TOKEN_HIGHLIGHT", merged);
+  assertMemberShapes("tokenhighlight", merged, "");
   assertScoringType("tokenhighlight", merged.validation);
   return {
     ...merged,

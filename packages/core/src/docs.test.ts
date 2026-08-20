@@ -1,7 +1,7 @@
 import { test, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { parser } from "@graffiticode/parser";
-import { lexicon } from "./index.js";
+import { compiler, lexicon } from "./index.js";
 function blocks(path: string) {
   const out: string[] = []; let cur: string[] | null = null;
   for (const l of readFileSync(path, "utf-8").split("\n")) {
@@ -65,4 +65,58 @@ test("no retired keyword is still documented", () => {
     }
   }
   expect(offences, `retired keywords still documented:\n${offences.join("\n")}`).toEqual([]);
+});
+
+const QUESTION_TYPES = [
+  "mcq", "shorttext", "longtext", "plaintext", "clozetext", "clozeassociation",
+  "clozedropdown", "clozeformula", "choicematrix", "orderlist", "classification",
+  "bowtie", "custom", "token-highlight",
+];
+
+// Signing needs credentials but does not care whether they are real, so the
+// whole pipeline runs and every builder gets exercised.
+const CONFIG = { learnosity: { key: "test_key", secret: "test_secret_0123456789" } };
+
+async function compileFragment(src: string) {
+  const code = await parser.parse(176, src, lexicon);
+  return await new Promise<void>((res, rej) =>
+    compiler.compile(code, {}, CONFIG, (e: any) => {
+      const errs = Array.isArray(e) ? e.filter(Boolean) : e ? [e] : [];
+      if (errs.length) rej(errs); else res();
+    }));
+}
+
+test("every program fragment in spec/ compiles, not merely parses", async () => {
+  // Parsing is not enough: `valid-response [0]` on an mcq parses perfectly well
+  // and fails in the builder. Twenty stale examples survived the conversion
+  // behind a parse-only guard, and the code generator wrote from them.
+  const bad: string[] = [];
+  let ok = 0;
+  for (const f of ["spec/spec.md", "spec/instructions.md"]) {
+    for (const b of blocks(f)) {
+      const src = b.trim();
+      if (!src || src.includes("...")) continue;
+      const head = src.split(/[\s[]/)[0];
+      let prog = src.endsWith("..")
+        ? src
+        : QUESTION_TYPES.includes(head)
+          ? `set-var "lrn-id" "t" questions [${src}] {}..`
+          : null;
+      if (prog === null) continue;
+      // `get-val-public` reads task data the harness has no way to supply, and
+      // an `author` fragment may omit the lrn-id its own section establishes.
+      // Neither is staleness; substitute so the rest of the program is exercised.
+      prog = prog.replace(/get-val-(public|private)\s+"[^"]*"/g, '"test-item-id"');
+      if (!/set-var\s+"lrn-id"/.test(prog)) prog = `set-var "lrn-id" "t" ${prog}`;
+      // save-to-itembank writes to the Learnosity Data API for real. The guard
+      // is about shape, so drop it rather than making a network call from a test.
+      prog = prog.replace(/save-to-itembank\s+true/g, "save-to-itembank false");
+      try { await compileFragment(prog); ok++; }
+      catch (e: any) {
+        bad.push(`\n--- ${f}\n${src}\n  -> ${(e?.[0]?.message ?? JSON.stringify(e)).slice(0, 120)}`);
+      }
+    }
+  }
+  expect(bad, `${bad.length} of ${ok + bad.length} fragments failed to compile:\n${bad.join("\n")}`)
+    .toEqual([]);
 });
