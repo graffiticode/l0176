@@ -619,7 +619,7 @@ the compiler synthesizes `custom_type` and the question / scorer / CSS
 URLs from `https://l<lang>.graffiticode.org/...`.
 
 The continuation record passes through onto the emitted question object
-as peers of `type` (and, once wrapped through items, `response_id`). The
+as peers of `type` and `response_id`. The
 `data` field — Learnosity's per-question payload string — is special-
 cased: a record value is JSON-stringified for the SDK; a string passes
 through as-is.

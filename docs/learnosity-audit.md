@@ -692,6 +692,16 @@ take shapes L0176 cannot emit. Compiling proves the shape; only a render proves
 the behaviour, and that matters more now than it did, because transcription means
 L0176 checks very little of what it emits.
 
+**The top-level `questions [...]` path could not render, and now does.** It built
+one array — the item-bank record shape, `{type, reference, data}` — and used it
+as the render payload too. Learnosity rejects that activity outright ("the
+question object at index 0 is missing the response_id attribute"), so a program
+whose top level was `questions` rendered nothing at all; only the `items` path
+worked, because `createItems` happened to build a second, inline array for the
+preview. `createQuestions` now builds both as well: records for the Data API
+write, and `{response_id, type, ...fields}` inline for the Questions API.
+`items.ts` consumes that output and was re-keyed to match.
+
 What the language gives up by transcribing, deliberately, in one place so it is
 not a surprise:
 

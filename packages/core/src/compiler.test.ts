@@ -20,11 +20,13 @@ describe("questions path", () => {
   test("mcq with defaults produces a Learnosity questions envelope", async () => {
     const out = await compile('set-var "lrn-id" "t" questions [mcq []] {}..');
     expect(out.type).toBe("questions");
+    // The Questions API renders from inline question data keyed by response_id.
+    // The item-bank record shape ({type, reference, data}) is built separately
+    // for the Data API write — handed to the renderer it is rejected outright.
     const q = out.data.questions[0];
     expect(q.type).toBe("mcq");
-    expect(q.reference).toBe("artcompiler-mcq-t-0");
-    expect(q.data.type).toBe("mcq");
-    expect(q.data.options).toHaveLength(4);
+    expect(q.response_id).toBe("artcompiler-mcq-t-0");
+    expect(q.options).toHaveLength(4);
   });
 
   test("mcq options are the {label, value} objects Learnosity documents", async () => {
@@ -36,7 +38,7 @@ describe("questions path", () => {
         options [[label "Red" value "red"] [label "Violet" value "violet"]]
         validation [valid-response [score 1 value ["violet"]]]
       ]] {}..`);
-    const d = out.data.questions[0].data;
+    const d = out.data.questions[0];
     expect(d.options).toEqual([
       { label: "Red", value: "red" },
       { label: "Violet", value: "violet" },
@@ -59,7 +61,7 @@ describe("questions path", () => {
         multiple-responses true
         validation [scoring-type "partialMatch" valid-response [score 1 value ["0", "1"]]]
       ]] {}..`);
-    expect(out.data.questions[0].data.validation.scoring_type).toBe("partialMatch");
+    expect(out.data.questions[0].validation.scoring_type).toBe("partialMatch");
   });
 
   test("partial-credit is gone from the language, not merely from a type", async () => {
@@ -78,7 +80,7 @@ describe("questions path", () => {
         tokenization "custom"
         validation [valid-response [score 1 value [1]]]
       ]] {}..`);
-    const d = out.data.questions[0].data;
+    const d = out.data.questions[0];
     expect(d.type).toBe("tokenhighlight");
     expect(d.template).toContain('<span class="lrn_token">runs</span>');
     expect(d.validation.valid_response.value).toEqual([1]);
@@ -88,7 +90,7 @@ describe("questions path", () => {
   // but sources saved under the old spelling must keep compiling identically.
   test("the deprecated hot-text alias still compiles as token-highlight", async () => {
     const out = await compile('set-var "lrn-id" "t" questions [hot-text [stimulus "x"]] {}..');
-    expect(out.data.questions[0].data.type).toBe("tokenhighlight");
+    expect(out.data.questions[0].type).toBe("tokenhighlight");
   });
 
   test("the deprecated alias is absent from the published lexicon", async () => {
@@ -98,7 +100,14 @@ describe("questions path", () => {
 });
 
 describe("clozeformula (the deepest nesting)", () => {
-  const q = async (src: string) => (await compile(`set-var "lrn-id" "t" questions [${src}] {}..`)).data.questions[0].data;
+  // response_id is the render envelope's key for the question, not part of the
+  // question object being transcribed — drop it so these compare the Learnosity
+  // object itself.
+  const q = async (src: string) => {
+    const out = await compile(`set-var "lrn-id" "t" questions [${src}] {}..`);
+    const { response_id: _id, ...question } = out.data.questions[0];
+    return question;
+  };
 
   test("valid_response.value is an array per blank of arrays of rule objects", async () => {
     // The builder used to take flat answer strings and build the rule objects,
@@ -227,7 +236,8 @@ describe("clozetext (aligned vocabulary)", () => {
 
   test("the program transcribes to the Learnosity object", async () => {
     const out = await compile(program);
-    expect(out.data.questions[0].data).toEqual({
+    const { response_id: _id, ...question } = out.data.questions[0];
+    expect(question).toEqual({
       type: "clozetext",
       stimulus: "Fill in the blanks.",
       template: "The {{response}} is the {{response}}.",
@@ -248,7 +258,7 @@ describe("clozetext (aligned vocabulary)", () => {
   test("stimulus is the prompt and template carries the blanks", async () => {
     // The pre-alignment builder wrote `stimulus` into `template` and emitted no
     // `stimulus` at all, so a cloze could not carry a prompt of its own.
-    const d = (await compile(program)).data.questions[0].data;
+    const d = (await compile(program)).data.questions[0];
     expect(d.stimulus).toBe("Fill in the blanks.");
     expect(d.template).toContain("{{response}}");
   });
@@ -257,7 +267,7 @@ describe("clozetext (aligned vocabulary)", () => {
     const out = await compile(`set-var "lrn-id" "t" questions [
       clozetext [template "A {{response}}."
         validation [valid-response [value ["x"] score 3]]]] {}..`);
-    expect(out.data.questions[0].data.validation.valid_response).toEqual({
+    expect(out.data.questions[0].validation.valid_response).toEqual({
       value: ["x"], score: 3,
     });
   });
@@ -266,12 +276,13 @@ describe("clozetext (aligned vocabulary)", () => {
     const out = await compile(`set-var "lrn-id" "t" questions [
       clozetext [template "A {{response}}."
         validation [alt-responses [[value ["x"]]]]]] {}..`);
-    expect(out.data.questions[0].data.validation.alt_responses).toEqual([{ value: ["x"] }]);
+    expect(out.data.questions[0].validation.alt_responses).toEqual([{ value: ["x"] }]);
   });
 
   test("defaults produce a complete question in the aligned shape", async () => {
     const out = await compile('set-var "lrn-id" "t" questions [clozetext []] {}..');
-    expect(out.data.questions[0].data).toEqual({
+    const { response_id: _id, ...question } = out.data.questions[0];
+    expect(question).toEqual({
       type: "clozetext",
       template: "The {{response}} is the answer.",
       validation: {
@@ -322,7 +333,14 @@ describe("clozetext (aligned vocabulary)", () => {
 // transcription of the Learnosity object, so the test for each is that the
 // program and the emitted JSON have the same shape.
 describe("the mechanical types (aligned vocabulary)", () => {
-  const q = async (src: string) => (await compile(`set-var "lrn-id" "t" questions [${src}] {}..`)).data.questions[0].data;
+  // response_id is the render envelope's key for the question, not part of the
+  // question object being transcribed — drop it so these compare the Learnosity
+  // object itself.
+  const q = async (src: string) => {
+    const out = await compile(`set-var "lrn-id" "t" questions [${src}] {}..`);
+    const { response_id: _id, ...question } = out.data.questions[0];
+    return question;
+  };
 
   test("shorttext: valid_response.value is a bare string, not an array", async () => {
     expect(await q(`shorttext [
@@ -457,7 +475,7 @@ describe("metadata", () => {
       ]] {}..`);
     // Until the members were folded into the member registry, the raw tagged
     // entries ([{kind, value}, ...]) reached the emitted JSON instead.
-    expect(out.data.questions[0].data.metadata).toEqual({
+    expect(out.data.questions[0].metadata).toEqual({
       acknowledgements: "Source X",
       sample_answer: "ans",
       distractor_rationale_response_level: ["wrong for this reason", "and this"],
@@ -467,7 +485,7 @@ describe("metadata", () => {
   test("a rationale list is no longer flattened into one numbered string", async () => {
     const out = await compile(`set-var "lrn-id" "t" questions [
       clozetext [template "A {{response}}." metadata [distractor-rationale "just the one"]]] {}..`);
-    expect(out.data.questions[0].data.metadata.distractor_rationale).toBe("just the one");
+    expect(out.data.questions[0].metadata.distractor_rationale).toBe("just the one");
   });
 
   test("item metadata routes to the item record's several fields", async () => {
@@ -611,7 +629,7 @@ test("options keys reach the rule, since Learnosity validates none of them", asy
       validation [valid-response [score 1 value
         [[[method "equivValue" value "1/2" options [decimal-places 2]]]]]]
     ]] {}..`);
-  expect(out.data.questions[0].data.validation.valid_response.value)
+  expect(out.data.questions[0].validation.valid_response.value)
     .toEqual([[{ method: "equivValue", value: "1/2", options: { decimalPlaces: 2 } }]]);
 });
 
@@ -640,7 +658,7 @@ test("instant-feedback with a valid-response compiles", async () => {
       instant-feedback true
       validation [scoring-type "exactMatch" valid-response [score 1 value ["1"]]]
     ]] {}..`);
-  expect(out.data.questions[0].data.instant_feedback).toBe(true);
+  expect(out.data.questions[0].instant_feedback).toBe(true);
 });
 
 // The bug this guards: `withDefaults` used a flat spread, so an authored
@@ -669,7 +687,7 @@ test("an authored valid-response replaces the default rather than merging", asyn
       list ["a" "b"]
       validation [valid-response [score 5 value [1 0]]]
     ]] {}..`);
-  expect(out.data.questions[0].data.validation).toEqual({
+  expect(out.data.questions[0].validation).toEqual({
     scoring_type: "exactMatch",
     valid_response: { score: 5, value: [1, 0] },
   });
@@ -680,7 +698,7 @@ test("an authored ui-style keeps the rest of the default", async () => {
   const out = await compile(`set-var "lrn-id" "t" questions [classification [
       ui-style [column-count 3]
     ]] {}..`);
-  expect(out.data.questions[0].data.ui_style).toEqual({
+  expect(out.data.questions[0].ui_style).toEqual({
     column_count: 3,
     column_titles: ["Category A", "Category B"],
   });
@@ -709,8 +727,42 @@ test("every scorable type keeps a scoring-type when the author writes a bare val
   for (const [type, body] of Object.entries(cases)) {
     const out = await compile(
       `set-var "lrn-id" "t" questions [${type} [stimulus "s" ${body}]] {}..`);
-    const validation = out.data.questions[0].data.validation;
+    const validation = out.data.questions[0].validation;
     expect(validation.scoring_type, `${type} lost its scoring_type`).toBeDefined();
     expect(validation.valid_response, `${type} lost its valid_response`).toBeDefined();
   }
+});
+
+// The top-level `questions [...]` path used to emit the item-bank record shape
+// ({type, reference, data}) as the render payload. Learnosity rejects that
+// activity outright — "the question object at index 0 is missing the
+// response_id attribute" — so nothing rendered at all. The bank record and the
+// render payload are two different shapes and both are needed.
+describe("top-level questions renders", () => {
+  test("questions carry response_id and inline data, not a nested record", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [
+      mcq [stimulus "Q1" options [[label "a" value "0"]]
+           validation [valid-response [score 1 value ["0"]]]]
+      shorttext [stimulus "Q2" validation [valid-response [value "x"]]]
+    ] {}..`);
+    expect(out.type).toBe("questions");
+    const qs = out.data.questions;
+    expect(qs.map((q: any) => q.response_id))
+      .toEqual(["artcompiler-mcq-t-0", "artcompiler-shorttext-t-1"]);
+    // The fields Learnosity reads must be inline, not behind `data`.
+    expect(qs.map((q: any) => q.stimulus)).toEqual(["Q1", "Q2"]);
+    expect(qs.every((q: any) => q.data === undefined)).toBe(true);
+    expect(qs.every((q: any) => q.reference === undefined)).toBe(true);
+  });
+
+  test("response_ids are unique, since Learnosity keys the DOM by them", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [
+      mcq [stimulus "A" options [[label "a" value "0"]]
+           validation [valid-response [score 1 value ["0"]]]]
+      mcq [stimulus "B" options [[label "b" value "0"]]
+           validation [valid-response [score 1 value ["0"]]]]
+    ] {}..`);
+    const ids = out.data.questions.map((q: any) => q.response_id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
 });

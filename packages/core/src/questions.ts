@@ -83,10 +83,22 @@ export const buildCreateQuestions = ({
       savedAt: new Date().toISOString(),
     };
   }
+  // Two shapes, and they are not interchangeable. The item bank takes records —
+  // {type, reference, data} — which is what `questions` above holds and what the
+  // Data API write posts. Rendering goes through the Questions API with the
+  // question data inline and keyed by `response_id`; handed a record array it
+  // rejects the activity outright ("the question object at index 0 is missing
+  // the response_id attribute") and nothing renders at all. `items.ts` builds
+  // both for the same reason; this path used to build only the first.
+  const inlineQuestions = questions.map((q: any) => ({
+    response_id: q.reference,
+    type: q.type,
+    ...q.data,
+  }));
   const questionsData: any = {
     "id": uuid(),
     "name": "Test",
-    questions,
+    questions: inlineQuestions,
     session_id: uuid(),
   };
   if (itemBankResult) questionsData.itemBank = itemBankResult;

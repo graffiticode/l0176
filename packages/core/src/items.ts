@@ -118,11 +118,15 @@ export const buildCreateItems = ({
   // beneath them, which are only unique within their own item as built.
   const records = items.map((item: any, index: number) => {
     const itemRef = `graffiticode-${batchId}-${index}`;
+    // `createQuestions` hands back questions in the render shape, keyed by
+    // `response_id`. Re-key them so the item ordinal is in the id: within one
+    // item the ids are unique, but two items each leading with an mcq would
+    // both produce `…-mcq-t-0` without it.
     const questions = item.data.questions.map((q: any, qIndex: number) => ({
       ...q,
-      reference: `artcompiler-${q.type}-${batchId}-${index}-${qIndex}`,
+      response_id: `artcompiler-${q.type}-${batchId}-${index}-${qIndex}`,
     }));
-    const widgets = questions.map((q: any) => ({ reference: q.reference }));
+    const widgets = questions.map((q: any) => ({ reference: q.response_id }));
     const { tags, note, description, source, adaptive, metadata } =
       translateItemMetadata(item.metadata);
     const record: any = {
@@ -176,13 +180,7 @@ export const buildCreateItems = ({
   // can't render unpublished items anyway. When item-level features (shared
   // stimulus, layout) land, published items will need to route through Items
   // API from the bank to preserve both the grouping and the fidelity.
-  const inlineQuestions = records.flatMap(({ questions }: any) =>
-    questions.map((q: any) => ({
-      response_id: q.reference,
-      type: q.type,
-      ...q.data,
-    })),
-  );
+  const inlineQuestions = records.flatMap(({ questions }: any) => questions);
   const data: any = {
     id: `${batchId}`,
     name: "Test",
