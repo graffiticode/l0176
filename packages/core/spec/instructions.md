@@ -8,12 +8,10 @@ and renders them via a React frontend.
 ## L0176 Specific Guidelines
 
 - **CRITICAL**: The first line of every program MUST be exactly `set-var "lrn-id" get-val-public "itemId"`. This captures the caller-supplied item ID. NEVER use `set-var "lrn-id" ""` or any other value — the program will fail if `lrn-id` is empty. Copy this line verbatim from the template; do not simplify or omit `get-val-public "itemId"`. Write the call, never a literal id: the item ID does not exist until the item does, so the platform substitutes the real value at parse time. A hard-coded id would pin every item you generate to one Learnosity reference.
-- **CRITICAL**: `..` terminates a top-level definition or the program's final expression — a program with `let` definitions has one per definition plus one at the end. It must NEVER terminate the preamble. `set-var "lrn-id" get-val-public "itemId"` is the head of the program expression, not a standalone statement, so `set-var "lrn-id" get-val-public "itemId"..` is a complete program that compiles and renders nothing. The preamble runs straight into the `learnosity` expression with no terminator between them.
+- **CRITICAL**: `..` terminates a top-level definition or the program's final expression — a program with `let` definitions has one per definition plus one at the end. It must NEVER terminate the preamble. `set-var "lrn-id" get-val-public "itemId"` is the head of the program expression, not a standalone statement, so `set-var "lrn-id" get-val-public "itemId"..` is a complete program that compiles and renders nothing. The preamble runs straight into the `items` expression with no terminator between them.
 - Use `items` to create Items API requests for rendering assessments
 - Use `item` to define individual items when building a list for `items`
 - Use `questions` as a chainable attribute to set questions on an item
-- Use `features` as a chainable attribute to set features on an item (placeholder)
-- Use `layout` as a chainable attribute to set the HTML template for an item (placeholder)
 - Use `author` to create Author API requests for item authoring
 - Use `init` to initialize a Learnosity API session by type
 - Use `hello` to display simple text output: `hello "Hello, world!"..`
@@ -650,7 +648,7 @@ render inline through Questions API without being written to the Learnosity
 item bank. This is the right default for AI-authored items — the human can
 eyeball the preview before deciding to persist.
 
-Chain `save-to-itembank true` onto the items continuation to persist the
+Put `save-to-itembank true` in the items list to persist the
 item and its questions to the Learnosity item bank. Saved items always land
 as `status: "unpublished"` (draft); publishing is done from the Learnosity
 Author Site UI, not from the DSL.
@@ -686,27 +684,25 @@ Example — save as draft:
 set-var "lrn-id" get-val-public "itemId"
 set-var "learnosity-key" get-val-public "learnosity-key"
 set-var "learnosity-secret" get-val-private "learnosity-secret"
-learnosity
-  items [
-    item [
-      questions [
-        mcq [
-          stimulus "Which planet is closest to the Sun?"
-          options [
-            [label "Mercury" value "mercury"]
-            [label "Venus" value "venus"]
-            [label "Earth" value "earth"]
-            [label "Mars" value "mars"]
-          ]
-          validation [
-            valid-response [score 1 value ["mercury"]]
-          ]
-        ]
-      ] {}
-    ]
-  ]
+items [
   save-to-itembank true
-  {}..
+  item [
+    questions [
+      mcq [
+        stimulus "Which planet is closest to the Sun?"
+        options [
+          [label "Mercury" value "mercury"]
+          [label "Venus" value "venus"]
+          [label "Earth" value "earth"]
+          [label "Mars" value "mars"]
+        ]
+        validation [
+          valid-response [score 1 value ["mercury"]]
+        ]
+      ]
+    ] {}
+  ]
+] {}..
 ```
 
 ### Pipeline Composition
@@ -743,18 +739,17 @@ right dialect.
 
 ```
 set-var "lrn-id" get-val-public "itemId"
-learnosity
-  items [
-    item [
-      questions [
-        custom [
-          lang "0166"
-          stimulus "Use the spreadsheet to compute the column totals."
-          model data use "0166"
-        ]
-      ] {}
-    ]
-  ] {}..
+items [
+  item [
+    questions [
+      custom [
+        lang "0166"
+        stimulus "Use the spreadsheet to compute the column totals."
+        model data use "0166"
+      ]
+    ] {}
+  ]
+] {}..
 ```
 
 - **`data use "<lang>"`** (preferred). Inherits from the base language.
@@ -800,21 +795,20 @@ substitutes one row into the question text via `{{colname}}` placeholders.
 
   ```
   set-var "lrn-id" get-val-public "itemId"
-  learnosity
-    items [
-      item [
-        params [
-          { A1: "50", A2: "25" }
-          { A1: "100", A2: "75" }
-        ]
-        questions [
-          shorttext [stimulus "What is {{A1}} + {{A2}}?"]
-        ] {}
-      ]
-    ] {}..
+  items [
+    params [
+      { A1: "50", A2: "25" }
+      { A1: "100", A2: "75" }
+    ]
+    item [
+      questions [
+        shorttext [stimulus "What is {{A1}} + {{A2}}?"]
+      ] {}
+    ]
+  ] {}..
   ```
 
-- If both forms are present on the same item, the inherited L0166 table
+- If both forms are present, the inherited L0166 table
   wins. Don't mix them unless the prompt explicitly asks for a fallback.
 
 ## Example Patterns
@@ -822,124 +816,118 @@ substitutes one row into the question text via `{{colname}}` placeholders.
 - Simple MCQ assessment:
   ```
   set-var "lrn-id" get-val-public "itemId"
-  learnosity
-    items [
-      item [
-        questions [
-          mcq [
-            stimulus "What color means go?"
-            options [
-              [label "Red" value "0"]
-              [label "Yellow" value "1"]
-              [label "Green" value "2"]
-            ]
-            validation [
-              valid-response [score 1 value ["2"]]
-            ]
+  items [
+    item [
+      questions [
+        mcq [
+          stimulus "What color means go?"
+          options [
+            [label "Red" value "0"]
+            [label "Yellow" value "1"]
+            [label "Green" value "2"]
           ]
-        ] {}
-      ]
-    ] {}..
+          validation [
+            valid-response [score 1 value ["2"]]
+          ]
+        ]
+      ] {}
+    ]
+  ] {}..
   ```
 
 - MCQ with all defaults:
   ```
   set-var "lrn-id" get-val-public "itemId"
-  learnosity items [item [questions [mcq []] {}]] {}..
+  items [item [questions [mcq []] {}]] {}..
   ```
 
 - Multiple items:
   ```
   set-var "lrn-id" get-val-public "itemId"
-  learnosity
-    items [
-      item [questions [mcq []] {}],
-      item [questions [shorttext []] {}]
-    ] {}..
+  items [
+    item [questions [mcq []] {}],
+    item [questions [shorttext []] {}]
+  ] {}..
   ```
 
 - Fill-in-the-blank:
   ```
   set-var "lrn-id" get-val-public "itemId"
-  learnosity
-    items [
-      item [
-        questions [
-          clozetext [
-            stimulus "The {{response}} is the powerhouse of the cell."
-            validation [
-              valid-response [score 1 value ["mitochondria"]]
-            ]
+  items [
+    item [
+      questions [
+        clozetext [
+          stimulus "The {{response}} is the powerhouse of the cell."
+          validation [
+            valid-response [score 1 value ["mitochondria"]]
           ]
-        ] {}
-      ]
-    ] {}..
+        ]
+      ] {}
+    ]
+  ] {}..
   ```
 
 - Math question:
   ```
   set-var "lrn-id" get-val-public "itemId"
-  learnosity
-    items [
-      item [
-        questions [
-          clozeformula [
-            stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\)"
-            template "{{response}}"
-            is-math true
-            validation [
-              valid-response [score 1 value [[[method "equivLiteral" value "4"]]]]
-            ]
+  items [
+    item [
+      questions [
+        clozeformula [
+          stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\)"
+          template "{{response}}"
+          is-math true
+          validation [
+            valid-response [score 1 value [[[method "equivLiteral" value "4"]]]]
           ]
-        ] {}
-      ]
-    ] {}..
+        ]
+      ] {}
+    ]
+  ] {}..
   ```
 
 - Multiple questions in one item:
   ```
   set-var "lrn-id" get-val-public "itemId"
-  learnosity
-    items [
-      item [
-        questions [
-          mcq [
-            stimulus "Pick one"
-            options [
-              [label "A" value "a"]
-              [label "B" value "b"]
-              [label "C" value "c"]
-            ]
-            validation [
-              valid-response [score 1 value ["a"]]
-            ]
-          ],
-          shorttext [
-            stimulus "Type the answer"
-            validation [
-              valid-response [score 1 value "answer"]
-            ]
+  items [
+    item [
+      questions [
+        mcq [
+          stimulus "Pick one"
+          options [
+            [label "A" value "a"]
+            [label "B" value "b"]
+            [label "C" value "c"]
           ]
-        ] {}
-      ]
-    ] {}..
+          validation [
+            valid-response [score 1 value ["a"]]
+          ]
+        ],
+        shorttext [
+          stimulus "Type the answer"
+          validation [
+            valid-response [score 1 value "answer"]
+          ]
+        ]
+      ] {}
+    ]
+  ] {}..
   ```
 
 - Spreadsheet question reading an upstream L0166 task:
   ```
   set-var "lrn-id" get-val-public "itemId"
-  learnosity
-    items [
-      item [
-        questions [
-          custom [
-            lang "0166"
-            stimulus "Use the spreadsheet to compute the column totals."
-            model data use "0166"
-          ]
-        ] {}
-      ]
-    ] {}..
+  items [
+    item [
+      questions [
+        custom [
+          lang "0166"
+          stimulus "Use the spreadsheet to compute the column totals."
+          model data use "0166"
+        ]
+      ] {}
+    ]
+  ] {}..
   ```
 
 - Initialize an items session:

@@ -643,7 +643,11 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   // Item level. `metadata` is a member at both question and item level, which is
   // why `item` takes a member list too — a word has one arity.
   METADATA: { field: "metadata", shape: "object" },
+  // Items-level members: they sit in the `items` list beside the `item`
+  // entries rather than on any one item. `params` is the activity's
+  // dynamic-content table, and Learnosity attaches one per rendered activity.
   PARAMS: { field: "params" },
+  SAVE_TO_ITEMBANK: { field: "save_to_itembank" },
 
   // custom
   LANG: { field: "lang" },
@@ -685,6 +689,26 @@ export function inferShape(raw: any, where: string): any {
       outer.map((e: any, j: number) => mergeMembers(e, `${where}[${i + 1}][${j + 1}]`)));
   }
   return raw;
+}
+
+// The `items` list holds items-level members alongside `item` entries. A member
+// is a single-key record whose key is one of these; an item is anything else.
+// `item [metadata [...]]` merges to `{metadata: ...}` and `metadata` is not in
+// this set, so it reads as an item — the two readings cannot overlap.
+const ITEMS_MEMBERS = new Set(["params", "save_to_itembank"]);
+
+export function partitionItemsList(entries: any[]) {
+  const members: any = {};
+  const items: any[] = [];
+  for (const e of entries) {
+    const keys = e != null && typeof e === "object" && !Array.isArray(e) ? Object.keys(e) : [];
+    if (keys.length === 1 && ITEMS_MEMBERS.has(keys[0])) {
+      Object.assign(members, e);
+    } else if (e != null) {
+      items.push(e);
+    }
+  }
+  return { members, items };
 }
 
 // Merge a list of single-key member records into one object, per L0169's ASSESS.

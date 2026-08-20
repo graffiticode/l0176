@@ -590,6 +590,69 @@ emits `clozeformulaV2` — so Learnosity's own `clozeformula` ("Cloze math") is
 
 ---
 
+# The block functions
+
+The per-type sections above cover what a question compiles to. The functions
+that wrap them were audited separately, after the types were done.
+
+## `learnosity` → removed
+
+**Status:** **fixed** — 2026-08-20
+
+A pass-through: its transformer returned its argument unchanged, and
+`items [...] {}` compiled identically without it. It wrapped only `items`;
+`author` never used it. `spec.md` documented it as arity 2 while the lexicon had
+it at arity 1 — a wrapper nobody had looked at closely enough to notice.
+
+## `items` → one record per entry
+
+**Status:** **fixed** — 2026-08-20
+
+`createItems` opened with `const [ item ] = items` and discarded the rest.
+Two items compiled clean and emitted one question, and `spec.md` carried an
+example that did exactly that. It now builds a record per entry.
+
+Two reference schemes had to change, and one of them has a cost:
+
+- Item references are `graffiticode-{lrn-id}-{n}` from zero, where they were
+  `graffiticode-{lrn-id}`. **Every item already in the bank is orphaned** — the
+  next save writes a new item beside it rather than updating it. Accepted
+  deliberately; the alternative was suffixing only from the second item, which
+  keeps existing references at the cost of a rule with an exception in it.
+- Question references gained the item ordinal. Two items each opening with an
+  `mcq` both produced `artcompiler-mcq-{id}-0` before.
+
+Rendering still flattens every item's questions into one list, because it goes
+through the Questions API with inline data. Item grouping is not visible in the
+preview, and would need the Items API — which cannot render unpublished items.
+
+## `params` → items level
+
+**Status:** **fixed** — 2026-08-20
+
+Declared on an item, but read off `items[0]` and used to build one
+`dynamic_content_data` for the whole render, because Learnosity attaches one
+table per rendered activity. It is now a member of the `items` list, which is
+what it always described.
+
+`params` stays a name that is not a Learnosity field, unlike everything in the
+question vocabulary. `getDynamicContentData` derives `dynamic_content_data` from
+it — `cols` from the first row's keys, `rows` keyed by a generated reference
+carrying a timestamp — and that emitted shape is not hand-writable, so
+transcription has no target here.
+
+## `features` and `layout` → removed
+
+**Status:** **fixed** — 2026-08-20
+
+Both were in the lexicon with working transformers that put `features` / `layout`
+onto the item record, and `createItems` read neither. Documented in `spec.md` as
+"(placeholder)", which was generous: nothing placeheld, the value evaporated. If
+item-level features land later they arrive with a consumer, which is when the
+vocabulary should.
+
+---
+
 # What is not settled
 
 The per-type queue above is finished. Two things it cannot close:

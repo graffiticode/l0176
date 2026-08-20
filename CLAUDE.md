@@ -40,12 +40,12 @@ faithful, byte-compatible port of L0158. It's an npm-workspaces monorepo with th
 
 - **`packages/core/`** — `@graffiticode/l0176`: the language itself. Pure TypeScript.
   - `src/lexicon.ts`: merges L0000's base lexicon with L0176's Learnosity vocabulary
-    (`init`, `learnosity`, `items`, `item`, `questions`, `author`; the question-type keywords
+    (`init`, `items`, `item`, `questions`, `author`; the question-type keywords
     `mcq`/`shorttext`/`clozetext`/`choicematrix`/`bowtie`/`token-highlight`/… ; attribute keywords
     `stimulus`/`options`/`valid-response`/`save-to-itembank`/`metadata`/… ; and metadata
     member constructors `tags`/`notes`/`difficulty-level`/…)
   - `src/compiler.ts`: `Checker`/`Transformer` extending L0000's; hand-written block handlers
-    (`INIT`, `LEARNOSITY`, `ITEMS`, `QUESTIONS`, `AUTHOR`, `SAVE_TO_ITEMBANK`, `ID`, `PROG`)
+    (`INIT`, `ITEMS`, `ITEM`, `QUESTIONS`, `AUTHOR`, `ID`, `PROG`)
     plus registry-driven generation of per-question-type / per-attribute / per-metadata
     methods. `resolveCredentials` reads Learnosity creds from `options.config` (api-injected)
     or program `set-var`.
@@ -93,7 +93,7 @@ Learnosity vocabulary. Canonical program shape:
 
 ```
 set-var "lrn-id" get-val-public "itemId"
-learnosity items [item questions [mcq {}] {}] {}..
+items [item [questions [mcq []] {}]] {}..
 ```
 
 - **Question types (arity 1):** `mcq`, `shorttext`, `longtext`, `plaintext`, `clozetext`,
@@ -111,6 +111,15 @@ learnosity items [item questions [mcq {}] {}] {}..
 Checker/Transformer methods for question types, attributes, and metadata members are generated
 programmatically by looping over the registries in `question-types.ts`; only the block-level
 nodes have hand-written methods.
+
+**Program shape.** `items [ … ] {v: 1}..` is the top level; there is no wrapper above it.
+The `items` list holds `item` entries alongside items-level members (`params`,
+`save-to-itembank`), told apart by `partitionItemsList` — a single-key record whose key is one
+of those is a member, anything else is an item. The trailing record is program metadata and is
+spread onto the compiled envelope. `items` builds one Learnosity item record per entry, but
+rendering flattens every item's questions into one list because it goes through the Questions
+API with inline data; item references are `graffiticode-{lrn-id}-{n}` and question references
+carry the same ordinal.
 
 **Member lists.** Every attribute is an arity-1 member returning a single-key record, and a
 question is a bracketed member list — `mcq [ stimulus "..." validation [ ... ] ]`. Objects nest

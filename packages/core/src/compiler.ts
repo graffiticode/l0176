@@ -20,6 +20,7 @@ import {
   memberFields,
   mergeMembers,
   inferShape,
+  partitionItemsList,
   isMemberList,
 } from "./question-types.js";
 
@@ -144,13 +145,6 @@ export class Checker extends BaseChecker {
     });
   }
 
-  LEARNOSITY(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      const err = ([] as any[]).concat(e0 || []);
-      const val = node;
-      resume(err, val);
-    });
-  }
 
   ITEMS(node: any, options: any, resume: any) {
     this.visit(node.elts[0], options, async (e0: any, v0: any) => {
@@ -180,25 +174,7 @@ export class Checker extends BaseChecker {
     });
   }
 
-  FEATURES(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      this.visit(node.elts[1], options, async (e1: any, v1: any) => {
-        const err = ([] as any[]).concat(e0 || [], e1 || []);
-        const val = node;
-        resume(err, val);
-      });
-    });
-  }
 
-  LAYOUT(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      this.visit(node.elts[1], options, async (e1: any, v1: any) => {
-        const err = ([] as any[]).concat(e0 || [], e1 || []);
-        const val = node;
-        resume(err, val);
-      });
-    });
-  }
 
   AUTHOR(node: any, options: any, resume: any) {
     this.visit(node.elts[0], options, async (e0: any, v0: any) => {
@@ -208,15 +184,6 @@ export class Checker extends BaseChecker {
     });
   }
 
-  SAVE_TO_ITEMBANK(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      this.visit(node.elts[1], options, async (e1: any, v1: any) => {
-        const err = ([] as any[]).concat(e0 || [], e1 || []);
-        const val = node;
-        resume(err, val);
-      });
-    });
-  }
 }
 
 // Generate Checker methods for question types (arity 1)
@@ -280,34 +247,33 @@ export class Transformer extends BaseTransformer {
     });
   }
 
-  LEARNOSITY(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      const plain = toPlainObject(v0);
-      const err = ([] as any[]).concat(e0 || []);
-      const val = plain;
-      resume(err, val);
-    });
-  }
 
+  // The list holds two kinds of thing: items-level members (`params`,
+  // `save-to-itembank`), which are single-key records whose key is one of
+  // those fields, and `item` entries, which are everything else. The readings
+  // do not overlap — `item [metadata [...]]` merges to `{metadata: ...}`, and
+  // `metadata` is not an items-level member. The continuation carries
+  // program-level metadata and is spread onto the compiled envelope.
   ITEMS(node: any, options: any, resume: any) {
-    // Visit the continuation (elts[1]) BEFORE the items list (elts[0]) so
-    // that save-to-itembank chained after items sets `options` before the
-    // QUESTIONS transformers inside the items list run and read it.
-    this.visit(node.elts[1], options, async (e1: any, v1: any) => {
-      this.visit(node.elts[0], options, async (e0: any, v0: any) => {
+    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
+      this.visit(node.elts[1], options, async (e1: any, v1: any) => {
         const plain = toPlainObject(v0);
         const err = ([] as any[]).concat(e0 || [], e1 || []);
-        // Expects a list of item records
-        let items;
+        let entries;
         if (Array.isArray(plain)) {
-          items = plain;
+          entries = plain;
         } else if (plain && typeof plain === "object" && plain.list != null) {
-          items = Array.isArray(plain.list) ? plain.list : [plain.list];
+          entries = Array.isArray(plain.list) ? plain.list : [plain.list];
         } else {
-          items = [plain];
+          entries = [plain];
         }
+        const { members, items } = partitionItemsList(entries);
         if (!options["lrn-id"]) {
           resume([...err, `Error: set-var "lrn-id" must be set to a non-empty string before items is called.`], undefined);
+          return;
+        }
+        if (items.length === 0) {
+          resume([...err, "items: no `item` entries — an items list needs at least one item."], undefined);
           return;
         }
         // If any child errored (e.g. a builder threw validation), bail before
@@ -326,7 +292,7 @@ export class Transformer extends BaseTransformer {
           resume([...err, creds.error], undefined);
           return;
         }
-        const saveToItembank = options["save-to-itembank"] === true && !dryRun;
+        const saveToItembank = members.save_to_itembank === true && !dryRun;
         if (saveToItembank && !creds.fromOptions) {
           resume([...err, `Error: save-to-itembank requires set-var "learnosity-key" and "learnosity-secret"; item bank writes are not permitted with the default credentials.`], undefined);
           return;
@@ -335,6 +301,7 @@ export class Transformer extends BaseTransformer {
         try {
           itemsResult = await createItems({
             items,
+            params: members.params,
             id: options["lrn-id"],
             saveToItembank,
             key: creds.key,
@@ -369,22 +336,26 @@ export class Transformer extends BaseTransformer {
     });
   }
 
+  // The list is partitioned the same way `items` partitions its own: a
+  // single-key record whose key is an items-level member is a member, and
+  // everything else is a question. That is what lets the standalone questions
+  // path carry `save-to-itembank` now that it is an arity-1 member rather than
+  // an attribute chaining onto the continuation.
   QUESTIONS(node: any, options: any, resume: any) {
-    // Same continuation-first ordering as ITEMS, so save-to-itembank chained
-    // on top-level `questions [...] save-to-itembank true {}` is honored.
     this.visit(node.elts[1], options, async (e1: any, v1: any) => {
       this.visit(node.elts[0], options, async (e0: any, v0: any) => {
         const plain = toPlainObject(v0);
         const err = ([] as any[]).concat(e0 || [], e1 || []);
         // Normalize to array: L0000 LIST node produces an array; guard {list:x} too
-        let questions;
+        let entries;
         if (Array.isArray(plain)) {
-          questions = plain;
+          entries = plain;
         } else if (plain && typeof plain === "object" && plain.list != null) {
-          questions = Array.isArray(plain.list) ? plain.list : [plain.list];
+          entries = Array.isArray(plain.list) ? plain.list : [plain.list];
         } else {
-          questions = [plain];
+          entries = [plain];
         }
+        const { members, items: questions } = partitionItemsList(entries);
         if (!options["lrn-id"]) {
           resume(err, {});
           return;
@@ -405,7 +376,7 @@ export class Transformer extends BaseTransformer {
           resume([...err, creds.error], {});
           return;
         }
-        const saveToItembank = options["save-to-itembank"] === true && !dryRun;
+        const saveToItembank = members.save_to_itembank === true && !dryRun;
         if (saveToItembank && !creds.fromOptions) {
           resume([...err, `Error: save-to-itembank requires set-var "learnosity-key" and "learnosity-secret"; item bank writes are not permitted with the default credentials.`], {});
           return;
@@ -432,37 +403,7 @@ export class Transformer extends BaseTransformer {
     });
   }
 
-  FEATURES(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      this.visit(node.elts[1], options, async (e1: any, v1: any) => {
-        const plain = toPlainObject(v0);
-        const err = ([] as any[]).concat(e0 || [], e1 || []);
-        // Normalize to array
-        let features;
-        if (Array.isArray(plain)) {
-          features = plain;
-        } else if (plain && typeof plain === "object" && plain.list != null) {
-          features = Array.isArray(plain.list) ? plain.list : [plain.list];
-        } else {
-          features = [plain];
-        }
-        const continuation = toPlainObject(v1);
-        const val = { ...continuation, features };
-        resume(err, val);
-      });
-    });
-  }
 
-  LAYOUT(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      this.visit(node.elts[1], options, async (e1: any, v1: any) => {
-        const err = ([] as any[]).concat(e0 || [], e1 || []);
-        const continuation = toPlainObject(v1);
-        const val = { ...continuation, layout: v0 };
-        resume(err, val);
-      });
-    });
-  }
 
   AUTHOR(node: any, options: any, resume: any) {
     this.visit(node.elts[0], options, async (e0: any, v0: any) => {
@@ -559,21 +500,6 @@ for (const [name, meta] of Object.entries(memberFields)) {
 Transformer.prototype.ID = function (node: any, options: any, resume: any) {
   this.visit(node.elts[0], options, async (e0: any, v0: any) => {
     options["lrn-id"] = v0;
-    this.visit(node.elts[1], options, async (e1: any, v1: any) => {
-      const err = ([] as any[]).concat(e0 || [], e1 || []);
-      const val = toPlainObject(v1);
-      resume(err, val);
-    });
-  });
-};
-
-// save-to-itembank is a control-flow attribute: it doesn't emit an output
-// field, it mutates `options` so the enclosing ITEMS transformer sees the
-// flag when it runs. Placement in the chain is flexible because ITEMS
-// visits its continuation first.
-Transformer.prototype.SAVE_TO_ITEMBANK = function (node: any, options: any, resume: any) {
-  this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-    options["save-to-itembank"] = v0 === true;
     this.visit(node.elts[1], options, async (e1: any, v1: any) => {
       const err = ([] as any[]).concat(e0 || [], e1 || []);
       const val = toPlainObject(v1);

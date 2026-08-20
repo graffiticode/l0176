@@ -94,6 +94,7 @@ export const buildCreateItems = ({
   dataApi,
 }: any) => async ({
   items,
+  params,
   id,
   saveToItembank = false,
   key: optKey,
@@ -101,39 +102,49 @@ export const buildCreateItems = ({
 }: any) => {
   const effKey = optKey ?? key;
   const effSecret = optSecret ?? secret;
-  const [ item ] = items;
-  // Inherited (from an embedded L0166 custom question) overrides hardwired
-  // (declared via the item-level `params` keyword). When a widget is embedded,
-  // its expansion is authoritative.
-  const dynamicRows =
-    (Array.isArray(item.templateVariablesRecords) && item.templateVariablesRecords.length > 0)
-      ? item.templateVariablesRecords
-      : item.params;
-  const itemRef = `graffiticode-${id || "0"}`;
-  const questionRecords = item.data.questions;
-  const questionWidgets = questionRecords.map((q: any) => ({ reference: q.reference }));
-  const dynamicContentData = getDynamicContentData(dynamicRows);
-  const { tags, note, description, source, adaptive, metadata } = translateItemMetadata(item.metadata);
-  const itemRecord: any = {
-    reference: itemRef,
-    definition: {
-      widgets: questionWidgets,
-    },
-    dynamic_content_data: dynamicContentData,
-    questions: questionWidgets,
-  };
-  if (tags !== undefined) itemRecord.tags = tags;
-  if (note !== undefined) itemRecord.note = note;
-  if (description !== undefined) itemRecord.description = description;
-  if (source !== undefined) itemRecord.source = source;
-  if (adaptive !== undefined) itemRecord.adaptive = adaptive;
-  if (metadata !== undefined) itemRecord.metadata = metadata;
+  const batchId = id || "0";
+
+  // Inherited (from an embedded L0166 custom question) overrides declared. When
+  // a widget is embedded, its expansion is authoritative. `params` is declared
+  // once for the whole list, because Learnosity attaches one dynamic-content
+  // table per rendered activity.
+  const inherited = items
+    .map((it: any) => it.templateVariablesRecords)
+    .find((r: any) => Array.isArray(r) && r.length > 0);
+  const dynamicContentData = getDynamicContentData(inherited || params);
+
+  // One record per item. References carry the item's ordinal so that several
+  // items in one program do not collide — and so do the question references
+  // beneath them, which are only unique within their own item as built.
+  const records = items.map((item: any, index: number) => {
+    const itemRef = `graffiticode-${batchId}-${index}`;
+    const questions = item.data.questions.map((q: any, qIndex: number) => ({
+      ...q,
+      reference: `artcompiler-${q.type}-${batchId}-${index}-${qIndex}`,
+    }));
+    const widgets = questions.map((q: any) => ({ reference: q.reference }));
+    const { tags, note, description, source, adaptive, metadata } =
+      translateItemMetadata(item.metadata);
+    const record: any = {
+      reference: itemRef,
+      definition: { widgets },
+      dynamic_content_data: dynamicContentData,
+      questions: widgets,
+    };
+    if (tags !== undefined) record.tags = tags;
+    if (note !== undefined) record.note = note;
+    if (description !== undefined) record.description = description;
+    if (source !== undefined) record.source = source;
+    if (adaptive !== undefined) record.adaptive = adaptive;
+    if (metadata !== undefined) record.metadata = metadata;
+    return { record, questions };
+  });
 
   let itemBankResult;
   if (saveToItembank) {
     // Saved items always land as drafts. Publishing is an Author Site
     // concern — the Learnosity item bank UX toggles `status: "published"`.
-    itemRecord.status = "unpublished";
+    const itemRecords = records.map(({ record }: any) => ({ ...record, status: "unpublished" }));
     const itemsReq = sdk.init(
       "data",
       {
@@ -142,7 +153,7 @@ export const buildCreateItems = ({
       },
       effSecret,
       {
-        items: [itemRecord],
+        items: itemRecords,
       },
       "set",
     );
@@ -154,23 +165,26 @@ export const buildCreateItems = ({
     // Surface a confirmation so callers (MCP, agents) can verify the save.
     itemBankResult = {
       saved: true,
-      references: [itemRef],
+      references: itemRecords.map((r: any) => r.reference),
       savedAt: new Date().toISOString(),
     };
   }
 
-  // Rendering always goes through Questions API with inline question data.
-  // The item bank write (above) is for listing/search only — it doesn't
-  // affect the preview, and Items API can't render unpublished items anyway.
-  // When item-level features (shared stimulus, layout) land, published items
-  // will need to route through Items API from the bank to preserve fidelity.
-  const inlineQuestions = questionRecords.map((q: any) => ({
-    response_id: q.reference,
-    type: q.type,
-    ...q.data,
-  }));
+  // Rendering always goes through Questions API with inline question data, so
+  // every item's questions flatten into one list. The item bank write (above)
+  // is for listing/search only — it doesn't affect the preview, and Items API
+  // can't render unpublished items anyway. When item-level features (shared
+  // stimulus, layout) land, published items will need to route through Items
+  // API from the bank to preserve both the grouping and the fidelity.
+  const inlineQuestions = records.flatMap(({ questions }: any) =>
+    questions.map((q: any) => ({
+      response_id: q.reference,
+      type: q.type,
+      ...q.data,
+    })),
+  );
   const data: any = {
-    id: `${id || "0"}`,
+    id: `${batchId}`,
     name: "Test",
     questions: inlineQuestions,
     session_id: uuid(),

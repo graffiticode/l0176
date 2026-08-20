@@ -13,13 +13,10 @@ semantics and base library can be found here:
 
 | Function | Arity | Signature | Description |
 | :------- | :---: | :-------- | :---------- |
-| `learnosity` | 2 | `<record, continuation: record>` | Top-level wrapper for Learnosity API requests |
 | `init` | 1 | `<record: record>` | Initializes a Learnosity API session |
 | `items` | 1 | `<record: record>` | Creates a Learnosity Items API request from a record or list of items |
 | `item` | 1 | `<record: record>` | Defines a single item (for use in a list passed to `items`) |
 | `questions` | 2 | `<list: list, continuation: record>` | Chainable attribute: sets the questions for an item |
-| `features` | 2 | `<list: list, continuation: record>` | Chainable attribute: sets the features for an item (placeholder) |
-| `layout` | 2 | `<string: string, continuation: record>` | Chainable attribute: sets the layout template for an item (placeholder) |
 | `author` | 1 | `<record: record>` | Creates a Learnosity Author API request |
 | `hello` | 1 | `<string: string>` | Renders a hello message |
 
@@ -80,8 +77,8 @@ which take a continuation record.
 | `lang` | string | — (URL/`custom_type` synthesis) | custom |
 | `model` | record or string | `data` (JSON-stringified) | custom |
 | `metadata` | list | `metadata` / `tags` | item, all question types |
-| `params` | record[] | `dynamic_content_data` | item chain |
-| `save-to-itembank` | boolean | — (compiler flag) | items chain |
+| `params` | record[] | `dynamic_content_data` | items list |
+| `save-to-itembank` | boolean | — (compiler flag) | items list, questions list |
 
 #### Scoring
 
@@ -140,32 +137,6 @@ output.
 
 ## Function Reference
 
-### learnosity
-
-Top-level wrapper for Learnosity API requests. Takes two arguments: an API
-call (`items` or `author`) and a continuation record.
-
-```
-learnosity
-  items [
-    item [
-      questions [
-        mcq [
-          stimulus "What is 2 + 2?"
-          options [
-            [label "3" value "0"]
-            [label "4" value "1"]
-            [label "5" value "2"]
-          ]
-          validation [
-            valid-response [score 1 value ["1"]]
-          ]
-        ]
-      ] {}
-    ]
-  ] {}
-```
-
 ### init
 
 Initializes a Learnosity API session for items, questions, or author mode
@@ -177,7 +148,11 @@ init { "type": "items" }
 
 ### items
 
-Creates a Learnosity Items API request from a list of `item` objects.
+Builds one Learnosity item record per `item` entry and renders their questions.
+
+The list holds two kinds of thing: `item` entries, and members that belong to
+the program as a whole — `params` and `save-to-itembank`. The trailing record is
+program metadata and travels onto the compiled output.
 
 ```
 items [
@@ -200,10 +175,18 @@ items [
 ]
 ```
 
-By default `items` emits a preview: the item (and its questions) render
+Every item's questions flatten into one rendered list, because rendering goes
+through the Questions API with inline question data — item grouping is not
+visible in the preview.
+
+Item references are `graffiticode-{lrn-id}-{n}`, numbered from zero, and the
+question references beneath them carry the same ordinal. **Changing the number
+or order of items changes the references**, so an item whose position moves is
+written to the bank as a new item rather than updated in place.
+
+By default `items` emits a preview: the items and their questions render
 inline through Questions API without being written to the Learnosity
-item bank. Chain `save-to-itembank true` into the items continuation to
-persist the item. Saved items always land as `status: "unpublished"`
+item bank. Put `save-to-itembank true` in the items list to persist them. Saved items always land as `status: "unpublished"`
 (draft) — publishing is an Author Site concern, not a DSL one.
 
 Item-bank writes require caller-supplied Learnosity credentials, set with
@@ -218,19 +201,20 @@ id "mitochondria-mcq"
 set-var "learnosity-key" get-val-public "learnosityKey"
 set-var "learnosity-secret" get-val-private "learnositySecret"
 items [
-  item [questions [mcq stimulus "..." options [...] valid-response [0] {}] {}]
-]
   save-to-itembank true
-  {}
+  item [questions [mcq [ ... ]] {}]
+] {}
 ```
 
 ### item
 
-Defines a single item for use in a list passed to `items`. Takes a record
-of chained attributes (questions, features, layout).
+Defines a single item, for the list `items` takes. Its members are `questions`
+and `metadata`; `params` belongs to `items` rather than to any one item, since
+Learnosity attaches one dynamic-content table per rendered activity.
 
 ```
 item [
+  metadata [ tags { NGSS: "MS-LS1-2" } notes "Variant A" ]
   questions [mcq []] {}
 ]
 ```
@@ -254,26 +238,6 @@ questions [
     ]
   ]
 ] {}
-```
-
-### features
-
-Chainable arity-2 attribute that sets the features for an item. Takes a
-list of feature objects and a continuation. (Placeholder — not yet implemented.)
-
-```
-features [
-  { "type": "sharedpassage", "content": "Read the following passage..." }
-] {}
-```
-
-### layout
-
-Chainable arity-2 attribute that sets the HTML layout template for an item.
-Takes a string and a continuation. (Placeholder — not yet implemented.)
-
-```
-layout "<div class='row'><span class='learnosity-response question-q0'></span></div>" {}
 ```
 
 ### author
@@ -743,90 +707,86 @@ Multiple choice assessment:
 
 ```
 set-var "lrn-id" get-val-public "itemId"
-learnosity
-  items [
-    item [
-      questions [
-        mcq [
-          stimulus "What color means go?"
-          options [
-            [label "Red" value "0"]
-            [label "Yellow" value "1"]
-            [label "Green" value "2"]
-          ]
-          instant-feedback true
-          validation [
-            valid-response [score 1 value ["2"]]
-          ]
+items [
+  item [
+    questions [
+      mcq [
+        stimulus "What color means go?"
+        options [
+          [label "Red" value "0"]
+          [label "Yellow" value "1"]
+          [label "Green" value "2"]
         ]
-      ] {}
-    ]
-  ] {}..
+        instant-feedback true
+        validation [
+          valid-response [score 1 value ["2"]]
+        ]
+      ]
+    ] {}
+  ]
+] {}..
 ```
 
 Multiple questions in one item:
 
 ```
 set-var "lrn-id" get-val-public "itemId"
-learnosity
-  items [
-    item [
-      questions [
-        mcq [
-          stimulus "What is 2 + 2?"
-          options [
-            [label "3" value "0"]
-            [label "4" value "1"]
-            [label "5" value "2"]
-          ]
-          validation [
-            valid-response [score 1 value ["1"]]
-          ]
-        ],
-        shorttext [
-          stimulus "Spell the word for the number 4."
-          case-sensitive false
-          validation [
-            valid-response [score 1 value "four"]
-          ]
+items [
+  item [
+    questions [
+      mcq [
+        stimulus "What is 2 + 2?"
+        options [
+          [label "3" value "0"]
+          [label "4" value "1"]
+          [label "5" value "2"]
         ]
-      ] {}
-    ]
-  ] {}..
+        validation [
+          valid-response [score 1 value ["1"]]
+        ]
+      ],
+      shorttext [
+        stimulus "Spell the word for the number 4."
+        case-sensitive false
+        validation [
+          valid-response [score 1 value "four"]
+        ]
+      ]
+    ] {}
+  ]
+] {}..
 ```
 
 Question with all defaults (renders a mock MCQ):
 
 ```
 set-var "lrn-id" get-val-public "itemId"
-learnosity items [item [questions [mcq []] {}]] {}..
+items [item [questions [mcq []] {}]] {}..
 ```
 
 Multiple items:
 
 ```
 set-var "lrn-id" get-val-public "itemId"
-learnosity
-  items [
-    item [questions [mcq []] {}],
-    item [questions [shorttext []] {}]
-  ] {}..
+items [
+  item [questions [mcq []] {}],
+  item [questions [shorttext []] {}]
+] {}..
 ```
 
 Spreadsheet question reading an upstream L0166 task:
 
 ```
 set-var "lrn-id" get-val-public "itemId"
-learnosity
-  items [
-    item [
-      questions [
-        custom [
-          lang "0166"
-          stimulus "Use the spreadsheet to compute the column totals."
-          model data use "0166"
-        ]
-      ] {}
-    ]
-  ] {}..
+items [
+  item [
+    questions [
+      custom [
+        lang "0166"
+        stimulus "Use the spreadsheet to compute the column totals."
+        model data use "0166"
+      ]
+    ] {}
+  ]
+] {}..
 ```

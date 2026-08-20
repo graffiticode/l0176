@@ -161,7 +161,7 @@ describe("items path", () => {
     const out = await compile('set-var "lrn-id" "item-1" items [item [questions [mcq []] {}]] {}..');
     expect(out.type).toBe("questions");
     expect(out.data.id).toBe("item-1");
-    expect(out.data.questions[0].response_id).toBe("artcompiler-mcq-item-1-0");
+    expect(out.data.questions[0].response_id).toBe("artcompiler-mcq-item-1-0-0");
     expect(out.data.questions[0].type).toBe("mcq");
   });
 });
@@ -192,7 +192,7 @@ describe("error paths", () => {
 
   test("save-to-itembank without program credentials errors", async () => {
     await expect(
-      compile('set-var "lrn-id" "t" questions [mcq []] save-to-itembank true {}..'),
+      compile('set-var "lrn-id" "t" questions [save-to-itembank true, mcq []] {}..'),
     ).rejects.toBeTruthy();
   });
 });
@@ -477,5 +477,73 @@ describe("metadata", () => {
       adaptive: { difficulty: 3 },
       metadata: { acknowledgements: "thanks" },
     });
+  });
+});
+
+// `items` holds two kinds of thing: `item` entries, and members belonging to the
+// program as a whole. Before this, `items.ts` opened with `const [item] = items`
+// and every entry after the first was silently discarded.
+describe("items", () => {
+  const program = `set-var "lrn-id" "t" items [
+    params [ { A1: "50" } { A1: "100" } ]
+    item [ questions [ mcq [stimulus "Q1"] ] {} ]
+    item [ questions [ shorttext [stimulus "Q2"], mcq [stimulus "Q3"] ] {} ]
+  ] {v: 1}..`;
+
+  test("every item's questions are rendered, not just the first item's", async () => {
+    const out = await compile(program);
+    expect(out.data.questions.map((q: any) => q.stimulus)).toEqual(["Q1", "Q2", "Q3"]);
+  });
+
+  test("references carry the item ordinal so they cannot collide", async () => {
+    // Two items each opening with an mcq both produced `artcompiler-mcq-t-0`.
+    const out = await compile(program);
+    const ids = out.data.questions.map((q: any) => q.response_id);
+    expect(ids).toEqual([
+      "artcompiler-mcq-t-0-0",
+      "artcompiler-shorttext-t-1-0",
+      "artcompiler-mcq-t-1-1",
+    ]);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test("params is declared once for the list, not per item", async () => {
+    const out = await compile(program);
+    expect(out.data.dynamic_content_data.cols).toEqual(["A1"]);
+  });
+
+  test("the continuation carries program metadata onto the envelope", async () => {
+    const out = await compile(program);
+    expect(out.v).toBe(1);
+    expect(out.type).toBe("questions");
+  });
+
+  test("an item whose only member looks like a member still reads as an item", async () => {
+    // `item [metadata [...]]` merges to a single-key {metadata: ...}. It is only
+    // an items-level member if its key is one, which `metadata` is not.
+    const out = await compile(`set-var "lrn-id" "t" items [
+      item [ metadata [notes "n"] questions [ mcq [stimulus "Q"] ] {} ]
+    ] {}..`);
+    expect(out.data.questions).toHaveLength(1);
+  });
+
+  test("a list with no item is an error rather than an empty render", async () => {
+    await expect(compile('set-var "lrn-id" "t" items [save-to-itembank false] {}..'))
+      .rejects.toContainEqual(expect.objectContaining({
+        message: expect.stringContaining("no `item` entries"),
+      }));
+  });
+
+  test("save-to-itembank still gates on caller credentials", async () => {
+    await expect(compile('set-var "lrn-id" "t" items [save-to-itembank true, item [questions [mcq []] {}]] {}..'))
+      .rejects.toContainEqual(expect.objectContaining({
+        message: expect.stringContaining("save-to-itembank requires"),
+      }));
+  });
+
+  test("learnosity, features and layout are gone from the language", async () => {
+    for (const word of ["learnosity", "features", "layout"]) {
+      expect(lexicon[word], word).toBeUndefined();
+    }
   });
 });

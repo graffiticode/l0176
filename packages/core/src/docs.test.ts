@@ -41,6 +41,7 @@ test("the starter template parses", async () => {
 const RETIRED = [
   "partial-credit", "alternative-response", "max-word-count",
   "categories", "distractors", "hot-text",
+  "learnosity", "features", "layout",
 ];
 
 test("no retired keyword is still documented", () => {
@@ -60,7 +61,10 @@ test("no retired keyword is still documented", () => {
     const text = readFileSync(`spec/${f}`, "utf-8");
     const haystack = f.endsWith(".gc") ? text.replace(/"[^"]*"/g, '""') : code(text);
     for (const word of RETIRED) {
-      const n = (haystack.match(new RegExp(`\\b${word}\\b`, "g")) || []).length;
+      // Not preceded or followed by a word char, hyphen or slash: `learnosity`
+      // is retired but `learnosity-key` and `docs/learnosity-audit.md` are not.
+      const re = new RegExp(`(?<![\\w/-])${word}(?![\\w/-])`, "g");
+      const n = (haystack.match(re) || []).length;
       if (n > 0) offences.push(`spec/${f}: ${word} (${n})`);
     }
   }

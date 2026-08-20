@@ -7,12 +7,9 @@ import { lexicon as base } from "@graffiticode/l0000";
 const additions = {
   // Block / structural keywords
   init: { tk: 1, name: "INIT", cls: "function", length: 1, arity: 1 },
-  learnosity: { tk: 1, name: "LEARNOSITY", cls: "function", length: 1, arity: 1 },
   items: { tk: 1, name: "ITEMS", cls: "function", length: 2, arity: 2 },
   item: { tk: 1, name: "ITEM", cls: "function", length: 1, arity: 1 },
   questions: { tk: 1, name: "QUESTIONS", cls: "function", length: 2, arity: 2 },
-  features: { tk: 1, name: "FEATURES", cls: "function", length: 2, arity: 2 },
-  layout: { tk: 1, name: "LAYOUT", cls: "function", length: 2, arity: 2 },
   author: { tk: 1, name: "AUTHOR", cls: "function", length: 1, arity: 1 },
   hello: { tk: 1, name: "HELLO", cls: "function", length: 1, arity: 1 },
 
@@ -52,7 +49,7 @@ const additions = {
   id: { tk: 1, name: "ID", cls: "function", length: 2, arity: 2 },
   lang: { tk: 1, name: "LANG", cls: "function", length: 1, arity: 1 },
   model: { tk: 1, name: "MODEL", cls: "function", length: 1, arity: 1 },
-  "save-to-itembank": { tk: 1, name: "SAVE_TO_ITEMBANK", cls: "function", length: 2, arity: 2 },
+  "save-to-itembank": { tk: 1, name: "SAVE_TO_ITEMBANK", cls: "function", length: 1, arity: 1 },
   params: { tk: 1, name: "PARAMS", cls: "function", length: 1, arity: 1 },
 
   // --- Aligned Learnosity vocabulary -------------------------------------
