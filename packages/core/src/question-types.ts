@@ -331,10 +331,13 @@ function applyScoring(type: string, merged: any) {
 }
 
 // Learnosity's own scorer named these when handed a method that cannot exist —
-// see C1 in spec/conflict-resolution.md. The last five are math-engine actions
-// rather than ways of scoring, and `stringMatch` is the reverse: it is absent
-// from that list yet scores, because it compares characters and never reaches
-// the math API.
+// see C1 in spec/conflict-resolution.md. `validSyntax` and the last five are
+// math-engine actions rather than question-type scoring methods: none appears
+// on any of the 51 question-type articles. They stay on the list so the
+// compiler is no stricter than the engine, which does accept and score them,
+// but `instructions.md` does not offer them. `stringMatch` is the reverse case:
+// absent from the enumeration yet a real scoring method, because it compares
+// characters and never reaches the math API.
 const MATH_METHODS = new Set([
   "equivValue", "equivLiteral", "equivSyntax", "equivSymbolic",
   "isFactorised", "isSimplified", "isExpanded", "isUnit", "isTrue",

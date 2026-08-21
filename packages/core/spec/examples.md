@@ -100,9 +100,9 @@ still encode it as LaTeX — see the Math Notation section of `instructions.md`.
 71. Create a cloze formula question asking "Expand (x + 1)²: {{response}}" that requires the response to be in expanded form, using the isExpanded method — a predicate, so there is no expected answer to compare against.
 72. Create a cloze formula question asking "Factor x² - 9: {{response}}" that requires the response to be in factorised form, using the isFactorised method, with no expected answer.
 73. Create a cloze formula question asking "Write a true inequality comparing 5 and 3: {{response}}" that accepts any response which is a true statement, using the isTrue method — both "5 > 3" and "3 < 5" should score.
-74. Create a cloze formula question asking "Write any expression that is valid algebra: {{response}}" that only checks the response parses as a well-formed expression, using the validSyntax method, with no expected answer.
+74. Create a cloze formula question asking "Give 1/3 as a decimal, rounded to two places: {{response}}" with the correct answer "1/3" using equivValue method compared to two decimal places, so "0.33" is accepted.
 75. Create a cloze formula question asking "A pencil measures 5 centimetres. Enter that length including its unit: {{response}}" that requires the answer to carry the unit, using the isUnit method with the unit "cm".
-76. Create a cloze formula question asking "Write one half as a fraction: {{response}}" with the correct answer "1/2" using equivSyntax method, so the response is compared on its written form.
+76. Create a cloze formula question asking "Write one half as a fraction: {{response}}" with the correct answer "1/2" using equivSyntax method.
 77. Create a cloze formula question asking "Type the mass-energy equivalence formula exactly as written: {{response}}" with the correct answer "E=mc^2" using stringMatch method, so the exact characters are what count and spacing differences are marked wrong.
 
 ## Category 8: Choice Matrix (78–84)

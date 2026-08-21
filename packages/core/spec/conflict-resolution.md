@@ -94,7 +94,6 @@ equivalence probe uses a response that is correct under its own method and *wron
 | `isExpanded` | — | `x^2+2x+1` | 1 |
 | `isFactorised` | — | `(x+1)^2` | 1 |
 | `isUnit` | `cm` | `5 cm` | 1 |
-| `validSyntax` | — | `1/2` | 1 |
 | `definitelyNotAMethod` | `1/2` | `1/2` | **0 + error** |
 
 **The chemistry list is not the enumeration**, and the corpus was wrong in both directions.
@@ -110,13 +109,23 @@ API. It is also observably *not* `equivLiteral`: against a value of `1/2`, a res
 parsed expression. The one article that documents it is the chemistry one, and that is
 consistent with it being handled outside the math engine.
 
-**Five of the fifteen are not scoring methods.** `simplify`, `expand`, `variables`, `format` and
-`calculate` are math-engine *actions*; the enumeration is the math API's method list, not a
-list of things sensible to score on. They were not probed as scorers. `validSyntax` was, and
-returns 1 — it behaves as a predicate.
+**Six of the fifteen are not question-type scoring methods.** `simplify`, `expand`,
+`variables`, `format`, `calculate` and `validSyntax` are math-engine *actions*; the enumeration
+is the math API's method list, not a list of things sensible to score a question on. None of
+the six appears on any of the 51 question-type articles.
 
-**Consequence for L0176.** The accepted set is the fifteen above plus `stringMatch`. L0176's
-inherited list of eight was wrong by omission (`equivSyntax`, `isTrue`, `validSyntax`) and
+`validSyntax` needs its own note, because this register originally got it wrong. It was probed
+with a single well-formed response, scored 1, and was written up as "behaves as a predicate" —
+a conclusion one positive case cannot support. A later pair (`0.5` → 1, `((` → 0) shows it does
+discriminate, but discriminating is not the same as being a question-type scoring method, and
+it is documented as one nowhere. Treat it as an engine action. The lesson is the one this
+register states for `method` generally: **a probe without a negative case proves nothing** —
+which is why the four entries closed by rendering each carry a deliberate control.
+
+**Consequence for L0176.** The compiler accepts the fifteen above plus `stringMatch`, so that
+it is never stricter than the engine, but `instructions.md` offers only the nine documented for
+question types. L0176's inherited list of eight was wrong by omission (`equivSyntax`, `isTrue`)
+and
 right about the three that looked invented. Nothing in the compiler checks `method` today, so
 a typo reaches the learner as a rendered question that scores every response 0.
 ### C2 — `validation.*.options` is documented as two disjoint sets · RESOLVED (measured; the split is not real)

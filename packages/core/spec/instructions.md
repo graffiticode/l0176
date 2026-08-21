@@ -386,9 +386,9 @@ silently rejects answers that should score.
   one, so equivalent forms need not be enumerated.
 - **`equivValue`** — accepts any expression with the same math value as a listed
   one. `options [decimal-places 2]` bounds how far that comparison looks.
-- **`isSimplified`**, **`isExpanded`**, **`isFactorised`**, **`isTrue`**,
-  **`validSyntax`** — these are predicates on the response rather than
-  comparisons against an answer, so a rule using one carries no `value` at all:
+- **`isSimplified`**, **`isExpanded`**, **`isFactorised`**, **`isTrue`** —
+  these are predicates on the response rather than comparisons against an
+  answer, so a rule using one carries no `value` at all:
   `value [[[method "isExpanded"]]]`.
 - **`isUnit`** — a predicate that *does* take a `value`, naming the unit:
   `[method "isUnit" value "cm"]` accepts `5 cm`. Without a `value` it scores
@@ -445,10 +445,12 @@ Choose by what the request specifies:
 
 **The full method set**, from Learnosity's own scorer rather than its docs:
 `equivValue`, `equivLiteral`, `equivSyntax`, `equivSymbolic`, `isFactorised`,
-`isSimplified`, `isExpanded`, `isUnit`, `isTrue`, `validSyntax`, and
-`stringMatch`. (`simplify`, `expand`, `variables`, `format` and `calculate` are
-also accepted, but they are math-engine actions rather than ways of scoring an
-answer.) A method outside this set is **rejected by Learnosity at render time and
+`isSimplified`, `isExpanded`, `isUnit`, `isTrue` and `stringMatch`.
+(`validSyntax`, `simplify`, `expand`, `variables`, `format` and `calculate` are
+also accepted by the math engine, but none of them is documented on any
+question-type article and they are engine actions rather than ways of scoring a
+response. The compiler allows them so it stays no stricter than the engine; do
+not reach for them.) A method outside this set is **rejected by Learnosity at render time and
 scores every response 0** — the item still renders, so the failure looks like a
 learner getting it wrong. The compiler rejects unknown methods for that reason.
 
