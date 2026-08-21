@@ -169,3 +169,29 @@ test("no clozeformula example leaves the formula in the stimulus", () => {
   }
   expect(offences, offences.join("\n")).toEqual([]);
 });
+
+// The compiler catches a single-backslash LaTeX command only when the command
+// starts with t, n or r — those leave a control character behind as evidence.
+// `\frac` and `\sqrt` survive a single backslash intact, so post-parse they are
+// indistinguishable from the correct form and no compiler check can see them.
+// Only the source can, which is this guard's job: the generator writes from
+// these files, and an example using single backslashes teaches a habit that
+// breaks the first time an expression needs `\times`.
+test("every LaTeX backslash in a spec program is doubled", () => {
+  const offences: string[] = [];
+  for (const f of ["spec/spec.md", "spec/instructions.md"]) {
+    for (const b of blocks(f)) {
+      // Annotated counter-examples are prose showing a mistake, not programs.
+      if (/←/.test(b)) continue;
+      for (const m of b.matchAll(/\\+/g)) {
+        const next = b[m.index! + m[0].length] ?? "";
+        // An odd run before a letter or a delimiter is a single escape.
+        if (m[0].length % 2 === 1 && /[A-Za-z()[\]{}]/.test(next)) {
+          const at = b.slice(Math.max(0, m.index! - 30), m.index! + 20).replace(/\n/g, " ");
+          offences.push(`${f}: single backslash before "${next}" — …${at}…`);
+        }
+      }
+    }
+  }
+  expect(offences, offences.join("\n")).toEqual([]);
+});

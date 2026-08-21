@@ -277,10 +277,28 @@ so Learnosity typesets it with MathJax. Apply this to math wherever it is
 displayed — `clozeformula` stems, math MCQ stimuli and options, and any other
 text that contains an expression.
 
+**LaTeX is the only accepted encoding for math.** Not MathML — Learnosity's
+question fields are HTML and MathJax is configured for LaTeX, so a `<math>`
+element is not typeset. And not Unicode math characters: writing `3 × 4`,
+`x ≤ 5` or `√2` as literal characters gives text that is not typeset, does not
+size or align with surrounding math, and cannot be scored as an expression.
+Write `\\(3 \\times 4\\)`, `\\(x \\le 5\\)`, `\\(\\sqrt{2}\\)`. The compiler rejects
+MathML and Unicode math in a stimulus or template.
+
 Backslashes are escaped inside DSL string literals, so write every backslash
 doubled: `\\(` and `\\)` for the delimiters, and `\\times`, `\\frac`, `\\sqrt`,
 etc. for LaTeX commands. The compiler unescapes each `\\` to a single `\`, so
 the string Learnosity receives is `\(3 \times 4\)`, which MathJax then renders.
+
+**A single backslash silently corrupts the command.** The string literal
+interprets `\t`, `\n` and `\r`, so a lone backslash before a LaTeX command
+starting with `t`, `n` or `r` is eaten and replaced by whitespace: `"\times"`
+becomes a tab followed by `imes`, `"\neq"` a newline followed by `eq`,
+`"\rightarrow"` a carriage return followed by `ightarrow`. Nothing reports it —
+the question compiles, signs and renders, with the math quietly broken. Other
+commands (`\frac`, `\sqrt`, `\alpha`) survive a single backslash by luck,
+which is exactly why the habit is dangerous: it works until the day the
+expression needs `\times`. Always double.
 
 Keep response areas outside the delimiters. A cloze `{{response}}` blank is an
 answer-entry slot, not notation to typeset, so leave it unwrapped and wrap the
@@ -288,10 +306,10 @@ surrounding expression instead. Dynamic-data `{{col}}` placeholders that stand
 in for values within an expression belong inside the delimiters with the rest
 of the math.
 
-Whenever a question contains LaTeX, chain `is-math true` onto that question so
-Learnosity loads MathJax and renders the `\\( … \\)` expressions. The `is-math`
-attribute is an arity-2 boolean valid on every built-in question type
-(`clozeformula` sets it automatically). Example:
+Whenever a question contains LaTeX, put `is-math true` in that question's member
+list so Learnosity loads MathJax and renders the `\\( … \\)` expressions. It is a
+boolean member valid on every built-in question type (`clozeformula` sets it
+automatically). Example:
 
 ```
 mcq [
@@ -395,7 +413,7 @@ blank:
 ```
 clozeformula [
   stimulus "Simplify to lowest terms."
-  template "\(\frac{4}{8}\) = {{response}}"
+  template "\\(\\frac{4}{8}\\) = {{response}}"
   validation [
     valid-response [score 1 value [[[method "equivLiteral" value "1/2"]]]]
     alt-responses [[value [[[method "equivLiteral" value "0.5"]]]]

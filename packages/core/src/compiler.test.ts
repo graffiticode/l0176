@@ -844,3 +844,62 @@ describe("a cloze stimulus must be a complete prompt", () => {
     }
   });
 });
+
+// Math is encoded as LaTeX, always. Two ways that goes wrong silently: the
+// wrong encoding reaches Learnosity as inert text, or a single-backslash LaTeX
+// command is eaten by the string literal before it ever gets there.
+describe("math is encoded as LaTeX", () => {
+  const stim = (s: string) =>
+    compile(`set-var "lrn-id" "t" questions [mcq [
+      stimulus ${JSON.stringify(s)}
+      options [[label "a" value "0"]] is-math true
+      validation [valid-response [score 1 value ["0"]]]
+    ]] {}..`);
+
+  // Written as real source, one backslash, exactly as a generator would emit it.
+  test("a single-backslash LaTeX command is rejected, not silently mangled", async () => {
+    const cases: [string, string][] = [
+      [String.raw`\(3 \times 4\)`, "\\t"],
+      [String.raw`\(x \neq 4\)`, "\\n"],
+      [String.raw`\(x \rightarrow 0\)`, "\\r"],
+    ];
+    for (const [src, ch] of cases) {
+      await expect(
+        compile(`set-var "lrn-id" "t" questions [clozetext [
+          stimulus "Compute." template "${src} {{response}}"
+          validation [valid-response [score 1 value [["a"]]]]
+        ]] {}..`), src,
+      ).rejects.toContainEqual(expect.objectContaining({
+        message: expect.stringContaining(`contains a raw "${ch}"`),
+      }));
+    }
+  });
+
+  test("doubled backslashes reach Learnosity as LaTeX", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [clozetext [
+      stimulus "Compute." template "${String.raw`\\(3 \\times 4\\)`} {{response}}"
+      validation [valid-response [score 1 value [["a"]]]]
+    ]] {}..`);
+    // One backslash on the wire is what MathJax needs.
+    expect(out.data.questions[0].template).toBe(String.raw`\(3 \times 4\) {{response}}`);
+  });
+
+  test("MathML is rejected", async () => {
+    await expect(stim("<math><mi>x</mi></math>")).rejects.toContainEqual(
+      expect.objectContaining({ message: expect.stringContaining("contains MathML") }));
+  });
+
+  test("Unicode math characters are rejected, with the LaTeX to use", async () => {
+    for (const [ch, latex] of [["×", "times"], ["≤", "le"], ["√", "sqrt"], ["²", "^2"]]) {
+      await expect(stim(`3 ${ch} 4`), ch).rejects.toContainEqual(expect.objectContaining({
+        message: expect.stringContaining(latex),
+      }));
+    }
+  });
+
+  test("currency and ordinary prose are left alone", async () => {
+    for (const s of ["Cost is $5 and £3", "Which president served two terms?", "50% of 20"]) {
+      await expect(stim(s), s).resolves.toBeTruthy();
+    }
+  });
+});

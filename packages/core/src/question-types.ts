@@ -429,6 +429,75 @@ function strippedTail(s: string) {
 const DANGLING_TAIL =
   /(?:[=+\-*/<>×÷±·]|\\(?:times|div|pm|cdot|approx|lt|gt|le|ge|ne|leq|geq|neq))$/;
 
+// Math is encoded as LaTeX, always. Learnosity's question fields are HTML with
+// MathJax configured for LaTeX delimiters, so MathML is not typeset at all, and
+// literal Unicode math characters are inert text: they do not size or align with
+// surrounding math and cannot be scored as an expression.
+const UNICODE_MATH: Record<string, string> = {
+  "×": "\\times", "÷": "\\div", "−": "-", "⋅": "\\cdot", "∙": "\\cdot",
+  "≤": "\\le", "≥": "\\ge", "≠": "\\ne", "≈": "\\approx", "≡": "\\equiv",
+  "±": "\\pm", "∓": "\\mp", "√": "\\sqrt{...}", "∞": "\\infty",
+  "∑": "\\sum", "∏": "\\prod", "∫": "\\int", "∂": "\\partial",
+  "∈": "\\in", "∉": "\\notin", "⊂": "\\subset", "∪": "\\cup", "∩": "\\cap",
+  "→": "\\to", "⇒": "\\Rightarrow", "↔": "\\leftrightarrow",
+  "½": "\\frac{1}{2}", "¼": "\\frac{1}{4}", "¾": "\\frac{3}{4}",
+  "²": "^2", "³": "^3", "⁴": "^4", "π": "\\pi", "θ": "\\theta",
+  "α": "\\alpha", "β": "\\beta", "Δ": "\\Delta", "Σ": "\\Sigma", "Ω": "\\Omega",
+};
+
+// Fields whose content is rendered as HTML and may carry notation.
+const MATH_TEXT_FIELDS = ["stimulus", "template", "stimulus_review"];
+
+// The string literal interprets \t, \n and \r, so a single backslash before a
+// LaTeX command starting with t, n or r is eaten: "\times" arrives as a tab
+// followed by "imes". Nothing downstream reports it — the question compiles,
+// signs and renders with the math quietly broken — so the control character it
+// leaves behind is the only evidence, and it is a reliable one: none of these
+// characters has any business in a Learnosity HTML field.
+const MANGLED_ESCAPE: Record<string, string> = {
+  "\t": "\\t (e.g. \\times, \\theta, \\text)",
+  "\n": "\\n (e.g. \\ne, \\neq, \\nu)",
+  "\r": "\\r (e.g. \\rightarrow, \\rho, \\right)",
+};
+
+function assertMathEncoding(type: string, attrs: any) {
+  for (const field of MATH_TEXT_FIELDS) {
+    const value = attrs[field];
+    if (typeof value !== "string") continue;
+    const where = field.replace(/_/g, "-");
+
+    for (const [ch, hint] of Object.entries(MANGLED_ESCAPE)) {
+      if (!value.includes(ch)) continue;
+      throw new Error(
+        `${type}: \`${where}\` contains a raw ${JSON.stringify(ch)}, which is what ` +
+        `a single-backslash LaTeX command turns into — the string literal reads ` +
+        `${hint} as an escape and eats the backslash. Write every backslash ` +
+        `doubled: "\\\\times", "\\\\(", "\\\\frac{1}{2}".`,
+      );
+    }
+
+    if (/<\s*math[\s>/]/i.test(value)) {
+      throw new Error(
+        `${type}: \`${where}\` contains MathML, which Learnosity does not typeset — ` +
+        `its fields are HTML with MathJax configured for LaTeX. Write the ` +
+        `expression as LaTeX between \\\\( and \\\\) instead.`,
+      );
+    }
+
+    for (const ch of value) {
+      const latex = UNICODE_MATH[ch];
+      if (latex) {
+        throw new Error(
+          `${type}: \`${where}\` contains the Unicode math character "${ch}", which ` +
+          `renders as inert text — it is not typeset, does not align with ` +
+          `surrounding math, and cannot be scored as an expression. Write it as ` +
+          `LaTeX between \\\\( and \\\\): "${latex}".`,
+        );
+      }
+    }
+  }
+}
+
 // Learnosity's options are {label, value} objects. `value` is what a response
 // records, so it is the author's to choose — the array index as a string is
 // only what the authoring tools happen to generate.
@@ -436,6 +505,7 @@ export function buildMcq(attrs: any) {
   const merged = withDefaults("mcq", attrs);
   assertKnownAttributes("mcq", "MCQ", merged);
   assertMemberShapes("mcq", merged, "");
+  assertMathEncoding("mcq", merged);
   applyScoring("mcq", merged);
   return {
     ...merged,
@@ -447,6 +517,7 @@ export function buildShorttext(attrs: any) {
   const merged = withDefaults("shorttext", attrs);
   assertKnownAttributes("shorttext", "SHORTTEXT", merged);
   assertMemberShapes("shorttext", merged, "");
+  assertMathEncoding("shorttext", merged);
   applyScoring("shorttext", merged);
   return {
     ...merged,
@@ -460,6 +531,7 @@ export function buildLongtext(attrs: any) {
   const merged = withDefaults("longtext", attrs);
   assertKnownAttributes("longtext", "LONGTEXT", merged);
   assertMemberShapes("longtext", merged, "");
+  assertMathEncoding("longtext", merged);
   applyScoring("longtext", merged);
   return {
     ...merged,
@@ -471,6 +543,7 @@ export function buildPlaintext(attrs: any) {
   const merged = withDefaults("plaintext", attrs);
   assertKnownAttributes("plaintext", "PLAINTEXT", merged);
   assertMemberShapes("plaintext", merged, "");
+  assertMathEncoding("plaintext", merged);
   applyScoring("plaintext", merged);
   return {
     ...merged,
@@ -482,6 +555,7 @@ export function buildClozetext(attrs: any) {
   const merged = withDefaults("clozetext", attrs);
   assertKnownAttributes("clozetext", "CLOZETEXT", merged);
   assertMemberShapes("clozetext", merged, "");
+  assertMathEncoding("clozetext", merged);
   assertClozeTemplate("clozetext", merged);
   applyScoring("clozetext", merged);
   return {
@@ -496,6 +570,7 @@ export function buildClozeassociation(attrs: any) {
   const merged = withDefaults("clozeassociation", attrs);
   assertKnownAttributes("clozeassociation", "CLOZEASSOCIATION", merged);
   assertMemberShapes("clozeassociation", merged, "");
+  assertMathEncoding("clozeassociation", merged);
   assertClozeTemplate("clozeassociation", merged);
   applyScoring("clozeassociation", merged);
   return {
@@ -509,6 +584,7 @@ export function buildClozedropdown(attrs: any) {
   const merged = withDefaults("clozedropdown", attrs);
   assertKnownAttributes("clozedropdown", "CLOZEDROPDOWN", merged);
   assertMemberShapes("clozedropdown", merged, "");
+  assertMathEncoding("clozedropdown", merged);
   assertClozeTemplate("clozedropdown", merged);
   applyScoring("clozedropdown", merged);
   return {
@@ -533,6 +609,7 @@ export function buildClozeformula(attrs: any) {
   const merged = withDefaults("clozeformula", attrs);
   assertKnownAttributes("clozeformula", "CLOZEFORMULA", merged);
   assertMemberShapes("clozeformula", merged, "");
+  assertMathEncoding("clozeformula", merged);
   assertClozeTemplate("clozeformula", merged);
   applyScoring("clozeformula", merged);
   assertMethods("clozeformula", merged.validation, "validation");
@@ -546,6 +623,7 @@ export function buildChoicematrix(attrs: any) {
   const merged = withDefaults("choicematrix", attrs);
   assertKnownAttributes("choicematrix", "CHOICEMATRIX", merged);
   assertMemberShapes("choicematrix", merged, "");
+  assertMathEncoding("choicematrix", merged);
   applyScoring("choicematrix", merged);
   return {
     ...merged,
@@ -557,6 +635,7 @@ export function buildOrderlist(attrs: any) {
   const merged = withDefaults("orderlist", attrs);
   assertKnownAttributes("orderlist", "ORDERLIST", merged);
   assertMemberShapes("orderlist", merged, "");
+  assertMathEncoding("orderlist", merged);
   applyScoring("orderlist", merged);
   return {
     ...merged,
@@ -570,6 +649,7 @@ export function buildClassification(attrs: any) {
   const merged = withDefaults("classification", attrs);
   assertKnownAttributes("classification", "CLASSIFICATION", merged);
   assertMemberShapes("classification", merged, "");
+  assertMathEncoding("classification", merged);
   applyScoring("classification", merged);
   return {
     ...merged,
@@ -584,6 +664,7 @@ export function buildBowtie(attrs: any) {
   const merged = withDefaults("bowtie", attrs);
   assertKnownAttributes("bowtie", "BOWTIE", merged);
   assertMemberShapes("bowtie", merged, "");
+  assertMathEncoding("bowtie", merged);
   applyScoring("bowtie", merged);
   return {
     ...merged,
@@ -621,6 +702,7 @@ export function buildTokenHighlight(attrs: any) {
   const merged = withDefaults("tokenhighlight", attrs);
   assertKnownAttributes("tokenhighlight", "TOKEN_HIGHLIGHT", merged);
   assertMemberShapes("tokenhighlight", merged, "");
+  assertMathEncoding("tokenhighlight", merged);
   applyScoring("tokenhighlight", merged);
   return {
     ...merged,
