@@ -135,6 +135,163 @@ output.
 | `response-shuffle-seed` | string | question | mcq only; fixes the shuffled option order across learners. |
 | `acknowledgements` | string | question | Attribution. |
 
+<!-- BEGIN attribute-reference -->
+### Attribute reference
+
+Every attribute the compiler accepts, the Learnosity field it emits, and the
+question types that take it. Generated from the registries in
+`question-types.ts` — if a word is missing here it is missing from the
+language, not from the documentation.
+
+| keyword | Learnosity field | accepted by |
+|---|---|---|
+| `case-sensitive` | `case_sensitive` | shorttext, clozetext, clozedropdown |
+| `character-map` | `character_map` | shorttext, longtext, plaintext, clozetext |
+| `disable-auto-link` | `disable_auto_link` | longtext |
+| `duplicate-responses` | `duplicate_responses` | clozeassociation, classification |
+| `feedback-attempts` | `feedback_attempts` | mcq, shorttext, clozetext, clozeassociation, clozedropdown, clozeformula, choicematrix, orderlist, classification, bowtie, token-highlight |
+| `formatting-options` | `formatting_options` | longtext |
+| `group-possible-responses` | `group_possible_responses` | clozeassociation, classification, bowtie |
+| `handwriting-recognises` | `handwriting_recognises` | clozeformula |
+| `hints` | `hints` | clozeformula |
+| `horizontal-layout` | `horizontal_layout` | longtext, clozeformula |
+| `ignore-leading-and-trailing-spaces` | `ignore_leading_and_trailing_spaces` | shorttext, clozetext |
+| `instant-feedback` | `instant_feedback` | mcq, shorttext, clozetext, clozeassociation, clozedropdown, clozeformula, choicematrix, orderlist, classification, bowtie, token-highlight |
+| `instructor-stimulus` | `instructor_stimulus` | all types |
+| `is-dynamic-content` | `is_dynamic_content` | clozeformula |
+| `is-math` | `is_math` | all types |
+| `list` | `list` | orderlist |
+| `match-all-possible-responses` | `match_all_possible_responses` | clozetext, clozeassociation, clozedropdown |
+| `math-image-capture` | `math_image_capture` | clozeformula |
+| `max-length` | `max_length` | shorttext, longtext, plaintext, clozetext |
+| `max-response-per-cell` | `max_response_per_cell` | classification |
+| `max-selection` | `max_selection` | mcq, token-highlight |
+| `metadata` | `metadata` | all types |
+| `min-selection` | `min_selection` | mcq |
+| `multiple-line` | `multiple_line` | clozetext |
+| `multiple-responses` | `multiple_responses` | mcq, choicematrix |
+| `options` | `options` | mcq, choicematrix |
+| `placeholder` | `placeholder` | shorttext, longtext, plaintext |
+| `possible-response-groups` | `possible_response_groups` | bowtie |
+| `possible-responses` | `possible_responses` | clozeassociation, clozedropdown, classification |
+| `response-container` | `response_container` | shorttext, clozetext, clozeassociation, clozedropdown, clozeformula |
+| `response-containers` | `response_containers` | clozetext, clozeassociation, clozedropdown, clozeformula |
+| `show-copy` | `show_copy` | plaintext |
+| `show-cut` | `show_cut` | plaintext |
+| `show-hints-button` | `show_hints_button` | clozeformula |
+| `show-paste` | `show_paste` | plaintext |
+| `show-word-count` | `show_word_count` | longtext |
+| `show-word-limit` | `show_word_limit` | longtext |
+| `shuffle-options` | `shuffle_options` | mcq, clozeassociation, clozedropdown, choicematrix, orderlist, classification |
+| `spellcheck` | `spellcheck` | shorttext, longtext, plaintext, clozetext |
+| `stems` | `stems` | choicematrix |
+| `stimulus` | `stimulus` | all types |
+| `stimulus-review` | `stimulus_review` | all types |
+| `submit-over-limit` | `submit_over_limit` | longtext, plaintext |
+| `template` | `template` | clozetext, clozeassociation, clozedropdown, clozeformula, token-highlight |
+| `text-blocks` | `text_blocks` | longtext, clozeformula |
+| `tokenization` | `tokenization` | token-highlight |
+| `ui-style` | `ui_style` | all types |
+| `validation` | `validation` | all types |
+
+**Rule options.** These sit inside a `validation` rule's `options`, not on the
+question, and are the only words in the language that emit camelCase.
+
+| keyword | Learnosity key |
+|---|---|
+| `allow-decimal` | `allowDecimal` |
+| `allow-thousands-separator` | `allowThousandsSeparator` |
+| `compare-sides` | `compareSides` |
+| `decimal-places` | `decimalPlaces` |
+| `ignore-leading-and-trailing-spaces-rule` | `ignoreLeadingAndTrailingSpaces` |
+| `ignore-order` | `ignoreOrder` |
+| `ignore-text` | `ignoreText` |
+| `inverse-result` | `inverseResult` |
+| `set-decimal-separator` | `setDecimalSeparator` |
+| `set-thousands-separator` | `setThousandsSeparator` |
+| `syntax` | `syntax` |
+| `treat-letters-as-variables` | `treatLettersAsVariables` |
+| `treat-multiple-spaces-as-one` | `treatMultipleSpacesAsOne` |
+
+**Nested members.** These belong inside another member — `validation`,
+`ui-style`, `response-container`, `metadata` — rather than on the question
+itself.
+
+| keyword | Learnosity field |
+|---|---|
+| `accent-penalty-points` | `accent_penalty_points` |
+| `accent-sensitivity` | `accent_sensitivity` |
+| `acknowledgements` | `acknowledgements` |
+| `allow-negative-scores` | `allow_negative_scores` |
+| `alt-responses` | `alt_responses` |
+| `aria-label` | `aria_label` |
+| `assistive-label` | `assistive_label` |
+| `automarkable` | `automarkable` |
+| `choice-label` | `choice_label` |
+| `column-count` | `column_count` |
+| `column-titles` | `column_titles` |
+| `columns` | `columns` |
+| `content` | `content` |
+| `model` | `data` |
+| `description` | `description` |
+| `difficulty-level` | `difficulty_level` |
+| `distractor-rationale` | `distractor_rationale` |
+| `distractor-rationale-response-level` | `distractor_rationale_response_level` |
+| `enable-fullwidth-scoring` | `enable_fullwidth_scoring` |
+| `enabled` | `enabled` |
+| `exposed-visible-label` | `exposed_visible_label` |
+| `feedbackaide-passages` | `feedbackaide_passages` |
+| `fontsize` | `fontsize` |
+| `height` | `height` |
+| `horizontal-lines` | `horizontal_lines` |
+| `input-type` | `input_type` |
+| `items-list` | `items` |
+| `keyboard-below-response-area` | `keyboard_below_response_area` |
+| `label` | `label` |
+| `lang` | `lang` |
+| `matching-rule` | `matching_rule` |
+| `max-height` | `max_height` |
+| `max-score` | `max_score` |
+| `method` | `method` |
+| `min-height` | `min_height` |
+| `min-score-if-attempted` | `min_score_if_attempted` |
+| `min-width` | `min_width` |
+| `notes` | `notes` |
+| `option-row-title` | `option_row_title` |
+| `option-width` | `option_width` |
+| `orientation` | `orientation` |
+| `params` | `params` |
+| `penalty` | `penalty` |
+| `possibility-list-position` | `possibility_list_position` |
+| `response-font-scale` | `response_font_scale` |
+| `response-shuffle-seed` | `response_shuffle_seed` |
+| `responses` | `responses` |
+| `row-count` | `row_count` |
+| `row-header` | `row_header` |
+| `row-min-height` | `row_min_height` |
+| `row-titles` | `row_titles` |
+| `row-titles-width` | `row_titles_width` |
+| `rubric-reference` | `rubric_reference` |
+| `sample-answer` | `sample_answer` |
+| `save-to-itembank` | `save_to_itembank` |
+| `score` | `score` |
+| `score-with-feedbackaide` | `score_with_feedbackaide` |
+| `scoring-type` | `scoring_type` |
+| `show-drag-handle` | `show_drag_handle` |
+| `source` | `source` |
+| `stem-title` | `stem_title` |
+| `stem-width` | `stem_width` |
+| `tags` | `tags` |
+| `title` | `title` |
+| `type` | `type` |
+| `unscored` | `unscored` |
+| `valid-response` | `valid_response` |
+| `validation-stem-numeration` | `validation_stem_numeration` |
+| `value` | `value` |
+| `width` | `width` |
+| `wordwrap` | `wordwrap` |
+<!-- END attribute-reference -->
+
 ## Function Reference
 
 ### init

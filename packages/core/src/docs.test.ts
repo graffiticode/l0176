@@ -287,3 +287,23 @@ describe("the RAG example corpus is coherently numbered", () => {
     }
   });
 });
+
+// 65 of the language's 153 words — 42% of the vocabulary — were accepted by the
+// compiler and documented nowhere. The generator writes from spec/, so a word it
+// has never seen is a word it will never emit: the attribute existed, worked,
+// and was unreachable in practice. spec.md now carries a reference table
+// generated from the registries by tools/gen-attribute-reference.mjs.
+test("every attribute the compiler accepts appears in the spec's reference", async () => {
+  const { memberFields } = await import("./question-types.js");
+  const spec = readFileSync("spec/spec.md", "utf-8");
+  const names = new Set(Object.keys(memberFields));
+  const missing: string[] = [];
+  for (const [word, entry] of Object.entries(lexicon as Record<string, any>)) {
+    if (!names.has(entry?.name)) continue;
+    if (!spec.includes(`\`${word}\``)) missing.push(word);
+  }
+  expect(missing,
+    `${missing.length} words are in the lexicon but not in spec.md — regenerate with ` +
+    `\`node tools/gen-attribute-reference.mjs\`:\n  ${missing.join(", ")}`,
+  ).toEqual([]);
+});
