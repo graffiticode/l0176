@@ -394,7 +394,40 @@ function assertClozeTemplate(type: string, attrs: any) {
       `template becomes one blank, at that position.`,
     );
   }
+  if (typeof stimulus === "string") {
+    const tail = strippedTail(stimulus);
+    if (tail && DANGLING_TAIL.test(tail)) {
+      const shown = tail.length > 24 ? `…${tail.slice(-24)}` : tail;
+      throw new Error(
+        `${type}: \`stimulus\` ends mid-expression, on "${shown}". A ` +
+        `stimulus is a complete prompt — it is not continued by the blank, which ` +
+        `renders from \`template\` and, on most types, on its own line. Move the ` +
+        `expression the learner completes into \`template\` and put the blank where ` +
+        `the answer goes, e.g. template "\\(x + 3 = 7\\). \\(x =\\) {{response}}".`,
+      );
+    }
+  }
 }
+
+// Trailing noise that sits between the last meaningful character and the end of
+// the string: whitespace, LaTeX/HTML closers, sentence punctuation. Stripped so
+// that "\\(x =\\)" is judged on the `=` rather than on the delimiter.
+const TRAILING_NOISE = /(?:\s+|\\[)\]]|\$+|[.,;:!?]|<\/?[^>]*>)+$/;
+
+function strippedTail(s: string) {
+  let out = s;
+  let prev;
+  do {
+    prev = out;
+    out = out.replace(TRAILING_NOISE, "");
+  } while (out !== prev);
+  return out;
+}
+
+// A relation or binary operator with nothing after it. Prose does not end this
+// way; an expression waiting for its answer does.
+const DANGLING_TAIL =
+  /(?:[=+\-*/<>×÷±·]|\\(?:times|div|pm|cdot|approx|lt|gt|le|ge|ne|leq|geq|neq))$/;
 
 // Learnosity's options are {label, value} objects. `value` is what a response
 // records, so it is the author's to choose — the array index as a string is

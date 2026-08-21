@@ -804,3 +804,43 @@ describe("cloze blanks come from the template", () => {
     expect(q.stimulus).not.toContain("{{response}}");
   });
 });
+
+// The corruption the docs were teaching: a stimulus that trails off into an
+// operator because the expression the learner completes was written there
+// instead of in the template. It compiles and renders — the blank just lands on
+// its own line below the prompt rather than after the "=".
+describe("a cloze stimulus must be a complete prompt", () => {
+  const cloze = (stimulus: string, template = "{{response}}") =>
+    compile(`set-var "lrn-id" "t" questions [clozeformula [
+      stimulus ${JSON.stringify(stimulus)}
+      template ${JSON.stringify(template)}
+      is-math true
+      validation [valid-response [score 1 value [[[method "equivLiteral" value "4"]]]]]
+    ]] {}..`);
+
+  test("a stimulus ending mid-expression is rejected", async () => {
+    for (const s of [
+      "Solve: \\(x + 3 = 7\\). \\(x =\\)",   // the reported case, verbatim
+      "2 + 2 =",
+      "The total is <b>x +</b>",             // the operator is behind markup
+      "Compare \\(3\\) \\(\\lt\\)",          // a LaTeX relation, not an ASCII one
+    ]) {
+      await expect(cloze(s), s).rejects.toContainEqual(expect.objectContaining({
+        message: expect.stringContaining("ends mid-expression"),
+      }));
+    }
+  });
+
+  test("complete prompts are left alone", async () => {
+    // Trailing punctuation and closing delimiters are stripped before judging,
+    // so an equation that merely *appears* in a finished sentence is fine.
+    for (const s of [
+      "Given \\(x + 3 = 7\\), find x.",
+      "Evaluate the expression:",
+      "What is \\(2 + 2\\)?",
+      "Solve for \\(x\\).",
+    ]) {
+      await expect(cloze(s), s).resolves.toBeTruthy();
+    }
+  });
+});

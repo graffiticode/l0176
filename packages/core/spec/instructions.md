@@ -345,6 +345,11 @@ template "\\(x + 3 = 7\\). \\(x =\\) {{response}}"
 The same rule holds for every cloze type — `clozetext`, `clozedropdown`,
 `clozeassociation` and `clozeformula` all place their blanks from the template.
 
+The compiler rejects a cloze `stimulus` that ends mid-expression — trailing off
+on `=`, `+`, `\(\lt\)` and the like — because a stimulus is a complete prompt
+and is never continued by the blank. It also rejects a `{{response}}` written in
+a stimulus, and a `template` with no `{{response}}` at all.
+
 ### Scoring math responses (`method`)
 
 The response a learner types is parsed as a **math expression**, never compared as
