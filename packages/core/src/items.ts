@@ -146,6 +146,42 @@ export const buildCreateItems = ({
 
   let itemBankResult;
   if (saveToItembank) {
+    // An item record only *references* its widgets; it does not carry them. So
+    // the questions have to exist in the bank before the item that points at
+    // them, or Learnosity rejects the item with
+    //   30001 Widget (question / feature) reference ... was not found.
+    //   Create widget (question / feature) first.
+    // Rendering never needed this — the preview inlines the question data — so
+    // the items path wrote only the item and the gap stayed invisible until a
+    // real save.
+    //
+    // The bank stores a question as {type, reference, data}; `response_id` is
+    // the render envelope's key for the same question and is not part of the
+    // stored data, so it becomes the reference and is dropped from the payload.
+    const questionRecords = records.flatMap(({ questions }: any) =>
+      questions.map(({ response_id, ...data }: any) => ({
+        type: data.type,
+        reference: response_id,
+        data,
+      })),
+    );
+    const questionsReq = sdk.init(
+      "data",
+      {
+        consumer_key: effKey,
+        domain,
+      },
+      effSecret,
+      {
+        questions: questionRecords,
+      },
+      "set",
+    );
+    await dataApi({
+      route: "/itembank/questions",
+      request: questionsReq,
+    });
+
     // Saved items always land as drafts. Publishing is an Author Site
     // concern — the Learnosity item bank UX toggles `status: "published"`.
     const itemRecords = records.map(({ record }: any) => ({ ...record, status: "unpublished" }));
@@ -170,6 +206,7 @@ export const buildCreateItems = ({
     itemBankResult = {
       saved: true,
       references: itemRecords.map((r: any) => r.reference),
+      questionReferences: questionRecords.map((r: any) => r.reference),
       savedAt: new Date().toISOString(),
     };
   }
