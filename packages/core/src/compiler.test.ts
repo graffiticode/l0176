@@ -948,3 +948,31 @@ describe("equivSyntax", () => {
     expect(rules.map((r: any) => r.method)).toEqual(["equivValue", "equivSyntax"]);
   });
 });
+
+// An equivSyntax rule is a free string, so a generator that knows the method but
+// not the vocabulary will invent one — and an unrecognised rule scores every
+// response 0 without reporting anything, exactly like an unknown method.
+describe("equivSyntax rules", () => {
+  const withRule = (rule: string) =>
+    compile(`set-var "lrn-id" "t" questions [clozeformula [
+      stimulus "Give it." template "{{response}}"
+      validation [valid-response [score 1 value
+        [[[method "equivSyntax" options [syntax "${rule}"]]]]]]
+    ]] {}..`);
+
+  test("all nine documented rules are accepted, with or without an argument", async () => {
+    for (const r of ["\\\\number", "\\\\integer", "\\\\decimal", "\\\\scientific",
+      "\\\\variable", "\\\\fraction", "\\\\simpleFraction", "\\\\mixedFraction",
+      "\\\\fractionOrDecimal", "\\\\decimal3", "\\\\decimal{3}", "\\\\integer 2"]) {
+      await expect(withRule(r), r).resolves.toBeTruthy();
+    }
+  });
+
+  test("an invented rule is rejected", async () => {
+    for (const r of ["\\\\notARule", "decimal", "\\\\Decimal"]) {
+      await expect(withRule(r), r).rejects.toContainEqual(expect.objectContaining({
+        message: expect.stringContaining("is not an equivSyntax rule"),
+      }));
+    }
+  });
+});

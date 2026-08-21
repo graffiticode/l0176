@@ -350,6 +350,35 @@ const MATH_METHODS = new Set([
 // place it is visible. (`options` cannot be checked the same way: an
 // unrecognised key is accepted in silence, so there is no authority to check
 // against — C2.)
+// The nine forms `equivSyntax` compares against, each a LaTeX-style command,
+// optionally carrying a digit count (`\\decimal3`). Learnosity's math engine
+// recognises two undocumented synonyms as well (`\\mixedNumber`,
+// `\\nonMixedNumber`); the Author Guide names these nine, and an author has no
+// reason to reach past them.
+//
+// A rule that is not one of these does not error — it silently scores every
+// response 0, the same failure mode as an unknown `method`, and the one the
+// generator is most likely to hit because the form is a free string.
+const SYNTAX_RULES = new Set([
+  "\\number", "\\integer", "\\decimal", "\\scientific", "\\variable",
+  "\\fraction", "\\simpleFraction", "\\mixedFraction", "\\fractionOrDecimal",
+]);
+
+function assertSyntaxRule(type: string, rule: any, path: string) {
+  const syntax = rule?.options?.syntax;
+  if (typeof syntax !== "string") return;
+  // The argument is appended to the rule, so strip it before comparing.
+  const bare = syntax.replace(/\s*\{?\s*\d+\s*\}?$/, "").trim();
+  if (!SYNTAX_RULES.has(bare)) {
+    throw new Error(
+      `${type}: "${syntax}" is not an equivSyntax rule${path ? ` (at ${path})` : ""}. ` +
+      `Learnosity accepts ${[...SYNTAX_RULES].join(", ")}, each optionally followed ` +
+      `by a digit count — e.g. "\\\\decimal3". An unrecognised rule scores every ` +
+      `response 0 without reporting anything.`,
+    );
+  }
+}
+
 function assertMethods(type: string, value: any, path: string) {
   if (Array.isArray(value)) {
     value.forEach((v, n) => assertMethods(type, v, `${path}[${n}]`));
@@ -365,6 +394,7 @@ function assertMethods(type: string, value: any, path: string) {
       `Learnosity accepts ${[...MATH_METHODS].join(", ")}.`,
     );
   }
+  assertSyntaxRule(type, value, path);
   for (const [k, v] of Object.entries(value)) {
     // `options` holds the method's own settings, not nested rules.
     if (k !== "options") assertMethods(type, v, path ? `${path}.${k}` : k);

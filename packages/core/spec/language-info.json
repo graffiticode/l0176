@@ -97,6 +97,16 @@
       "prompt": "Cloze text item: 'The {{response}} of the United States is Washington, D.C.' Correct answer: 'capital'. Also accept 'seat of government' as an alternate synonym.",
       "produces": "clozetext",
       "notes": "Asking to 'also accept' / 'accepts X or Y' / 'synonym answer' emits alt-responses inside validation, each alternate scored like the primary. Every alternate is a complete answer set (one answer per blank), not an extra answer for one blank. Do not list multiple accepted answers as separate valid-response entries; that reads as multiple blanks."
+    },
+    {
+      "prompt": "Create a math fill-in asking for the mass of the Sun in scientific notation, and require the answer to be written that way, not just to be the right number.",
+      "produces": "clozeformula",
+      "notes": "'must be written in scientific notation', 'as a decimal', 'as a fraction', 'give it as a mixed number', 'to two decimal places', 'answer must be a whole number', and 'give a variable' all constrain the FORM of the response and map to a rule scored with `equivSyntax`, which takes the form as `options [syntax \"...\"]` and no `value`. The nine forms are number, integer, decimal, scientific, variable, fraction, simple fraction, mixed fraction, and fraction-or-decimal; number, integer, decimal and scientific also take a digit count. equivSyntax checks only the form, so a request that also names a correct answer needs a second rule on the same blank — `equivValue` or `equivSymbolic` for the value, `equivSyntax` for the form."
+    },
+    {
+      "prompt": "Create a math fill-in asking for the length of the diagonal, accepting anything within 0.05 of 7.07.",
+      "produces": "clozeformula",
+      "notes": "'within', 'give or take', 'plus or minus', 'to within a tolerance of' and 'accept anything between X and Y' map to a plus-minus written into the answer itself — `value \"7.07±0.05\"` — not to an option. Tolerance works only with `equivValue`. 'to N decimal places' is different: that is `options [decimal-places N]`, which rounds before comparing rather than widening the accepted range."
     }
   ]
 }
