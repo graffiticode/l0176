@@ -31,6 +31,15 @@ other* rather than contradicting L0176, the conflict is recorded in
 name the file. Learnosity's public pages 403 non-browser clients; the cache came
 from the Zendesk Help Center JSON API — see that folder's `README.md`.
 
+A second cache was added later: `~/work/learnosity/scoring-methods-docs`, the
+Author Guide section the question-type pages defer to with "See Legacy Scoring
+Articles for more information". It is on **authorguide.learnosity.com**, a
+different subdomain, which is why searching the question-type help centre never
+surfaced it. One article per scoring method — ten of them — plus the unit list
+`isUnit` accepts. It is the authority for what a `method` means and which
+`options` each takes, and it settled both C1 and C2 after the render session had
+already "closed" them.
+
 Two articles carry more than their titles suggest:
 
 - **`Chemistry-formula-chemistry.md`** is the only page with the complete

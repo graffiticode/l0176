@@ -39,7 +39,7 @@ type at a time.
 | # | Conflict | Status |
 | :-: | :--- | :--- |
 | C1 | The scoring-method enumeration exists on exactly one article | RESOLVED — ten, per the Author Guide |
-| C2 | `validation.*.options` is documented as two disjoint sets | RESOLVED — measured, the split is not real |
+| C2 | `validation.*.options` is documented as two disjoint sets | RESOLVED — measured; documented per method, enforced nowhere |
 | C3 | Four articles' examples declare a sibling question type | RESOLVED — table wins |
 | C4 | `alt_responses[ ][ ]` documents a shape that does not exist | RESOLVED — artifact |
 | C5 | `orderlist`'s example contradicts its own `ui_style` table | RESOLVED — table wins |
@@ -183,12 +183,43 @@ console warning, and no change in score. This is the opposite of `method`, where
 unrecognised value is rejected loudly — so an options typo is invisible at every layer,
 including this one, and only shows up as scoring that quietly does not do what was asked.
 
-**Two probes were inconclusive and are not claimed either way.** `setDecimalSeparator: ","`
-against a response of `0,5` scored 0 and raised `Expected operator between numbers: 0.5` — the
-response failed to parse, so the probe tested parsing rather than the option; it may govern
-output rather than input. `ignoreOrder` needs two blanks to mean anything, and the two-blank
-`valid_response` shape used scored 0 both with and without it, which more likely indicts the
-probe than the option.
+**Superseded in part: the option vocabulary is documented after all.** Like C1, this entry was
+written believing the question-type corpus was the only source. The Author Guide's
+scoring-method section documents options per method, and it is now cached at
+`~/work/learnosity/scoring-methods-docs`:
+
+| option | documented for |
+| :-- | :-- |
+| `decimalPlaces` ("significant decimal places") | `equivSymbolic`, `equivValue` |
+| `ignoreText` | `equivSymbolic`, `equivValue`, `equivSyntax` |
+| `compareSides` | `equivSymbolic`, `equivValue` |
+| `allowDecimal` ("allow decimal marks") | `equivLiteral`, `equivSymbolic`, `equivValue`, `isSimplified` |
+| `treatLettersAsVariables` | `equivSymbolic` |
+| `allowThousandsSeparator` | `isExpanded`, `isFactorised`, `isTrue`, `isUnit` |
+| `inverseResult`, `ignoreOrder`, `allowInterval`, `ignoreTrailingZeros` | `equivLiteral` |
+| `ignoreLeadingAndTrailingSpaces`, `treatMultipleSpacesAsOne` | `stringMatch` |
+
+This does not overturn the finding — the measurements stand, and a key documented for one
+method is still honoured on another (`inverseResult`, documented for `equivLiteral`, flips a
+`clozeformulaV2` result). What it overturns is the claim that the split was *undocumented*.
+There is a per-method vocabulary; it is simply not enforced.
+
+**The inconclusive `ignoreOrder` probe is now explained.** It scored 0 with and without the
+option, and this entry recorded that as indicting the probe. It did not: Learnosity's own
+scorer configuration (`mathcore/scorerConfig.js`, cached locally) switches over the settings it
+translates for the literal and syntax methods, and lists `ignoreOrder` in the branch it
+discards — alongside `strict`, `normalizeArithmetic`, `ignoreCoefficientOne`,
+`ignoreTrailingZeros`, `allowInterval` and `ignoreLeadingAndTrailingSpaces`. The option is
+accepted, documented for `equivLiteral`, and dropped on the floor. The probe was right and the
+write-up was wrong.
+
+That is a third silent layer on top of the two this entry already names: a key can be unknown
+and ignored, known and honoured, or **known, documented, and still ignored**. Only the last is
+invisible to both the author and this register without reading the engine.
+
+`setDecimalSeparator` stays inconclusive. Its probe failed to parse rather than failing to
+score, and the Author Guide describes it as part of "allow decimal marks" — the separator
+characters rather than a switch — which the probe did not model.
 
 **Consequence for L0176.** The old emission was
 `{ignoreOrder, setDecimalSeparator, setThousandsSeparator, inverseResult}` on every rule —

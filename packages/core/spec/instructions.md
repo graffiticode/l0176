@@ -495,6 +495,24 @@ that reason.
 with no error and no effect. Nothing downstream will tell you a key was
 misspelled. See C1 and C2 in `conflict-resolution.md` for the measurements.
 
+**Rule options**, with the method each is documented for:
+
+| option | documented for | effect |
+|---|---|---|
+| `decimal-places` | `equivSymbolic`, `equivValue` | significant decimal places used for the comparison; default and maximum 10 |
+| `ignore-text` | `equivSymbolic`, `equivValue`, `equivSyntax` | discards LaTeX `\\text{...}` in the response |
+| `compare-sides` | `equivSymbolic`, `equivValue` | scores an equation when its two sides are equal, rather than matching the whole expression |
+| `allow-decimal` | `equivLiteral`, `equivSymbolic`, `equivValue`, `isSimplified` | permits separators; the actual characters come from `set-decimal-separator` and `set-thousands-separator`, which must differ |
+| `treat-letters-as-variables` | `equivSymbolic` | every letter is a variable rather than a unit or constant |
+| `allow-thousands-separator` | `isExpanded`, `isFactorised`, `isTrue`, `isUnit` | permits a thousands separator in the response |
+| `inverse-result` | `equivLiteral` | scores the *complement* — a matching response is marked wrong |
+| `ignore-leading-and-trailing-spaces-rule`, `treat-multiple-spaces-as-one` | `stringMatch` | whitespace handling for the character comparison |
+| `syntax` | `equivSyntax` | the form rule, as above |
+
+**Tolerance is not an option.** `equivValue` takes it in the `value` itself with
+a plus-minus: `value "10±1.5"` accepts anything from 8.5 to 11.5. It works only
+with `equivValue`.
+
 ### Metadata
 
 L0176 supports a `metadata` block at two levels: on `item` (for fields the

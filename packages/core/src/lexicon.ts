@@ -180,6 +180,13 @@ const additions = {
   // to LaTeX \text{...} the learner types alongside the answer.
   "syntax": { tk: 1, name: "SYNTAX", cls: "function", length: 1, arity: 1 },
   "ignore-text": { tk: 1, name: "IGNORE_TEXT", cls: "function", length: 1, arity: 1 },
+  // The rest of the documented rule options, one Author Guide article naming
+  // each: "Allow decimal marks", "Compare sides", "Treat all letters as
+  // variables", "Allow thousands separator".
+  "allow-decimal": { tk: 1, name: "ALLOW_DECIMAL", cls: "function", length: 1, arity: 1 },
+  "compare-sides": { tk: 1, name: "COMPARE_SIDES", cls: "function", length: 1, arity: 1 },
+  "treat-letters-as-variables": { tk: 1, name: "TREAT_LETTERS_AS_VARIABLES", cls: "function", length: 1, arity: 1 },
+  "allow-thousands-separator": { tk: 1, name: "ALLOW_THOUSANDS_SEPARATOR", cls: "function", length: 1, arity: 1 },
 
   // Leaf-object members (arity 1). Each returns a single-key record; the
   // enclosing collector merges a list of them into one object. Modelled on

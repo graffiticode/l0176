@@ -871,6 +871,10 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   // Scoring-rule options (camelCase in Learnosity)
   SYNTAX: { field: "syntax" },
   IGNORE_TEXT: { field: "ignoreText" },
+  ALLOW_DECIMAL: { field: "allowDecimal" },
+  COMPARE_SIDES: { field: "compareSides" },
+  TREAT_LETTERS_AS_VARIABLES: { field: "treatLettersAsVariables" },
+  ALLOW_THOUSANDS_SEPARATOR: { field: "allowThousandsSeparator" },
   DECIMAL_PLACES: { field: "decimalPlaces" },
   SET_DECIMAL_SEPARATOR: { field: "setDecimalSeparator" },
   SET_THOUSANDS_SEPARATOR: { field: "setThousandsSeparator" },
