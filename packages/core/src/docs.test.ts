@@ -237,6 +237,31 @@ describe("the RAG example corpus is coherently numbered", () => {
     }
   });
 
+  // A bounds check is not enough: the range that broke last time was still
+  // within 1..N, just pointing at the wrong prompts. What the preamble asserts
+  // is a claim about content — "Examples A–B highlight whole sentences" — so
+  // check the claim, not the arithmetic.
+  test("a range that claims what its examples do is telling the truth", () => {
+    const body = new Map<number, string>();
+    for (const line of text().split("\n")) {
+      const m = /^(\d+)\. (.*)$/.exec(line);
+      if (m) body.set(Number(m[1]), m[2].toLowerCase());
+    }
+    // The prose wraps, so a claim can straddle a line break. Flatten first —
+    // without this the guard silently checked only the claims that happened to
+    // fit on one line.
+    const flat = text().replace(/\s+/g, " ");
+    const claims = [...flat.matchAll(/Examples (\d+)–(\d+) highlight whole (\w+?)s\b/g)];
+    expect(claims.length, "no 'Examples A–B highlight whole X' claims found")
+      .toBeGreaterThan(0);
+    for (const [, lo, hi, noun] of claims) {
+      for (let n = Number(lo); n <= Number(hi); n++) {
+        expect(body.get(n), `example ${n} should be about a whole ${noun}`)
+          .toContain(noun);
+      }
+    }
+  });
+
   test("the stated prompt count matches the number of prompts", () => {
     const { examples } = parse();
     const stated = /^(\d+) example prompts/m.exec(text());
@@ -244,13 +269,21 @@ describe("the RAG example corpus is coherently numbered", () => {
     expect(Number(stated![1])).toBe(examples.length);
   });
 
+  // Every en-dash range outside a category heading, not just the ones written
+  // with an "Examples" prefix. A renumbering once remapped the prefixed half of
+  // "Examples 149–151 ...; 152–154 ..." and left the bare half pointing at the
+  // wrong prompts, because nothing was looking for it.
   test("cross-references point at examples that exist", () => {
     const { examples } = parse();
     const max = examples.length;
-    for (const m of text().matchAll(/Examples? (\d+)–(\d+)/g)) {
-      expect(Number(m[1]), m[0]).toBeLessThanOrEqual(max);
-      expect(Number(m[2]), m[0]).toBeLessThanOrEqual(max);
-      expect(Number(m[1])).toBeLessThan(Number(m[2]));
+    for (const line of text().split("\n")) {
+      if (/^## Category /.test(line)) continue;
+      for (const m of line.matchAll(/(\d+)–(\d+)/g)) {
+        const [lo, hi] = [Number(m[1]), Number(m[2])];
+        expect(lo, `${m[0]} in: ${line.trim().slice(0, 60)}`).toBeLessThanOrEqual(max);
+        expect(hi, `${m[0]} in: ${line.trim().slice(0, 60)}`).toBeLessThanOrEqual(max);
+        expect(lo, m[0]).toBeLessThan(hi);
+      }
     }
   });
 });
