@@ -330,19 +330,18 @@ function applyScoring(type: string, merged: any) {
   }
 }
 
-// Learnosity's own scorer named these when handed a method that cannot exist —
-// see C1 in spec/conflict-resolution.md. `validSyntax` and the last five are
-// math-engine actions rather than question-type scoring methods: none appears
-// on any of the 51 question-type articles. They stay on the list so the
-// compiler is no stricter than the engine, which does accept and score them,
-// but `instructions.md` does not offer them. `stringMatch` is the reverse case:
-// absent from the enumeration yet a real scoring method, because it compares
-// characters and never reaches the math API.
+// The scoring-method set: one article each in Learnosity's Author Guide — the
+// "Legacy Scoring Articles" the question-type pages defer to for what a `method`
+// means. Cached at ~/work/learnosity/scoring-methods-docs.
+//
+// The math engine's runtime error names six more (`validSyntax`, `simplify`,
+// `expand`, `variables`, `format`, `calculate`). That is the math API's method
+// list, which mixes scoring methods with engine actions, and C1 briefly mistook
+// it for the enumeration. None of the six is a question scoring method, so none
+// is accepted here.
 const MATH_METHODS = new Set([
-  "equivValue", "equivLiteral", "equivSyntax", "equivSymbolic",
-  "isFactorised", "isSimplified", "isExpanded", "isUnit", "isTrue",
-  "validSyntax", "stringMatch",
-  "simplify", "expand", "variables", "format", "calculate",
+  "equivLiteral", "equivSymbolic", "equivValue", "equivSyntax", "stringMatch",
+  "isSimplified", "isFactorised", "isExpanded", "isUnit", "isTrue",
 ]);
 
 // A method Learnosity does not recognise is rejected at render time and scores
@@ -870,6 +869,8 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   SHOW_HINTS_BUTTON: { field: "show_hints_button" },
 
   // Scoring-rule options (camelCase in Learnosity)
+  SYNTAX: { field: "syntax" },
+  IGNORE_TEXT: { field: "ignoreText" },
   DECIMAL_PLACES: { field: "decimalPlaces" },
   SET_DECIMAL_SEPARATOR: { field: "setDecimalSeparator" },
   SET_THOUSANDS_SEPARATOR: { field: "setThousandsSeparator" },

@@ -589,10 +589,10 @@ test("an unknown scoring method is rejected", async () => {
   }));
 });
 
-test("every method Learnosity's own scorer named is accepted", async () => {
-  for (const method of ["equivValue", "equivLiteral", "equivSyntax", "equivSymbolic",
-    "isFactorised", "isSimplified", "isExpanded", "isUnit", "isTrue", "validSyntax",
-    "stringMatch"]) {
+test("every documented scoring method is accepted", async () => {
+  // One Author Guide article each; anything outside this set is rejected.
+  for (const method of ["equivLiteral", "equivSymbolic", "equivValue", "equivSyntax",
+    "stringMatch", "isSimplified", "isFactorised", "isExpanded", "isUnit", "isTrue"]) {
     await expect(compile(`set-var "lrn-id" "t" questions [clozeformula [
         stimulus "Solve."
         template "{{response}}"
@@ -901,5 +901,50 @@ describe("math is encoded as LaTeX", () => {
     for (const s of ["Cost is $5 and £3", "Which president served two terms?", "50% of 20"]) {
       await expect(stim(s), s).resolves.toBeTruthy();
     }
+  });
+});
+
+// equivSyntax checks the FORM of a response, not its value, so it carries no
+// `value` at all — the rule goes in `options.syntax`. Verified against
+// Learnosity's own truth table by rendering: \scientific accepts "2\times10^3"
+// and rejects "10\times10^2"; \decimal3 accepts "1.234" and rejects "1.2"; and
+// ignoreText lets "1.23\text{ cm}" still count as a decimal.
+describe("equivSyntax", () => {
+  test("the rule and ignore-text reach options, with no value emitted", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [clozeformula [
+      stimulus "Give the mass of the Sun in scientific notation."
+      template "{{response}} kg"
+      validation [valid-response [score 1 value
+        [[[method "equivSyntax" options [syntax "\\\\scientific" ignore-text true]]]]]]
+    ]] {}..`);
+    expect(out.data.questions[0].validation.valid_response.value).toEqual([
+      [{ method: "equivSyntax", options: { syntax: "\\scientific", ignoreText: true } }],
+    ]);
+  });
+
+  test("a rule may carry its argument", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [clozeformula [
+      stimulus "Round to three decimal places."
+      template "{{response}}"
+      validation [valid-response [score 1 value
+        [[[method "equivSyntax" options [syntax "\\\\decimal3"]]]]]]
+    ]] {}..`);
+    expect(out.data.questions[0].validation.valid_response.value[0][0].options)
+      .toEqual({ syntax: "\\decimal3" });
+  });
+
+  // Learnosity documents equivSyntax as a *supporting* method: being purely
+  // syntactic it accepts any response of the right form, right or wrong, so a
+  // question that must check both pairs it with a value-comparing rule.
+  test("it pairs with a value-comparing rule in the same blank", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [clozeformula [
+      stimulus "Give one half as a decimal."
+      template "{{response}}"
+      validation [valid-response [score 1 value
+        [[[method "equivValue" value "0.5"]
+          [method "equivSyntax" options [syntax "\\\\decimal"]]]]]]
+    ]] {}..`);
+    const rules = out.data.questions[0].validation.valid_response.value[0];
+    expect(rules.map((r: any) => r.method)).toEqual(["equivValue", "equivSyntax"]);
   });
 });

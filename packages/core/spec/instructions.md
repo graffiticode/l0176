@@ -393,7 +393,42 @@ silently rejects answers that should score.
 - **`isUnit`** — a predicate that *does* take a `value`, naming the unit:
   `[method "isUnit" value "cm"]` accepts `5 cm`. Without a `value` it scores
   every response 0.
-- **`equivSyntax`** — compares the syntactic form of the response.
+- **`equivSyntax`** — checks the *form* of the response rather than comparing it
+  to an answer, so it carries no `value`. The form goes in `options` as
+  `syntax`, one of nine rules, each written as a LaTeX-style command:
+
+  | rule | accepts | argument |
+  |---|---|---|
+  | `\\number` | any integer or floating point | decimal places |
+  | `\\integer` | any integer | significant figures |
+  | `\\decimal` | any decimal | decimal places |
+  | `\\scientific` | any number in scientific notation | decimal places |
+  | `\\variable` | any single variable | — |
+  | `\\fraction` | any fraction, simple or mixed | — |
+  | `\\simpleFraction` | a simple fraction only | — |
+  | `\\mixedFraction` | a mixed fraction only | — |
+  | `\\fractionOrDecimal` | a fraction or a decimal | — |
+
+  An argument is appended to the rule: `"\\decimal3"` accepts `1.234` and
+  rejects `1.2`. `ignore-text` discards LaTeX `\\text{...}` the learner types
+  alongside the answer, so `1.23\\text{ cm}` still counts as a decimal.
+
+  ```
+  clozeformula [
+    stimulus "Give the mass of the Sun in scientific notation."
+    template "{{response}} kg"
+    validation [
+      valid-response [score 1 value
+        [[[method "equivSyntax" options [syntax "\\scientific" ignore-text true]]]]]
+    ]
+  ]
+  ```
+
+  Being purely syntactic, it is unaffected by the value of the response —
+  `\\scientific` accepts any number written that way, right or wrong. Learnosity
+  therefore documents it as a **supporting** method: pair it with `equivValue` or
+  `equivSymbolic` as a second rule when the answer must be both correct and
+  written in a particular form.
 - **`stringMatch`** — the one method that is *not* a math comparison. It compares
   literal characters, so notation is no longer free: against `"1/2"` a learner
   typing `1 / 2` is **wrong**, where under `equivLiteral` it is right. Reach for
@@ -443,16 +478,18 @@ Choose by what the request specifies:
 | it must be simplified | `isSimplified` | the form of the answer is the skill |
 | it must be expanded / factorised | `isExpanded` / `isFactorised` | likewise, and neither takes a `value` |
 
-**The full method set**, from Learnosity's own scorer rather than its docs:
-`equivValue`, `equivLiteral`, `equivSyntax`, `equivSymbolic`, `isFactorised`,
-`isSimplified`, `isExpanded`, `isUnit`, `isTrue` and `stringMatch`.
-(`validSyntax`, `simplify`, `expand`, `variables`, `format` and `calculate` are
-also accepted by the math engine, but none of them is documented on any
-question-type article and they are engine actions rather than ways of scoring a
-response. The compiler allows them so it stays no stricter than the engine; do
-not reach for them.) A method outside this set is **rejected by Learnosity at render time and
-scores every response 0** — the item still renders, so the failure looks like a
-learner getting it wrong. The compiler rejects unknown methods for that reason.
+**The full method set is ten**, one Author Guide article each — the "Legacy
+Scoring Articles" the question-type pages defer to: `equivLiteral`,
+`equivSymbolic`, `equivValue`, `equivSyntax`, `stringMatch`, `isSimplified`,
+`isFactorised`, `isExpanded`, `isUnit` and `isTrue`.
+
+The math engine's runtime error names six more — `validSyntax`, `simplify`,
+`expand`, `variables`, `format`, `calculate`. That message lists the math API's
+methods, which mix scoring with engine actions; none of the six documents a way
+to score a question. A method outside the ten is **rejected by Learnosity at
+render time and scores every response 0** — the item still renders, so the
+failure looks like a learner getting it wrong. The compiler rejects them for
+that reason.
 
 `options` behaves the opposite way: an unrecognised key is accepted in silence,
 with no error and no effect. Nothing downstream will tell you a key was

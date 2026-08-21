@@ -38,7 +38,7 @@ type at a time.
 
 | # | Conflict | Status |
 | :-: | :--- | :--- |
-| C1 | The scoring-method enumeration exists on exactly one article | RESOLVED — measured |
+| C1 | The scoring-method enumeration exists on exactly one article | RESOLVED — ten, per the Author Guide |
 | C2 | `validation.*.options` is documented as two disjoint sets | RESOLVED — measured, the split is not real |
 | C3 | Four articles' examples declare a sibling question type | RESOLVED — table wins |
 | C4 | `alt_responses[ ][ ]` documents a shape that does not exist | RESOLVED — artifact |
@@ -51,7 +51,7 @@ type at a time.
 
 ---
 
-### C1 — The scoring-method enumeration exists on exactly one article · RESOLVED (measured)
+### C1 — The scoring-method enumeration exists on exactly one article · RESOLVED (documented, after two wrong measurements)
 
 `Chemistry-formula-chemistry.md` documents `validation.valid_response.value[].method` with a
 *Possible values* list of six: `equivSymbolic`, `equivLiteral`, `equivValue`, `stringMatch`,
@@ -109,23 +109,41 @@ API. It is also observably *not* `equivLiteral`: against a value of `1/2`, a res
 parsed expression. The one article that documents it is the chemistry one, and that is
 consistent with it being handled outside the math engine.
 
-**Six of the fifteen are not question-type scoring methods.** `simplify`, `expand`,
-`variables`, `format`, `calculate` and `validSyntax` are math-engine *actions*; the enumeration
-is the math API's method list, not a list of things sensible to score a question on. None of
-the six appears on any of the 51 question-type articles.
+**Superseded: the enumeration was never the authority.** This entry originally
+treated the math engine's runtime error as the definitive list, because nothing in the
+question-type corpus contradicted it. It is not. `Chemistry-formula-chemistry.md` says of
+`method`, "See Legacy Scoring Articles for more information" — and those articles exist, on
+**authorguide.learnosity.com**, a different subdomain from the question-type help centre, which
+is why searching the latter never found them. They are now cached at
+`~/work/learnosity/scoring-methods-docs`.
 
-`validSyntax` needs its own note, because this register originally got it wrong. It was probed
-with a single well-formed response, scored 1, and was written up as "behaves as a predicate" —
-a conclusion one positive case cannot support. A later pair (`0.5` → 1, `((` → 0) shows it does
-discriminate, but discriminating is not the same as being a question-type scoring method, and
-it is documented as one nowhere. Treat it as an engine action. The lesson is the one this
-register states for `method` generally: **a probe without a negative case proves nothing** —
-which is why the four entries closed by rendering each carry a deliberate control.
+That section has **one article per scoring method, and there are ten**:
 
-**Consequence for L0176.** The compiler accepts the fifteen above plus `stringMatch`, so that
-it is never stricter than the engine, but `instructions.md` offers only the nine documented for
-question types. L0176's inherited list of eight was wrong by omission (`equivSyntax`, `isTrue`)
-and
+    equivLiteral  equivSymbolic  equivValue  equivSyntax  stringMatch
+    isSimplified  isFactorised   isExpanded  isUnit       isTrue
+
+The engine's error names six more — `validSyntax`, `simplify`, `expand`, `variables`,
+`format`, `calculate` — and none has an article. That list is the math API's methods, which mix
+scoring with engine actions. The two readings agree on everything that matters: the chemistry
+article's six were an undercount, `isSimplified`/`isFactorised`/`isUnit` are real, and
+`stringMatch` is a real method that never reaches the math API.
+
+**This entry got `validSyntax` wrong twice, and the second time is the instructive one.** It
+was first probed with a single well-formed response, scored 1, and written up as "behaves as a
+predicate" — which one positive case cannot support. A negative case was then added (`0.5` → 1,
+`((` → 0), it discriminated, and the entry was corrected to call it an engine action *while
+still leaving it in the compiler's accepted set* on the grounds that the engine scores it. That
+was still wrong: scoring is not the test, documentation is. A method with no article is not a
+question scoring method, and the compiler now accepts exactly the ten.
+
+The lesson generalises past the negative-case rule this register already states: **measurement
+establishes behaviour, not intent.** A render can tell you what the engine does with an input;
+it cannot tell you the input was ever meant to be offered to an author. For that, find the
+documentation — and if a page says "see X for more information", X is worth finding before
+concluding the corpus is silent.
+
+**Consequence for L0176.** The compiler accepts exactly the ten documented methods. L0176's
+inherited list of eight was wrong by omission (`equivSyntax`, `isTrue`) and
 right about the three that looked invented. Nothing in the compiler checks `method` today, so
 a typo reaches the learner as a rendered question that scores every response 0.
 ### C2 — `validation.*.options` is documented as two disjoint sets · RESOLVED (measured; the split is not real)

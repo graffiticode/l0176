@@ -174,6 +174,12 @@ const additions = {
   "ignore-leading-and-trailing-spaces-rule": { tk: 1, name: "IGNORE_LEADING_TRAILING_RULE", cls: "function", length: 1, arity: 1 },
   "treat-multiple-spaces-as-one": { tk: 1, name: "TREAT_MULTIPLE_SPACES_AS_ONE", cls: "function", length: 1, arity: 1 },
   "inverse-result": { tk: 1, name: "INVERSE_RESULT", cls: "function", length: 1, arity: 1 },
+  // `equivSyntax` carries its rule here rather than in `value` — the rule names
+  // a form the response must take, not an expression to match against, so there
+  // is nothing for `value` to hold. `ignore-text` is its companion, and applies
+  // to LaTeX \text{...} the learner types alongside the answer.
+  "syntax": { tk: 1, name: "SYNTAX", cls: "function", length: 1, arity: 1 },
+  "ignore-text": { tk: 1, name: "IGNORE_TEXT", cls: "function", length: 1, arity: 1 },
 
   // Leaf-object members (arity 1). Each returns a single-key record; the
   // enclosing collector merges a list of them into one object. Modelled on

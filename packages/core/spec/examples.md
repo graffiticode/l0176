@@ -102,7 +102,7 @@ still encode it as LaTeX — see the Math Notation section of `instructions.md`.
 73. Create a cloze formula question asking "Write a true inequality comparing 5 and 3: {{response}}" that accepts any response which is a true statement, using the isTrue method — both "5 > 3" and "3 < 5" should score.
 74. Create a cloze formula question asking "Give 1/3 as a decimal, rounded to two places: {{response}}" with the correct answer "1/3" using equivValue method compared to two decimal places, so "0.33" is accepted.
 75. Create a cloze formula question asking "A pencil measures 5 centimetres. Enter that length including its unit: {{response}}" that requires the answer to carry the unit, using the isUnit method with the unit "cm".
-76. Create a cloze formula question asking "Write one half as a fraction: {{response}}" with the correct answer "1/2" using equivSyntax method.
+76. Create a cloze formula question asking "Give the mass of the Sun in scientific notation: {{response}} kg" that requires the response to be written in scientific notation, using the equivSyntax method with the scientific rule and ignoring any LaTeX text the learner types alongside the number.
 77. Create a cloze formula question asking "Type the mass-energy equivalence formula exactly as written: {{response}}" with the correct answer "E=mc^2" using stringMatch method, so the exact characters are what count and spacing differences are marked wrong.
 
 ## Category 8: Choice Matrix (78–84)
