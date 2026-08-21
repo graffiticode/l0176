@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { describe, test, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { parser } from "@graffiticode/parser";
 import { compiler, lexicon } from "./index.js";
@@ -194,4 +194,63 @@ test("every LaTeX backslash in a spec program is doubled", () => {
     }
   }
   expect(offences, offences.join("\n")).toEqual([]);
+});
+
+// examples.md is the RAG prompt corpus. Its numbering had drifted: two numbers
+// were used twice, the category ranges in the headings no longer matched their
+// contents, a cross-reference pointed at the wrong examples, and the header
+// still claimed 100 prompts when there were 170. None of that breaks a build,
+// which is exactly why it rotted.
+describe("the RAG example corpus is coherently numbered", () => {
+  const text = () => readFileSync("spec/examples.md", "utf-8");
+
+  const parse = () => {
+    const examples: { n: number; category: number | null }[] = [];
+    const categories: { c: number; lo: number; hi: number }[] = [];
+    let current: number | null = null;
+    for (const line of text().split("\n")) {
+      const h = /^## Category (\d+): .*\((\d+)–(\d+)\)$/.exec(line);
+      if (h) {
+        current = Number(h[1]);
+        categories.push({ c: current, lo: Number(h[2]), hi: Number(h[3]) });
+        continue;
+      }
+      const m = /^(\d+)\. /.exec(line);
+      if (m) examples.push({ n: Number(m[1]), category: current });
+    }
+    return { examples, categories };
+  };
+
+  test("examples run 1..N with no duplicate or missing number", () => {
+    const { examples } = parse();
+    expect(examples.map((e) => e.n))
+      .toEqual(Array.from({ length: examples.length }, (_, i) => i + 1));
+  });
+
+  test("each category heading's range matches what it contains", () => {
+    const { examples, categories } = parse();
+    for (const { c, lo, hi } of categories) {
+      const mine = examples.filter((e) => e.category === c).map((e) => e.n);
+      expect(mine.length, `Category ${c} has no examples`).toBeGreaterThan(0);
+      expect([mine[0], mine[mine.length - 1]], `Category ${c} heading range`)
+        .toEqual([lo, hi]);
+    }
+  });
+
+  test("the stated prompt count matches the number of prompts", () => {
+    const { examples } = parse();
+    const stated = /^(\d+) example prompts/m.exec(text());
+    expect(stated, "no '<N> example prompts' line in the header").toBeTruthy();
+    expect(Number(stated![1])).toBe(examples.length);
+  });
+
+  test("cross-references point at examples that exist", () => {
+    const { examples } = parse();
+    const max = examples.length;
+    for (const m of text().matchAll(/Examples? (\d+)–(\d+)/g)) {
+      expect(Number(m[1]), m[0]).toBeLessThanOrEqual(max);
+      expect(Number(m[2]), m[0]).toBeLessThanOrEqual(max);
+      expect(Number(m[1])).toBeLessThan(Number(m[2]));
+    }
+  });
 });
