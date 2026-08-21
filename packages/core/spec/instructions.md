@@ -103,12 +103,10 @@ All attributes have defaults, so `mcq []` produces a complete question.
   clozetext [
     stimulus "Complete the sentence."
     template "The {{response}} is the powerhouse of the cell."
-    validation
     validation [
-      valid-response [score 1 value [score 1 value ["mitochondria"]]]
+      valid-response [score 1 value ["mitochondria"]]
     ]
   ]
-    {}
   ```
   One `valid-response` entry per `{{response}}` blank, in order. Do not list
   multiple accepted answers for one blank — each alternate is a complete answer
@@ -312,14 +310,40 @@ mcq [
 
 ```
 clozeformula [
-  stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\)"
-  template "{{response}}"
+  stimulus "Solve for \\(x\\)."
+  template "\\(x + 3 = 7\\). \\(x =\\) {{response}}"
   is-math true
   validation [
     valid-response [score 1 value [[[method "equivLiteral" value "4"]]]]
   ]
 ]
 ```
+
+**The formula goes in the `template`, not the `stimulus`.** This is the mistake
+worth naming, because the result still compiles and still renders — it just
+renders wrong. `template` is the line the learner fills in, and each
+`{{response}}` in it becomes a blank *at that position*. `stimulus` is the prompt
+above it, and a `{{response}}` there is inert text — the stimulus is not scanned
+for blanks.
+
+Putting the equation in the stimulus and leaving `template "{{response}}"` gives
+you the whole question as a prompt with an unlabelled box stranded underneath:
+
+```
+stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\)"   ← renders as a prompt
+template "{{response}}"                          ← renders as a bare box below it
+```
+
+Write the prompt in the stimulus and the equation the learner completes in the
+template, so the blank sits where the answer goes:
+
+```
+stimulus "Solve for \\(x\\)."
+template "\\(x + 3 = 7\\). \\(x =\\) {{response}}"
+```
+
+The same rule holds for every cloze type — `clozetext`, `clozedropdown`,
+`clozeassociation` and `clozeformula` all place their blanks from the template.
 
 ### Scoring math responses (`method`)
 
@@ -365,8 +389,8 @@ blank:
 
 ```
 clozeformula [
-  stimulus "Simplify \(\frac{4}{8}\) to lowest terms: {{response}}"
-  template "{{response}}"
+  stimulus "Simplify to lowest terms."
+  template "\(\frac{4}{8}\) = {{response}}"
   validation [
     valid-response [score 1 value [[[method "equivLiteral" value "1/2"]]]]
     alt-responses [[value [[[method "equivLiteral" value "0.5"]]]]
@@ -893,7 +917,8 @@ substitutes one row into the question text via `{{colname}}` placeholders.
     item [
       questions [
         clozetext [
-          stimulus "The {{response}} is the powerhouse of the cell."
+          stimulus "Complete the sentence."
+          template "The {{response}} is the powerhouse of the cell."
           validation [
             valid-response [score 1 value ["mitochondria"]]
           ]
@@ -910,8 +935,8 @@ substitutes one row into the question text via `{{colname}}` placeholders.
     item [
       questions [
         clozeformula [
-          stimulus "Solve: \\(x + 3 = 7\\). \\(x =\\)"
-          template "{{response}}"
+          stimulus "Solve for \\(x\\)."
+          template "\\(x + 3 = 7\\). \\(x =\\) {{response}}"
           is-math true
           validation [
             valid-response [score 1 value [[[method "equivLiteral" value "4"]]]]

@@ -369,6 +369,33 @@ function assertMethods(type: string, value: any, path: string) {
   }
 }
 
+// A cloze blank is placed by the `template`; the `stimulus` is the prompt above
+// it and is never scanned for `{{response}}`. Both mistakes below render without
+// complaint from Learnosity, which is what makes them worth catching here.
+const CLOZE_TYPES = new Set([
+  "clozetext", "clozeformula", "clozedropdown", "clozeassociation",
+]);
+
+function assertClozeTemplate(type: string, attrs: any) {
+  if (!CLOZE_TYPES.has(type)) return;
+  const { stimulus, template } = attrs;
+  if (typeof stimulus === "string" && stimulus.includes("{{response}}")) {
+    throw new Error(
+      `${type}: \`stimulus\` contains {{response}}, which does nothing — only ` +
+      `\`template\` is scanned for blanks. Put the prompt in \`stimulus\` and the ` +
+      `text the learner completes in \`template\`, e.g. ` +
+      `stimulus "Complete the sentence." template "The {{response}} is ...".`,
+    );
+  }
+  if (typeof template === "string" && !template.includes("{{response}}")) {
+    throw new Error(
+      `${type}: \`template\` contains no {{response}}, so the question renders ` +
+      `with no blank for the learner to fill in. Each {{response}} in the ` +
+      `template becomes one blank, at that position.`,
+    );
+  }
+}
+
 // Learnosity's options are {label, value} objects. `value` is what a response
 // records, so it is the author's to choose — the array index as a string is
 // only what the authoring tools happen to generate.
@@ -422,6 +449,7 @@ export function buildClozetext(attrs: any) {
   const merged = withDefaults("clozetext", attrs);
   assertKnownAttributes("clozetext", "CLOZETEXT", merged);
   assertMemberShapes("clozetext", merged, "");
+  assertClozeTemplate("clozetext", merged);
   applyScoring("clozetext", merged);
   return {
     type: "clozetext",
@@ -435,6 +463,7 @@ export function buildClozeassociation(attrs: any) {
   const merged = withDefaults("clozeassociation", attrs);
   assertKnownAttributes("clozeassociation", "CLOZEASSOCIATION", merged);
   assertMemberShapes("clozeassociation", merged, "");
+  assertClozeTemplate("clozeassociation", merged);
   applyScoring("clozeassociation", merged);
   return {
     ...merged,
@@ -447,6 +476,7 @@ export function buildClozedropdown(attrs: any) {
   const merged = withDefaults("clozedropdown", attrs);
   assertKnownAttributes("clozedropdown", "CLOZEDROPDOWN", merged);
   assertMemberShapes("clozedropdown", merged, "");
+  assertClozeTemplate("clozedropdown", merged);
   applyScoring("clozedropdown", merged);
   return {
     ...merged,
@@ -470,6 +500,7 @@ export function buildClozeformula(attrs: any) {
   const merged = withDefaults("clozeformula", attrs);
   assertKnownAttributes("clozeformula", "CLOZEFORMULA", merged);
   assertMemberShapes("clozeformula", merged, "");
+  assertClozeTemplate("clozeformula", merged);
   applyScoring("clozeformula", merged);
   assertMethods("clozeformula", merged.validation, "validation");
   return {

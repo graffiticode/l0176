@@ -124,3 +124,48 @@ test("every program fragment in spec/ compiles, not merely parses", async () => 
   expect(bad, `${bad.length} of ${ok + bad.length} fragments failed to compile:\n${bad.join("\n")}`)
     .toEqual([]);
 });
+
+// A cloze blank is placed by the *template*. The stimulus is the prompt above
+// it and is not scanned for `{{response}}`, so a question written with the
+// formula in the stimulus and a bare `template "{{response}}"` compiles, signs
+// and renders — it just renders wrong: the whole question becomes a prompt with
+// an unlabelled box stranded underneath. The code generator writes from these
+// files, so a stale example here is not a documentation nit; it is reproduced
+// verbatim into generated items.
+const CLOZE = /\b(clozeformula|clozetext|clozedropdown|clozeassociation)\s*\[/;
+
+test("no spec example puts a cloze blank in the stimulus", () => {
+  const offences: string[] = [];
+  for (const f of ["spec/spec.md", "spec/instructions.md"]) {
+    for (const b of blocks(f)) {
+      if (!CLOZE.test(b)) continue;
+      for (const m of b.matchAll(/stimulus\s+"((?:[^"\\]|\\.)*)"/g)) {
+        // The counter-example in instructions.md is prose showing the mistake,
+        // not a program: it is annotated with an arrow.
+        if (/←/.test(b)) continue;
+        if (m[1].includes("{{response}}")) {
+          offences.push(`${f}: stimulus contains {{response}} — ${m[1].slice(0, 60)}`);
+        }
+      }
+    }
+  }
+  expect(offences, offences.join("\n")).toEqual([]);
+});
+
+test("no clozeformula example leaves the formula in the stimulus", () => {
+  const offences: string[] = [];
+  for (const f of ["spec/spec.md", "spec/instructions.md"]) {
+    for (const b of blocks(f)) {
+      if (!/\bclozeformula\s*\[/.test(b) || /←/.test(b)) continue;
+      const template = b.match(/template\s+"((?:[^"\\]|\\.)*)"/);
+      const stimulus = b.match(/stimulus\s+"((?:[^"\\]|\\.)*)"/);
+      if (!template || !stimulus) continue;
+      // A template that is nothing but the blank, next to a stimulus carrying
+      // LaTeX, is the anti-pattern: the equation was left in the prompt.
+      if (template[1].trim() === "{{response}}" && /\\\\?\(/.test(stimulus[1])) {
+        offences.push(`${f}: formula is in the stimulus — ${stimulus[1].slice(0, 60)}`);
+      }
+    }
+  }
+  expect(offences, offences.join("\n")).toEqual([]);
+});

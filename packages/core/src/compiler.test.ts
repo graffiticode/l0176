@@ -581,7 +581,7 @@ describe("items", () => {
 // as a broken item. The compile error is the only place it is visible.
 test("an unknown scoring method is rejected", async () => {
   await expect(compile(`set-var "lrn-id" "t" questions [clozeformula [
-      stimulus "{{response}}"
+      stimulus "Solve."
       template "{{response}}"
       validation [valid-response [score 1 value [[[method "equivalent" value "1/2"]]]]]
     ]] {}..`)).rejects.toContainEqual(expect.objectContaining({
@@ -594,7 +594,7 @@ test("every method Learnosity's own scorer named is accepted", async () => {
     "isFactorised", "isSimplified", "isExpanded", "isUnit", "isTrue", "validSyntax",
     "stringMatch"]) {
     await expect(compile(`set-var "lrn-id" "t" questions [clozeformula [
-        stimulus "{{response}}"
+        stimulus "Solve."
         template "{{response}}"
         validation [valid-response [score 1 value [[[method "${method}" value "1/2"]]]]]
       ]] {}..`)).resolves.toBeTruthy();
@@ -606,7 +606,7 @@ test("every method Learnosity's own scorer named is accepted", async () => {
 // one is exactly as fatal as a typo in the first.
 test("the method check reaches alt-responses", async () => {
   await expect(compile(`set-var "lrn-id" "t" questions [clozeformula [
-      stimulus "{{response}}"
+      stimulus "Solve."
       template "{{response}}"
       validation [
         valid-response [score 1 value [[[method "equivLiteral" value "1/2"]]]]
@@ -624,7 +624,7 @@ test("the method check reaches alt-responses", async () => {
 // and it must survive camelCased into the rule.
 test("options keys reach the rule, since Learnosity validates none of them", async () => {
   const out = await compile(`set-var "lrn-id" "t" questions [clozeformula [
-      stimulus "{{response}}"
+      stimulus "Solve."
       template "{{response}}"
       validation [valid-response [score 1 value
         [[[method "equivValue" value "1/2" options [decimal-places 2]]]]]]
@@ -764,5 +764,43 @@ describe("top-level questions renders", () => {
     ] {}..`);
     const ids = out.data.questions.map((q: any) => q.response_id);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+// The generator writes from spec/, and a stale example there is reproduced
+// verbatim into generated items. The reported case put the whole equation in
+// the stimulus with a bare `template "{{response}}"`: it compiled, signed and
+// rendered, but rendered the question as a prompt with an unlabelled box
+// stranded underneath instead of a blank inline after "x =".
+describe("cloze blanks come from the template", () => {
+  test("a blank in the stimulus is rejected, since nothing scans for it", async () => {
+    await expect(compile(`set-var "lrn-id" "t" questions [clozetext [
+        stimulus "The {{response}} is the powerhouse of the cell."
+        validation [valid-response [score 1 value [["mitochondria"]]]]
+      ]] {}..`)).rejects.toContainEqual(expect.objectContaining({
+      message: expect.stringContaining("only `template` is scanned for blanks"),
+    }));
+  });
+
+  test("a template with no blank is rejected, since nothing renders", async () => {
+    await expect(compile(`set-var "lrn-id" "t" questions [clozeformula [
+        stimulus "Solve for x."
+        template "no blank here"
+        validation [valid-response [score 1 value [[[method "equivLiteral" value "4"]]]]]
+      ]] {}..`)).rejects.toContainEqual(expect.objectContaining({
+      message: expect.stringContaining("renders with no blank"),
+    }));
+  });
+
+  test("prompt in the stimulus and formula in the template compiles", async () => {
+    const out = await compile(`set-var "lrn-id" "t" questions [clozeformula [
+        stimulus "Solve for \\\\(x\\\\)."
+        template "\\\\(x + 3 = 7\\\\). \\\\(x =\\\\) {{response}}"
+        is-math true
+        validation [valid-response [score 1 value [[[method "equivLiteral" value "4"]]]]]
+      ]] {}..`);
+    const q = out.data.questions[0];
+    expect(q.template).toContain("{{response}}");
+    expect(q.stimulus).not.toContain("{{response}}");
   });
 });
