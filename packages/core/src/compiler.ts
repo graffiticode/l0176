@@ -140,8 +140,8 @@ export class Checker extends BaseChecker {
   [key: string]: any;
 
   HELLO(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      const err: any[] = [];
+    this.visit(node.elts[0], options, async (e0: any, _v0: any) => {
+      const err = ([] as any[]).concat(e0 || []);
       const val = node;
       resume(err, val);
     });
@@ -149,8 +149,8 @@ export class Checker extends BaseChecker {
 
 
   ITEMS(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      this.visit(node.elts[1], options, async (e1: any, v1: any) => {
+    this.visit(node.elts[0], options, async (e0: any, _v0: any) => {
+      this.visit(node.elts[1], options, async (e1: any, _v1: any) => {
         const err = ([] as any[]).concat(e0 || [], e1 || []);
         const val = node;
         resume(err, val);
@@ -159,7 +159,7 @@ export class Checker extends BaseChecker {
   }
 
   ITEM(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
+    this.visit(node.elts[0], options, async (e0: any, _v0: any) => {
       const err = ([] as any[]).concat(e0 || []);
       const val = node;
       resume(err, val);
@@ -167,8 +167,8 @@ export class Checker extends BaseChecker {
   }
 
   QUESTIONS(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      this.visit(node.elts[1], options, async (e1: any, v1: any) => {
+    this.visit(node.elts[0], options, async (e0: any, _v0: any) => {
+      this.visit(node.elts[1], options, async (e1: any, _v1: any) => {
         const err = ([] as any[]).concat(e0 || [], e1 || []);
         const val = node;
         resume(err, val);
@@ -179,8 +179,8 @@ export class Checker extends BaseChecker {
 
 
   AUTHOR(node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-      const err: any[] = [];
+    this.visit(node.elts[0], options, async (e0: any, _v0: any) => {
+      const err = ([] as any[]).concat(e0 || []);
       const val = node;
       resume(err, val);
     });
@@ -191,7 +191,7 @@ export class Checker extends BaseChecker {
 // Generate Checker methods for question types (arity 1)
 for (const name of Object.keys(questionTypeBuilders)) {
   Checker.prototype[name] = function (node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
+    this.visit(node.elts[0], options, async (e0: any, _v0: any) => {
       const err = ([] as any[]).concat(e0 || []);
       const val = node;
       resume(err, val);
@@ -204,7 +204,7 @@ for (const name of Object.keys(questionTypeBuilders)) {
 // child expression.
 for (const name of Object.keys(memberFields)) {
   Checker.prototype[name] = function (node: any, options: any, resume: any) {
-    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
+    this.visit(node.elts[0], options, async (e0: any, _v0: any) => {
       resume(([] as any[]).concat(e0 || []), node);
     });
   };

@@ -113,13 +113,11 @@ export const buildInitAuthor = ({
   return signedRequest;
 };
 
-export const buildCreateAuthor = ({
-  sdk,
-  key,
-  secret,
-  domain,
-  dataApi,
-}: any) => async ({
+// Unlike createItems and createQuestions this one neither signs nor calls the
+// Data API — it returns the plain author-config object, and `buildInitAuthor`
+// signs it later — so it takes no dependencies. The argument is accepted and
+// ignored to keep the call site uniform with its siblings.
+export const buildCreateAuthor = (_deps?: any) => async ({
   mode = "item_edit",
   reference,
   id,
