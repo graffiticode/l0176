@@ -729,8 +729,11 @@ document:
 
 When the request asks for partial credit — "give partial credit", "score each
 correct answer separately", "award points per correct selection" — write
-`scoring-type "partialMatch"`. Single-response types document only `exactMatch`
-and reject the rest.
+`scoring-type "partialMatch"` **inside the question's `validation` member**, never
+on the question itself. `scoring-type` is an attribute of `validation` alone: a
+question carrying it directly is a compile error listing that type's legal
+attributes (`scoring-type is not an attribute of choicematrix`). Single-response
+types document only `exactMatch` and reject the rest.
 
 ### Instant Feedback
 
