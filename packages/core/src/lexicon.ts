@@ -46,7 +46,6 @@ const additions = {
   "column-titles": { tk: 1, name: "COLUMN_TITLES", cls: "function", length: 1, arity: 1 },
   "max-selection": { tk: 1, name: "MAX_SELECTION", cls: "function", length: 1, arity: 1 },
   method: { tk: 1, name: "METHOD", cls: "function", length: 1, arity: 1 },
-  id: { tk: 1, name: "ID", cls: "function", length: 2, arity: 2 },
   lang: { tk: 1, name: "LANG", cls: "function", length: 1, arity: 1 },
   model: { tk: 1, name: "MODEL", cls: "function", length: 1, arity: 1 },
   "save-to-itembank": { tk: 1, name: "SAVE_TO_ITEMBANK", cls: "function", length: 1, arity: 1 },

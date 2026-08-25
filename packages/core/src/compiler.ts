@@ -504,20 +504,6 @@ for (const [name, meta] of Object.entries(memberFields)) {
 }
 
 
-// Override ID to set options["lrn-id"] before visiting continuation,
-// so child transformers (ITEMS, QUESTIONS, AUTHOR) can read it.
-// Don't include id in the output record — it flows via options only.
-Transformer.prototype.ID = function (node: any, options: any, resume: any) {
-  this.visit(node.elts[0], options, async (e0: any, v0: any) => {
-    options["lrn-id"] = v0;
-    this.visit(node.elts[1], options, async (e1: any, v1: any) => {
-      const err = ([] as any[]).concat(e0 || [], e1 || []);
-      const val = toPlainObject(v1);
-      resume(err, val);
-    });
-  });
-};
-
 export const compiler = new Compiler({
   langID: "0176",
   version: "v0.0.1",

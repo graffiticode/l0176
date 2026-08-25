@@ -354,7 +354,7 @@ previews use the server's default credentials but `save-to-itembank true` is
 an error — the default credentials may sign previews but never mutate the bank.
 
 ```
-id "mitochondria-mcq"
+set-var "lrn-id" "mitochondria-mcq"
 set-var "learnosity-key" get-val-public "learnosityKey"
 set-var "learnosity-secret" get-val-private "learnositySecret"
 items [

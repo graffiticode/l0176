@@ -42,6 +42,11 @@ const RETIRED = [
   "partial-credit", "alternative-response", "max-word-count",
   "categories", "distractors", "hot-text",
   "learnosity", "features", "layout",
+  // Removed 2026-08-25: a redundant alias for `set-var "lrn-id"`. It appeared in one
+  // spec fragment (skipped by the compile guard for its `...`) and in zero of the 169
+  // training examples, so nothing ever emitted it — but a doc example is what the
+  // generator copies, so keep it from returning.
+  "id",
 ];
 
 test("no retired keyword is still documented", () => {
