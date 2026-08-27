@@ -793,7 +793,7 @@ fields it expects.
 
 ```
 custom [
-  lang "0166"
+  lang "0179"
   stimulus "..."
   model { ...interaction-specific fields... }
 ]
@@ -804,13 +804,13 @@ Compiles to:
 ```json
 {
   "type": "custom",
-  "custom_type": "custom_question_l0166",
+  "custom_type": "custom_question_l0179",
   "stimulus": "...",
   "js": {
-    "question": "https://l0166.graffiticode.org/question.js",
-    "scorer":   "https://l0166.graffiticode.org/scorer.js"
+    "question": "https://l0179.graffiticode.org/question.js",
+    "scorer":   "https://l0179.graffiticode.org/scorer.js"
   },
-  "css": "https://l0166.graffiticode.org/question.css",
+  "css": "https://l0179.graffiticode.org/question.css",
   "data": "<JSON-stringified interaction data>"
 }
 ```
@@ -824,15 +824,15 @@ base-language `data` primitive and threaded into the `custom` question's
 
 ```
 custom [
-  lang "0166"
+  lang "0179"
   stimulus "Use the spreadsheet to compute the column totals."
-  model data use "0166"
+  model data use "0179"
 ]
 ```
 
 ```
 custom [
-  lang "0166"
+  lang "0179"
   stimulus "Use the spreadsheet to compute the column totals."
   model data {}
 ]
@@ -932,7 +932,7 @@ items [
 ] {}..
 ```
 
-Spreadsheet question reading an upstream L0166 task:
+Spreadsheet question reading an upstream L0179 task:
 
 ```
 set-var "lrn-id" get-val-public "itemId"
@@ -940,9 +940,9 @@ items [
   item [
     questions [
       custom [
-        lang "0166"
+        lang "0179"
         stimulus "Use the spreadsheet to compute the column totals."
-        model data use "0166"
+        model data use "0179"
       ]
     ] {}
   ]

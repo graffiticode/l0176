@@ -709,7 +709,7 @@ export function buildCustom(attrs: any) {
   // The embedded language owns its own scoring, so there is nothing here to
   // reject any more: `partial-credit` no longer exists as a keyword.
   if (typeof lang !== "string" || lang.length === 0) {
-    throw new Error('custom requires lang to be a non-empty string (e.g. lang "0166").');
+    throw new Error('custom requires lang to be a non-empty string (e.g. lang "0179").');
   }
   const base = `https://l${lang}.graffiticode.org`;
   const out: any = {

@@ -36,7 +36,7 @@ export const buildCreateQuestions = ({
   const effKey = optKey ?? key;
   const effSecret = optSecret ?? secret;
   // Inherit a dynamic-data table from the first question whose data carries
-  // one (typically an embedded L0166 custom question whose data includes
+  // one (typically an embedded L0179 custom question whose data includes
   // templateVariablesRecords). Items have one shared table in Learnosity's
   // model; first-wins matches the common single-widget-per-item case.
   let templateVariablesRecords;

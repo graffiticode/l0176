@@ -1,6 +1,6 @@
 {
   "id": "0176",
-  "description": "Authors Learnosity-compatible assessment items from natural language. Supports multiple-choice, cloze/fill-in-the-blank, short-text, essay, math fill-in, choice matrix, ordering, classification, NGN/NCLEX bow-tie, token-highlight, and custom items that embed a separately deployed Graffiticode-language interaction (e.g. an L0166 spreadsheet) and can read content from an upstream pipeline task. Describe the stem, correct answer, distractors, scoring, and tags — L0176 emits a valid Learnosity item JSON.",
+  "description": "Authors Learnosity-compatible assessment items from natural language. Supports multiple-choice, cloze/fill-in-the-blank, short-text, essay, math fill-in, choice matrix, ordering, classification, NGN/NCLEX bow-tie, token-highlight, and custom items that embed a separately deployed Graffiticode-language interaction (e.g. an L0179 spreadsheet) and can read content from an upstream pipeline task. Describe the stem, correct answer, distractors, scoring, and tags — L0176 emits a valid Learnosity item JSON.",
   "supported_item_types": [
     "mcq",
     "shorttext",
@@ -84,9 +84,9 @@
       "notes": "Paragraph-level token highlight: set tokenization \"paragraph\" and let Learnosity split the passage, with the valid response indexing the paragraphs; or wrap each paragraph in its own lrn_token span and index those."
     },
     {
-      "prompt": "Create a spreadsheet question. Embed the L0166 spreadsheet as the interaction. Stem: 'Use the spreadsheet below to compute the column totals for the first quarter.'",
+      "prompt": "Create a spreadsheet question. Embed the L0179 spreadsheet as the interaction. Stem: 'Use the spreadsheet below to compute the column totals for the first quarter.'",
       "produces": "custom",
-      "notes": "Embedded interaction: emits a `custom` question with `lang \"0166\"` whose `data:` reads the upstream pipeline task via the base-language `data {}` primitive. The pipeline edge (which L0166 producer feeds this consumer) is wired in the console; L0176 source does not reference task IDs. Scoring is the L0166 widget's own `scorer.js` — no `valid-response` is emitted. `save-to-itembank` produces a snapshot frozen at compile time."
+      "notes": "Embedded interaction: emits a `custom` question with `lang \"0179\"` whose `data:` reads the upstream pipeline task via the base-language `data {}` primitive. The pipeline edge (which L0179 producer feeds this consumer) is wired in the console; L0176 source does not reference task IDs. Scoring is the L0179 widget's own `scorer.js` — no `valid-response` is emitted. `save-to-itembank` produces a snapshot frozen at compile time."
     },
     {
       "prompt": "Create a multiple-choice question asking 'What is the capital of France?' with options 'Paris', 'London', 'Berlin', 'Madrid' where Paris is correct, and add a check answer button.",

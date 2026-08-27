@@ -36,7 +36,7 @@ provide a higher-level interface with sensible defaults:
 - `classification` — Drag items into a grid; layout lives in `ui-style`
 - `bowtie` — NGN/NCLEX bow-tie: source pools feeding a bow-tie diagram
 - `token-highlight` — Click tokens in a passage; `template` carries the `lrn_token` spans
-- `custom` — Embed a separately deployed Graffiticode-language interaction (e.g. an L0166 spreadsheet). Set the interaction payload with the chained `model` attribute (preferred); see Pipeline Composition
+- `custom` — Embed a separately deployed Graffiticode-language interaction (e.g. an L0179 spreadsheet). Set the interaction payload with the chained `model` attribute (preferred); see Pipeline Composition
 
 Each function takes a record built from chainable attribute keywords.
 All attributes have defaults, so `mcq []` produces a complete question.
@@ -264,9 +264,9 @@ All attributes have defaults, so `mcq []` produces a complete question.
   and pass to `model` (see Pipeline Composition):
   ```
   custom [
-    lang "0166"
+    lang "0179"
     stimulus "Use the spreadsheet to compute the column totals."
-    model data use "0166"
+    model data use "0179"
   ]
   ```
 
@@ -871,7 +871,7 @@ language id; use that id consistently as both the `lang` on the surrounding
 
 | If the prompt asks for… | Upstream lang |
 | :--- | :--- |
-| Spreadsheet content ("spreadsheet question", "use this sheet", "table-based assessment") | `0166` |
+| Spreadsheet content ("spreadsheet question", "use this sheet", "table-based assessment") | `0179` |
 | Concept-web assessment ("concept web", "concept map", "node-and-edge concept assessment") | `0169` |
 
 If the prompt's content type doesn't fit any row above, do not invent
@@ -886,9 +886,9 @@ items [
   item [
     questions [
       custom [
-        lang "0166"
+        lang "0179"
         stimulus "Use the spreadsheet to compute the column totals."
-        model data use "0166"
+        model data use "0179"
       ]
     ] {}
   ]
@@ -929,11 +929,11 @@ items [
 Learnosity items can carry a table of variable values; each session
 substitutes one row into the question text via `{{colname}}` placeholders.
 
-- Embedding an L0166 custom question whose compiled output includes
+- Embedding an L0179 custom question whose compiled output includes
   `templateVariablesRecords` automatically routes those rows into the
   item's `dynamic_content_data`. No extra keyword needed — just reference
   the variables in stems with `{{A1}}`-style placeholders.
-- To declare a table directly (no L0166 upstream), chain the
+- To declare a table directly (no L0179 upstream), chain the
   item-level `params` keyword with a list of row records:
 
   ```
@@ -951,7 +951,7 @@ substitutes one row into the question text via `{{colname}}` placeholders.
   ] {}..
   ```
 
-- If both forms are present, the inherited L0166 table
+- If both forms are present, the inherited L0179 table
   wins. Don't mix them unless the prompt explicitly asks for a fallback.
 
 ## Example Patterns
@@ -1058,16 +1058,16 @@ substitutes one row into the question text via `{{colname}}` placeholders.
   ] {}..
   ```
 
-- Spreadsheet question reading an upstream L0166 task:
+- Spreadsheet question reading an upstream L0179 task:
   ```
   set-var "lrn-id" get-val-public "itemId"
   items [
     item [
       questions [
         custom [
-          lang "0166"
+          lang "0179"
           stimulus "Use the spreadsheet to compute the column totals."
-          model data use "0166"
+          model data use "0179"
         ]
       ] {}
     ]

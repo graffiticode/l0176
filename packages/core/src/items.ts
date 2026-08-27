@@ -104,7 +104,7 @@ export const buildCreateItems = ({
   const effSecret = optSecret ?? secret;
   const batchId = id || "0";
 
-  // Inherited (from an embedded L0166 custom question) overrides declared. When
+  // Inherited (from an embedded L0179 custom question) overrides declared. When
   // a widget is embedded, its expansion is authoritative. `params` is declared
   // once for the whole list, because Learnosity attaches one dynamic-content
   // table per rendered activity.

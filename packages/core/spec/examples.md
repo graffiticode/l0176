@@ -177,28 +177,28 @@ parameters to monitor).
 126. Update the existing item with id <ITEM_ID>: change the stem to be shorter and clearer, but keep all the existing tags, difficulty, DOK, and per-option distractor rationale unchanged.
 127. Update the existing item with id <ITEM_ID>: keep the stem and options unchanged, but change the difficulty tag from medium to hard and update DOK from 2 to 3 — leave the distractor rationale alone.
 
-## Category 14: Custom Spreadsheet Questions (L0166 Embedded) (128–140)
+## Category 14: Custom Spreadsheet Questions (L0179 Embedded) (128–140)
 
-These items emit a `custom` Learnosity question with `lang "0166"`. The
+These items emit a `custom` Learnosity question with `lang "0179"`. The
 spreadsheet payload is either supplied inline via `model { ... }` describing
-an L0166 program, or read from the upstream pipeline task with
-`model data use "0166"` — the `use` form, not the bare `data {default}`
-fallback, which renders an empty widget. The embedded L0166 widget handles scoring via its own
+an L0179 program, or read from the upstream pipeline task with
+`model data use "0179"` — the `use` form, not the bare `data {default}`
+fallback, which renders an empty widget. The embedded L0179 widget handles scoring via its own
 `scorer.js` — `valid-response` is not used.
 
-128. Create a custom spreadsheet question that embeds the L0166 interaction. Stem: "Use the spreadsheet below to compute the column totals for the first quarter." Read the spreadsheet model from the upstream pipeline task using `data use "0166"`.
-129. Create a custom spreadsheet question backed by L0166 with the stem "Complete the SUM formula in cell A6." The embedded spreadsheet has the values 10, 20, 30, 40, 50 in cells A1 through A5, and an assessed cell A6 expecting the student to enter `=SUM(A1:A5)` using the formula method.
-130. Create a custom spreadsheet question with the stem "Fill in the 3 by 3 multiplication table." Embed an L0166 spreadsheet containing a 3 by 3 grid of assessed input cells whose expected values are the products of the row and column headings 1, 2 and 3 — 1, 2, 3 then 2, 4, 6 then 3, 6, 9, reading left to right, top to bottom.
-131. Create a custom spreadsheet question with the stem "Compute the line totals and grand total for the order below." The embedded L0166 spreadsheet has a header row (Product, Qty, Unit Price, Line Total), 3 data rows with per-row line-total formulas in column D (`=B2*C2` and so on), and a SUM grand total in D5. Bold the header row and right-align the numeric columns.
-132. Create a custom spreadsheet question that embeds a parameterized L0166 sheet. Stem: "Add the two values shown and enter the total in A3." The spreadsheet uses params to populate A1 and A2 and assesses cell A3 with the formula method expecting the correct SUM formula across the param values.
+128. Create a custom spreadsheet question that embeds the L0179 interaction. Stem: "Use the spreadsheet below to compute the column totals for the first quarter." Read the spreadsheet model from the upstream pipeline task using `data use "0179"`.
+129. Create a custom spreadsheet question backed by L0179 with the stem "Complete the SUM formula in cell A6." The embedded spreadsheet has the values 10, 20, 30, 40, 50 in cells A1 through A5, and an assessed cell A6 expecting the student to enter `=SUM(A1:A5)` using the formula method.
+130. Create a custom spreadsheet question with the stem "Fill in the 3 by 3 multiplication table." Embed an L0179 spreadsheet containing a 3 by 3 grid of assessed input cells whose expected values are the products of the row and column headings 1, 2 and 3 — 1, 2, 3 then 2, 4, 6 then 3, 6, 9, reading left to right, top to bottom.
+131. Create a custom spreadsheet question with the stem "Compute the line totals and grand total for the order below." The embedded L0179 spreadsheet has a header row (Product, Qty, Unit Price, Line Total), 3 data rows with per-row line-total formulas in column D (`=B2*C2` and so on), and a SUM grand total in D5. Bold the header row and right-align the numeric columns.
+132. Create a custom spreadsheet question that embeds a parameterized L0179 sheet. Stem: "Add the two values shown and enter the total in A3." The spreadsheet uses params to populate A1 and A2 and assesses cell A3 with the formula method expecting the correct SUM formula across the param values.
 133. Create a custom spreadsheet question that reads its model from the upstream pipeline task. Stem: "Use the supplied worksheet to enter the missing values in column B." Save the item to the item bank — the snapshot freezes the upstream payload at compile time.
-134. Create an items assessment with two questions. First, a custom L0166 spreadsheet with stem "Enter the average of the listed test scores in cell B7." The embedded sheet has scores 85, 92, 78, 95, 88 in B2 through B6 and an assessed cell B7 expecting `=AVERAGE(B2:B6)`. Second, a short text question asking "Which spreadsheet function did you use?" with the correct answer "AVERAGE", case insensitive.
-135. Create a custom spreadsheet question with the stem "Label each row in column B as Positive or Negative based on the value in column A." Embed an L0166 spreadsheet with 5 numeric values in column A (mix of positive and negative numbers) and 5 assessed blank cells in column B expecting the labels Positive or Negative reading top to bottom.
-136. Create a custom spreadsheet question with the stem "Use the monthly budget worksheet to compute the total in cell B7." The embedded L0166 spreadsheet has category labels in column A (Rent, Groceries, Utilities, Transportation, Other), dollar amounts in column B right-aligned with two decimal places, and an assessed `=SUM(B2:B6)` cell in B7. Tag the item with difficulty medium, DOK 2, and CCSS 6.RP.A.3c.
-137. Create a custom spreadsheet question with the stem "Solve each arithmetic problem in column B." Embed an L0166 spreadsheet where column A has display-only labels "2+3=", "7-4=", and "3×2=" and column B has blank assessed cells expecting the values 5, 3, and 6 respectively. Tag the item with difficulty easy and DOK 1.
-138. Create a custom spreadsheet question that reads the upstream task model via `data use "0166"`. Stem: "Use the spreadsheet supplied above to answer the prompt." Do not emit a `valid-response` — scoring is handled by the embedded L0166 widget.
-139. Create a custom spreadsheet question with the stem "Enter the correct multiplication formula in each cell of column C." Embed an L0166 spreadsheet with prices in column A (10, 20, 30), quantities in column B (2, 3, 1), and three assessed cells in column C using the formula method expecting `=A1*B1`, `=A2*B2`, and `=A3*B3` row by row.
-140. Create a custom spreadsheet question with the stem "Compute each section subtotal and the grand total." The embedded L0166 spreadsheet has two sections of 3 data rows each in column A, an assessed SUM subtotal cell at the bottom of each section, and a final assessed cell summing the two subtotals. Bold the subtotal and total rows. Tag the item with difficulty hard and DOK 3.
+134. Create an items assessment with two questions. First, a custom L0179 spreadsheet with stem "Enter the average of the listed test scores in cell B7." The embedded sheet has scores 85, 92, 78, 95, 88 in B2 through B6 and an assessed cell B7 expecting `=AVERAGE(B2:B6)`. Second, a short text question asking "Which spreadsheet function did you use?" with the correct answer "AVERAGE", case insensitive.
+135. Create a custom spreadsheet question with the stem "Label each row in column B as Positive or Negative based on the value in column A." Embed an L0179 spreadsheet with 5 numeric values in column A (mix of positive and negative numbers) and 5 assessed blank cells in column B expecting the labels Positive or Negative reading top to bottom.
+136. Create a custom spreadsheet question with the stem "Use the monthly budget worksheet to compute the total in cell B7." The embedded L0179 spreadsheet has category labels in column A (Rent, Groceries, Utilities, Transportation, Other), dollar amounts in column B right-aligned with two decimal places, and an assessed `=SUM(B2:B6)` cell in B7. Tag the item with difficulty medium, DOK 2, and CCSS 6.RP.A.3c.
+137. Create a custom spreadsheet question with the stem "Solve each arithmetic problem in column B." Embed an L0179 spreadsheet where column A has display-only labels "2+3=", "7-4=", and "3×2=" and column B has blank assessed cells expecting the values 5, 3, and 6 respectively. Tag the item with difficulty easy and DOK 1.
+138. Create a custom spreadsheet question that reads the upstream task model via `data use "0179"`. Stem: "Use the spreadsheet supplied above to answer the prompt." Do not emit a `valid-response` — scoring is handled by the embedded L0179 widget.
+139. Create a custom spreadsheet question with the stem "Enter the correct multiplication formula in each cell of column C." Embed an L0179 spreadsheet with prices in column A (10, 20, 30), quantities in column B (2, 3, 1), and three assessed cells in column C using the formula method expecting `=A1*B1`, `=A2*B2`, and `=A3*B3` row by row.
+140. Create a custom spreadsheet question with the stem "Compute each section subtotal and the grand total." The embedded L0179 spreadsheet has two sections of 3 data rows each in column A, an assessed SUM subtotal cell at the bottom of each section, and a final assessed cell summing the two subtotals. Bold the subtotal and total rows. Tag the item with difficulty hard and DOK 3.
 
 ## Category 15: Dynamic Data — Params for Math Questions (141–152)
 
@@ -209,7 +209,7 @@ stays reserved for the cloze blank. Placeholders are substituted wherever a
 string appears (stem, options, and `valid-response`), so the correct answer
 can vary row by row: give the answer its own column and point `valid-response`
 at it. Use this for math questions that should show each student different
-numbers without an upstream L0166 widget. (When an embedded L0166 question
+numbers without an upstream L0179 widget. (When an embedded L0179 question
 supplies its own `templateVariablesRecords`, that inherited table takes
 precedence over a hardwired `params` table on the same item.)
 
