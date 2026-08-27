@@ -312,3 +312,84 @@ test("every attribute the compiler accepts appears in the spec's reference", asy
     `\`node tools/gen-attribute-reference.mjs\`:\n  ${missing.join(", ")}`,
   ).toEqual([]);
 });
+
+// The coverage test above runs compiler -> spec: every word the compiler accepts
+// must be documented. Nothing ran the other way, so spec.md could document a word
+// the language does not have — and did: a `passage` row survived in the
+// hand-written attribute table long after token-highlight moved to `template` +
+// `tokenization`, and the Functions table still called `items` arity 1. Neither is
+// reachable by the fragment guards, because a table row is not a program.
+//
+// Scope is deliberately the keyword *tables*. Prose mentions and Learnosity field
+// names are also written in backticks, so scanning every code span here would be
+// all false positives; a keyword used in a fenced program is already covered by
+// the parse guard, which rejects an undefined reference outright.
+describe("spec.md's keyword tables agree with the lexicon", () => {
+  const cells = (line: string) => line.split("|").slice(1, -1).map((c) => c.trim());
+  const isRule = (line: string) => /^\|[\s:|-]*\|$/.test(line);
+  // A table is a run of consecutive `|` lines: header, separator, then rows.
+  const tables = () => {
+    const out: { header: string[]; rows: string[][] }[] = [];
+    let cur: string[] | null = null;
+    const flush = () => {
+      if (cur && cur.length > 2) {
+        out.push({ header: cells(cur[0]), rows: cur.slice(2).map(cells) });
+      }
+      cur = null;
+    };
+    for (const l of readFileSync("spec/spec.md", "utf-8").split("\n")) {
+      if (l.startsWith("|")) (cur ??= []).push(l);
+      else flush();
+    }
+    flush();
+    return out.filter((t) => !t.rows.some(isRule as any));
+  };
+  // Only tables whose first column holds a language keyword. The scoring table's
+  // first column is a Learnosity `scoring-type` *value* ("exactMatch"), not a word.
+  const keywordTables = () =>
+    tables().filter((t) => ["function", "keyword"].includes(t.header[0]?.toLowerCase()));
+  // gen-attribute-reference.mjs writes `—` when a registry field has no word.
+  const keywordOf = (cell: string) => {
+    const m = /^`([^`]+)`$/.exec(cell);
+    return m && m[1] !== "—" ? m[1] : null;
+  };
+
+  // Without this the whole describe goes quietly vacuous the first time someone
+  // restructures the markdown: no tables matched, nothing checked, still green.
+  test("the table scan finds the keyword tables it is meant to check", () => {
+    expect(keywordTables().map((t) => t.rows.length)).toHaveLength(7);
+  });
+
+  test("every keyword a table documents is in the lexicon", () => {
+    const unknown: string[] = [];
+    for (const t of keywordTables()) {
+      for (const row of t.rows) {
+        const word = keywordOf(row[0] ?? "");
+        if (word && !(word in (lexicon as Record<string, unknown>))) {
+          unknown.push(`${word} (in the "${t.header.join(" | ")}" table)`);
+        }
+      }
+    }
+    expect(unknown,
+      `${unknown.length} keywords are documented in spec.md but absent from the lexicon. ` +
+      `The generator writes from spec/, so it will emit them and the compile will fail:\n  ` +
+      unknown.join("\n  "),
+    ).toEqual([]);
+  });
+
+  test("every arity a table states matches the lexicon", () => {
+    const wrong: string[] = [];
+    for (const t of keywordTables()) {
+      if (t.header[1]?.toLowerCase() !== "arity") continue;
+      for (const row of t.rows) {
+        const word = keywordOf(row[0] ?? "");
+        const entry = word ? (lexicon as Record<string, any>)[word] : undefined;
+        if (!entry) continue;
+        if (String(entry.arity) !== row[1]) {
+          wrong.push(`${word}: spec.md says ${row[1]}, lexicon says ${entry.arity}`);
+        }
+      }
+    }
+    expect(wrong, wrong.join("\n  ")).toEqual([]);
+  });
+});

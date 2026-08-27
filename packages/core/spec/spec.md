@@ -14,7 +14,7 @@ semantics and base library can be found here:
 | Function | Arity | Signature | Description |
 | :------- | :---: | :-------- | :---------- |
 | `init` | 1 | `<record: record>` | Initializes a Learnosity API session |
-| `items` | 1 | `<record: record>` | Creates a Learnosity Items API request from a record or list of items |
+| `items` | 2 | `<list: list, continuation: record>` | Creates a Learnosity Items API request from a list of items |
 | `item` | 1 | `<record: record>` | Defines a single item (for use in a list passed to `items`) |
 | `questions` | 2 | `<list: list, continuation: record>` | Chainable attribute: sets the questions for an item |
 | `author` | 1 | `<record: record>` | Creates a Learnosity Author API request |
@@ -71,7 +71,8 @@ which take a continuation record.
 | `columns` | string[] | `options` | choicematrix |
 | `list` | string[] | `list` | orderlist |
 | `column-titles` | string[] | `ui_style.column_titles` + `possible_response_groups[].title` | bowtie |
-| `passage` | string | `template` (with `lrn_token` spans injected) | token-highlight |
+| `template` | string | `template` | clozetext, clozeassociation, clozedropdown, clozeformula, token-highlight |
+| `tokenization` | string | `tokenization` | token-highlight |
 | `max-selection` | number | `max_selection` | token-highlight |
 | `method` | string | `validation method` | clozeformula |
 | `lang` | string | — (URL/`custom_type` synthesis) | custom |

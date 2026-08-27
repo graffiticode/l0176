@@ -13,14 +13,14 @@ A canonical program:
 
 ```
 set-var "lrn-id" get-val-public "itemId"
-learnosity items [item questions [mcq {}] {}] {}..
+items [item [questions [mcq []] {}]] {}..
 ```
 
 L0176 adds on top of the L0000 base lexicon:
 
-- **Block keywords:** `init`, `learnosity`, `items`, `item`, `questions`, `author`, `features`, `layout`.
+- **Block keywords:** `init`, `items`, `item`, `questions`, `author`.
 - **Question types (arity 1):** `mcq`, `shorttext`, `longtext`, `plaintext`, `clozetext`, `clozeassociation`, `clozedropdown`, `clozeformula`, `choicematrix`, `orderlist`, `classification`, `bowtie`, `custom`, `token-highlight`.
-- **Attributes (arity 2):** `stimulus`, `options`, `valid-response`, `possible-responses`, `rows`, `columns`, `list`, `categories`, `column-titles`, `passage`, `distractors`, `method`, `metadata`, `id`, `save-to-itembank`, and more.
+- **Attributes (arity-1 members):** `stimulus`, `options`, `valid-response`, `validation`, `possible-responses`, `template`, `columns`, `list`, `column-titles`, `max-selection`, `method`, `metadata`, `params`, `save-to-itembank`, and more.
 - **Metadata members (arity 1):** `tags`, `notes`, `distractor-rationale`, `acknowledgements`, `description`, `source`, `difficulty-level`.
 
 See [`packages/core/spec/`](packages/core/spec/) for the full language specification, examples, and authoring guide.
