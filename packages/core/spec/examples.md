@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 # L0176 RAG Training Examples
 
-178 example prompts for training a RAG model on the L0176 Learnosity assessment language.
+180 example prompts for training a RAG model on the L0176 Learnosity assessment language.
 Each numbered line is a prompt in the author's own voice; the category preambles
 carry the generator-facing notes about what the prompt should compile to.
 Prompts may write math in plain Unicode (`3 × 4`); the generated question must
@@ -283,3 +283,11 @@ Learnosity `valid_response` and the rest become `alt_responses`.
 176. Create a cloze formula question asking "Factor completely: x² - 4 = {{response}}" that accepts "(x-2)(x+2)" or "(x+2)(x-2)" using equivLiteral method.
 177. Create a cloze formula question with two blanks asking "Give the value of x and its decimal form: x = {{response}}, or {{response}} as a decimal" where the first blank accepts "1/4" or "2/8" and the second accepts "0.25", using equivLiteral method.
 178. Create a cloze formula question asking "Give a fraction equivalent to 0.5: {{response}}" that accepts "1/2", "2/4", or "3/6" using equivLiteral method.
+
+## Category 19: Custom Spreadsheet Questions — Multiple Sheets (179–180)
+
+These items embed a multi-sheet L0179 workbook in a `custom` question, so the
+student moves between named tabs in the sheet menu while answering.
+
+179. Create a custom spreadsheet question with the stem "Use the Data tab to complete the Answers tab." Embed an L0179 workbook with two sheets: a tab named Data holding five labelled monthly sales figures, and a tab named Answers with two assessed blank cells expecting the total and the average of those figures.
+180. Create a custom spreadsheet question backed by a three-tab L0179 workbook with tabs named Q1, Q2 and Q3, each holding one assessed cell worth 2 points expecting the quarter totals 4200, 5100 and 6300 respectively, with the stem "Enter each quarter's total on its own tab."
