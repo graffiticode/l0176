@@ -872,7 +872,7 @@ language id; use that id consistently as both the `lang` on the surrounding
 | If the prompt asks for… | Upstream lang |
 | :--- | :--- |
 | Spreadsheet content ("spreadsheet question", "use this sheet", "table-based assessment") | `0179` |
-| Concept-web assessment ("concept web", "concept map", "node-and-edge concept assessment") | `0169` |
+| Concept-web assessment ("concept web", "concept map", "mind map", "drag terms onto a web") | `0183` |
 
 If the prompt's content type doesn't fit any row above, do not invent
 an upstream — emit a question type that L0176 authors directly (mcq,
@@ -1068,6 +1068,22 @@ substitutes one row into the question text via `{{colname}}` placeholders.
           lang "0179"
           stimulus "Use the spreadsheet to compute the column totals."
           model data use "0179"
+        ]
+      ] {}
+    ]
+  ] {}..
+  ```
+
+- Concept web question reading an upstream L0183 task:
+  ```
+  set-var "lrn-id" get-val-public "itemId"
+  items [
+    item [
+      questions [
+        custom [
+          lang "0183"
+          stimulus "Drag each part of the cell onto the web."
+          model data use "0183"
         ]
       ] {}
     ]

@@ -32,7 +32,7 @@ L0176 emits one of the following interactions per question. Use the English cue 
 | `classification`  | "sort into categories", "bucket these items"                        | Drag items into named category buckets.                                     |
 | `bowtie`          | "bow-tie", "NGN", "NCLEX bow-tie", "actions, condition, monitor"    | NGN/NCLEX bow-tie: pick 2 actions, 1 condition, 2 parameters to monitor.    |
 | `token-highlight` | "token highlight", "hot text", "highlight the words", "click the verbs", "select the words in the text" | Click words, sentences or paragraphs in a passage. Say which parts are correct and how the passage should be split. |
-| `custom`          | "spreadsheet question", "use this spreadsheet", "embed an L0179 widget", "embed a Graffiticode interaction" | Embed a separately deployed Graffiticode-language interaction as the question — most commonly an L0179 spreadsheet. The interaction's content can be authored inline or read from an upstream pipeline task (see Pipeline Composition). |
+| `custom`          | "spreadsheet question", "use this spreadsheet", "embed an L0179 widget", "concept web question", "embed an L0183 web", "embed a Graffiticode interaction" | Embed a separately deployed Graffiticode-language interaction as the question — most commonly an L0179 spreadsheet. The interaction's content can be authored inline or read from an upstream pipeline task (see Pipeline Composition). |
 
 No `hotspot` or `image-label` interaction today; describe those as MCQ over labeled positions if you must.
 
@@ -58,7 +58,7 @@ Say this to get that:
 - **Save to the item bank** — by default an item renders as a preview and is *not* written to the Learnosity item bank. Say "save to the item bank" (or equivalent) to persist it; it lands as `status: unpublished` (draft). Publishing is done from the Learnosity Author Site UI, not from the DSL.
 - **Bow-tie (NGN/NCLEX)** — three source pools and three drop zones in a 2-1-2 layout. Standard NCLEX phrasing is "actions to take", "condition most likely", "parameters to monitor". Prompt with the clinical scenario as the stimulus, a titled pool of options per zone, and which options are correct. Nothing validates the result — say what the drop zones are and check the rendered question, because a mis-numbered answer will not be caught.
 - **Token highlight (also called "hot text")** — the learner clicks words, sentences or paragraphs in a passage. Provide the passage and say which parts are correct, and whether the passage should be split by word, sentence or paragraph, or into a specific set of clickable phrases. Say "they may pick at most N" to cap selections. Works for tasks like "click every verb" or "highlight the supporting evidence".
-- **Embedded interaction (custom question)** — when the item should render an interaction authored in another Graffiticode language (e.g. an L0179 spreadsheet), say "embed the L0179 spreadsheet" or "use this spreadsheet as the question". Name the language by its number (`L0179`, `L0167`, …). Provide the stem and any framing prose; the deployed interaction handles its own rendering and scoring.
+- **Embedded interaction (custom question)** — when the item should render an interaction authored in another Graffiticode language (e.g. an L0179 spreadsheet or an L0183 concept web), say "embed the L0179 spreadsheet" or "use this spreadsheet as the question". Name the language by its number (`L0179`, `L0167`, …). Provide the stem and any framing prose; the deployed interaction handles its own rendering and scoring.
 
 ## Pipeline Composition
 
@@ -66,7 +66,7 @@ L0176 items can read content from an upstream task in the console pipeline. The 
 
 What you describe in the prompt:
 
-- Which language to embed (e.g. "L0179 spreadsheet").
+- Which language to embed (e.g. "L0179 spreadsheet", "L0183 concept web").
 - The stem and framing — "use the spreadsheet below to compute the column totals", etc.
 - Whether the item is preview-only or persisted to the bank.
 

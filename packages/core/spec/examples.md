@@ -1,7 +1,7 @@
 <!-- SPDX-License-Identifier: CC-BY-4.0 -->
 # L0176 RAG Training Examples
 
-180 example prompts for training a RAG model on the L0176 Learnosity assessment language.
+186 example prompts for training a RAG model on the L0176 Learnosity assessment language.
 Each numbered line is a prompt in the author's own voice; the category preambles
 carry the generator-facing notes about what the prompt should compile to.
 Prompts may write math in plain Unicode (`3 × 4`); the generated question must
@@ -291,3 +291,17 @@ student moves between named tabs in the sheet menu while answering.
 
 179. Create a custom spreadsheet question with the stem "Use the Data tab to complete the Answers tab." Embed an L0179 workbook with two sheets: a tab named Data holding five labelled monthly sales figures, and a tab named Answers with two assessed blank cells expecting the total and the average of those figures.
 180. Create a custom spreadsheet question backed by a three-tab L0179 workbook with tabs named Q1, Q2 and Q3, each holding one assessed cell worth 2 points expecting the quarter totals 4200, 5100 and 6300 respectively, with the stem "Enter each quarter's total on its own tab."
+
+## Category 20: Custom Concept Web Questions (L0183 Embedded) (181–186)
+
+These items emit a `custom` Learnosity question with `lang "0183"`, reading the
+concept web from the upstream pipeline task with `model data use "0183"`. The
+embedded L0183 web scores each blank with partial credit through its own
+`scorer.js` — `valid-response` is not used.
+
+181. Create a custom concept web question that embeds an L0183 web about the parts of a cell, with the stem "Drag each part onto the web." Read the web from the upstream pipeline task.
+182. Create a Learnosity question embedding an L0183 food chain web where students label each arrow, with the stem "Label how each organism is connected."
+183. Create a custom concept web question with the stem "Complete the water cycle." The embedded L0183 web has four blank stages around "Water cycle" and one wrong answer in the word bank.
+184. Create an items assessment with two questions. First, a custom L0183 concept web about the three branches of government with the stem "Place each branch." Second, a multiple choice question asking which branch interprets laws, with the answer Judicial.
+185. Create a custom concept web question backed by L0183 with the stem "Fill in the inputs and outputs of photosynthesis." Tag the item with difficulty medium and DOK 2.
+186. Create a custom concept web question that reads its web from the upstream L0183 task, with the stem "Use the web to show how the planets relate to the Sun," and save it to the item bank.

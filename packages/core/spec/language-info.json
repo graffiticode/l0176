@@ -107,6 +107,11 @@
       "prompt": "Create a math fill-in asking for the length of the diagonal, accepting anything within 0.05 of 7.07.",
       "produces": "clozeformula",
       "notes": "'within', 'give or take', 'plus or minus', 'to within a tolerance of' and 'accept anything between X and Y' map to a plus-minus written into the answer itself — `value \"7.07±0.05\"` — not to an option. Tolerance works only with `equivValue`. 'to N decimal places' is different: that is `options [decimal-places N]`, which rounds before comparing rather than widening the accepted range."
+    },
+    {
+      "prompt": "Make a Learnosity question from the concept web about the parts of a cell: students drag each part onto the web.",
+      "produces": "custom",
+      "notes": "Embedded interaction: emits a `custom` question with `lang \"0183\"` whose `data:` reads the upstream L0183 task via `model data use \"0183\"`. Scoring is the L0183 widget's own `scorer.js` (partial credit per blank) — no `valid-response` is emitted."
     }
   ]
 }
