@@ -1,0 +1,149 @@
+// SPDX-License-Identifier: MIT
+// The item-bank write happens in exactly one place: `save-to-itembank`
+// wrapping an activity. Building `items`/`questions` never writes, the literal
+// legacy member is lowered to the wrapper, and any other way of setting the
+// flag is refused. Learnosity's Data API is reached through global fetch, which
+// these tests stub so every provider call is observable.
+import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
+import { parser } from "@graffiticode/parser";
+import { compiler, lexicon, lowerLegacySave } from "./index.js";
+
+const CREDS = 'set-var "learnosity-key" "k" set-var "learnosity-secret" "ssssssssssssssssssss"';
+const ITEM = "item [questions [mcq []] {}]";
+
+let routes: string[];
+
+beforeEach(() => {
+  routes = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url: any) => {
+    routes.push(new URL(String(url)).pathname.replace(/^.*\/itembank/, "/itembank"));
+    return new Response(JSON.stringify({ meta: { status: true } }), { status: 200 });
+  });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+async function compile(src: string): Promise<{ err: any[]; val: any }> {
+  const code = await parser.parse(176, src, lexicon);
+  return new Promise((resolve) =>
+    compiler.compile(code, {}, {}, (err: any, val: any) => {
+      const errors = Array.isArray(err) ? err.filter(Boolean) : err ? [err] : [];
+      resolve({ err: errors, val });
+    }),
+  );
+}
+
+describe("building an activity never writes", () => {
+  test.each([
+    ["items", `set-var "lrn-id" "t" ${CREDS} items [${ITEM}] {}..`],
+    ["questions", `set-var "lrn-id" "t" ${CREDS} questions [mcq []] {}..`],
+  ])("%s without save-to-itembank", async (_, src) => {
+    const { err, val } = await compile(src);
+    expect(err).toEqual([]);
+    expect(val.data.itemBank).toBeUndefined();
+    expect(routes).toEqual([]);
+  });
+});
+
+describe("save-to-itembank <activity> writes", () => {
+  test("items: questions, then the items that reference them", async () => {
+    const { err, val } = await compile(`set-var "lrn-id" "t" ${CREDS} save-to-itembank items [${ITEM}] {}..`);
+    expect(err).toEqual([]);
+    expect(routes).toEqual(["/itembank/questions", "/itembank/items"]);
+    expect(val.data.itemBank.saved).toBe(true);
+    expect(val.data.itemBank.references).toEqual(["graffiticode-t-0"]);
+  });
+
+  test("questions: the questions only", async () => {
+    const { err, val } = await compile(`set-var "lrn-id" "t" ${CREDS} save-to-itembank questions [mcq []] {}..`);
+    expect(err).toEqual([]);
+    expect(routes).toEqual(["/itembank/questions"]);
+    expect(val.data.itemBank.saved).toBe(true);
+  });
+
+  test("still requires the program's own credentials", async () => {
+    const { err } = await compile(`set-var "lrn-id" "t" save-to-itembank items [${ITEM}] {}..`);
+    expect(err.map((e) => e.message ?? e).join()).toMatch(/save-to-itembank requires/);
+    expect(routes).toEqual([]);
+  });
+
+  test("a verification dry run validates without writing", async () => {
+    const { err, val } = await compile(`set-var "lrn-id" "verify-itemid" save-to-itembank items [${ITEM}] {}..`);
+    expect(err).toEqual([]);
+    expect(val.data.itemBank).toBeUndefined();
+    expect(routes).toEqual([]);
+  });
+
+  test("a failure after the first write surfaces as an error", async () => {
+    vi.mocked(globalThis.fetch).mockImplementation(async (url: any) => {
+      const path = String(url);
+      routes.push(path);
+      return path.endsWith("/items")
+        ? new Response(JSON.stringify({ meta: { status: false } }), { status: 200 })
+        : new Response(JSON.stringify({ meta: { status: true } }), { status: 200 });
+    });
+    const { err } = await compile(`set-var "lrn-id" "t" ${CREDS} save-to-itembank items [${ITEM}] {}..`);
+    expect(err.map((e) => e.message ?? e).join()).toMatch(/Data API failed: \/itembank\/items/);
+    expect(routes).toHaveLength(2);
+  });
+});
+
+describe("the legacy literal member is lowered to the wrapper", () => {
+  test("items [save-to-itembank true, ...] saves", async () => {
+    const { err, val } = await compile(`set-var "lrn-id" "t" ${CREDS} items [save-to-itembank true, ${ITEM}] {}..`);
+    expect(err).toEqual([]);
+    expect(routes).toEqual(["/itembank/questions", "/itembank/items"]);
+    expect(val.data.itemBank.saved).toBe(true);
+  });
+
+  test("questions [save-to-itembank true, ...] saves", async () => {
+    const { err } = await compile(`set-var "lrn-id" "t" ${CREDS} questions [save-to-itembank true, mcq []] {}..`);
+    expect(err).toEqual([]);
+    expect(routes).toEqual(["/itembank/questions"]);
+  });
+
+  test("save-to-itembank false is dropped and nothing is written", async () => {
+    const { err, val } = await compile(`set-var "lrn-id" "t" ${CREDS} items [save-to-itembank false, ${ITEM}] {}..`);
+    expect(err).toEqual([]);
+    expect(val.data.itemBank).toBeUndefined();
+    expect(routes).toEqual([]);
+  });
+
+  test("lowering leaves no member-form save in the pool and does not mutate its input", async () => {
+    const code = await parser.parse(176, `set-var "lrn-id" "t" items [save-to-itembank true, ${ITEM}] {}..`, lexicon);
+    const before = JSON.stringify(code);
+    const lowered = lowerLegacySave(code);
+    expect(JSON.stringify(code)).toBe(before);
+    const saves = Object.entries(lowered).filter(([k, n]: any) => k !== "root" && n.tag === "SAVE_TO_ITEMBANK");
+    expect(saves).toHaveLength(1);
+    const [, wrapper]: any = saves[0];
+    expect((lowered as any)[wrapper.elts[0]].tag).toBe("ITEMS");
+  });
+
+  test("a program without the legacy member is returned unchanged", async () => {
+    const code = await parser.parse(176, `set-var "lrn-id" "t" items [${ITEM}] {}..`, lexicon);
+    expect(lowerLegacySave(code)).toBe(code);
+  });
+});
+
+describe("any other way of requesting a save is refused", () => {
+  test("a flag computed by another expression", async () => {
+    const { err } = await compile(`set-var "lrn-id" "t" ${CREDS} set-var "s" true items [save-to-itembank get-var "s", ${ITEM}] {}..`);
+    expect(err.map((e) => e.message ?? e).join()).toMatch(/save-to-itembank wraps the activity/);
+    expect(routes).toEqual([]);
+  });
+
+  test("a record literal carrying the flag", async () => {
+    const { err } = await compile(`set-var "lrn-id" "t" ${CREDS} items [{save_to_itembank: true}, ${ITEM}] {}..`);
+    expect(err.length).toBeGreaterThan(0);
+    expect(routes).toEqual([]);
+  });
+
+  test("wrapping something that is not a built activity", async () => {
+    const { err } = await compile(`set-var "lrn-id" "t" ${CREDS} save-to-itembank {type: "questions", data: {questions: []}}..`);
+    expect(err.map((e) => e.message ?? e).join()).toMatch(/must wrap an activity/);
+    expect(routes).toEqual([]);
+  });
+});

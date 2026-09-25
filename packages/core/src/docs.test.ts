@@ -120,6 +120,7 @@ test("every program fragment in spec/ compiles, not merely parses", async () => 
       // save-to-itembank writes to the Learnosity Data API for real. The guard
       // is about shape, so drop it rather than making a network call from a test.
       prog = prog.replace(/save-to-itembank\s+true/g, "save-to-itembank false");
+      prog = prog.replace(/save-to-itembank\s+(?=items\b|questions\b)/g, "");
       try { await compileFragment(prog); ok++; }
       catch (e: any) {
         bad.push(`\n--- ${f}\n${src}\n  -> ${(e?.[0]?.message ?? JSON.stringify(e)).slice(0, 120)}`);

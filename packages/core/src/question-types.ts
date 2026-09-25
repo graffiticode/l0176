@@ -935,7 +935,8 @@ export const memberFields: Record<string, { field: string; shape?: MemberShape }
   // entries rather than on any one item. `params` is the activity's
   // dynamic-content table, and Learnosity attaches one per rendered activity.
   PARAMS: { field: "params" },
-  SAVE_TO_ITEMBANK: { field: "save_to_itembank" },
+  // SAVE_TO_ITEMBANK is not a member: it is the item-bank write, defined on the
+  // Transformer. The literal legacy member is lowered to it (save-lowering.ts).
 
   // custom
   LANG: { field: "lang" },

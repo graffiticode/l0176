@@ -791,8 +791,10 @@ render inline through Questions API without being written to the Learnosity
 item bank. This is the right default for AI-authored items — the human can
 eyeball the preview before deciding to persist.
 
-Put `save-to-itembank true` in the items list to persist the
-item and its questions to the Learnosity item bank. Saved items always land
+Wrap the activity in `save-to-itembank` to persist the item and its
+questions to the Learnosity item bank: `save-to-itembank items [...] {}`
+(or `save-to-itembank questions [...] {}`). `save-to-itembank` takes the
+activity as its one argument; it is not a member of the items list. Saved items always land
 as `status: "unpublished"` (draft); publishing is done from the Learnosity
 Author Site UI, not from the DSL.
 
@@ -812,14 +814,16 @@ camelCase (`learnosityKey`/`learnositySecret`) or other spellings.
 The two must be supplied **together** — providing only one is an error. When
 present they are used to sign every Learnosity request (preview rendering and
 the bank write); when absent, previews fall back to the server's default
-credentials. `save-to-itembank true` without these credentials is an error:
+credentials. `save-to-itembank` without these credentials is an error:
 the default credentials may sign previews but never mutate the bank.
 
-Prompts that should trigger `save-to-itembank true`:
+Prompts that should trigger `save-to-itembank`:
 
-- "save it to the item bank" / "write to the bank" / "persist it" → include
-  `save-to-itembank true` and the credential `set-var` lines above.
-- No such phrasing → preview-only; omit the attribute (and the credentials).
+- "save it to the item bank" / "write to the bank" / "persist it" → wrap
+  the activity in `save-to-itembank` and include the credential `set-var`
+  lines above.
+- No such phrasing → preview-only; omit `save-to-itembank` (and the
+  credentials).
 
 Example — save as draft:
 
@@ -827,8 +831,7 @@ Example — save as draft:
 set-var "lrn-id" get-val-public "itemId"
 set-var "learnosity-key" get-val-public "learnosity-key"
 set-var "learnosity-secret" get-val-private "learnosity-secret"
-items [
-  save-to-itembank true
+save-to-itembank items [
   item [
     questions [
       mcq [
@@ -918,7 +921,7 @@ items [
   `model data use "<lang>"` line whose argument equals its `lang`.** A
   dropped `model` binding is the single most common composition error and
   produces a silently empty interaction — never emit a `custom` without it.
-- `save-to-itembank true` freezes the upstream value at compile time into
+- `save-to-itembank` freezes the upstream value at compile time into
   the saved item. The bank entry is a snapshot, not a live reference;
   edits to the upstream after save do not propagate. If the prompt asks
   to "save a live spreadsheet question to the bank", clarify or fall back

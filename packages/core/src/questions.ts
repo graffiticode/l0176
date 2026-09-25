@@ -26,15 +26,9 @@ const fixVariableRefs = (obj: any) => (
   }, obj)
 );
 
-export const buildCreateQuestions = ({
-  sdk,
-  key,
-  secret,
-  domain,
-  dataApi,
-}: any) => async (data: any, { id, saveToItembank = false, key: optKey, secret: optSecret }: any = {}) => {
-  const effKey = optKey ?? key;
-  const effSecret = optSecret ?? secret;
+// Builds the render activity and the plan a save would write; never writes
+// (see buildSaveToItembank in items.ts).
+export const buildCreateQuestions = () => async (data: any, { id }: any = {}) => {
   // Inherit a dynamic-data table from the first question whose data carries
   // one (typically an embedded L0179 custom question whose data includes
   // templateVariablesRecords). Items have one shared table in Learnosity's
@@ -58,31 +52,6 @@ export const buildCreateQuestions = ({
     };
   });
   const questionRefs = questions.map((question: any) => question.reference);
-  let itemBankResult;
-  if (saveToItembank) {
-    const questionsReq = sdk.init(
-      "data",
-      {
-        consumer_key: effKey,
-        domain,
-      },
-      effSecret,
-      {
-        questions,
-      },
-      "set",
-    );
-    await dataApi({
-      route: "/itembank/questions",
-      request: questionsReq,
-    });
-    // dataApi throws on non-2xx, so reaching here means the write succeeded.
-    itemBankResult = {
-      saved: true,
-      references: questionRefs,
-      savedAt: new Date().toISOString(),
-    };
-  }
   // Two shapes, and they are not interchangeable. The item bank takes records —
   // {type, reference, data} — which is what `questions` above holds and what the
   // Data API write posts. Rendering goes through the Questions API with the
@@ -101,12 +70,14 @@ export const buildCreateQuestions = ({
     questions: inlineQuestions,
     session_id: uuid(),
   };
-  if (itemBankResult) questionsData.itemBank = itemBankResult;
   return {
-    type: "questions",
-    data: questionsData,
-    templateVariablesRecords,
-    questionRefs,
+    activity: {
+      type: "questions",
+      data: questionsData,
+      templateVariablesRecords,
+      questionRefs,
+    },
+    savePlan: { questionRecords: questions, itemRecords: [] },
   };
 };
 

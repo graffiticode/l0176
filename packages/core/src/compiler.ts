@@ -12,7 +12,8 @@ import {
 } from "@graffiticode/l0000";
 
 import { buildDataApi } from "./dataapi.js";
-import { buildCreateItems, buildInitItems } from "./items.js";
+import { buildCreateItems, buildInitItems, buildSaveToItembank } from "./items.js";
+import { lowerLegacySave } from "./save-lowering.js";
 import { buildCreateQuestions, buildInitQuestions } from "./questions.js";
 import { buildInitAuthor, buildCreateAuthor } from "./author.js";
 import {
@@ -52,9 +53,21 @@ const sdk = new LearnositySDK();
 const domain = process.env.NODE_ENV === "production" ? "l0176.graffiticode.org" : "localhost";
 const baseUrl = "https://data.learnosity.com/v2025.2.LTS";
 const dataApi = buildDataApi({ baseUrl });
-const createItems = buildCreateItems({ sdk, domain, dataApi });
+const createItems = buildCreateItems();
 const initItems = buildInitItems({ sdk, domain });
-const createQuestions = buildCreateQuestions({ sdk, domain, dataApi });
+const createQuestions = buildCreateQuestions();
+const saveToItembankWrite = buildSaveToItembank({ sdk, domain, dataApi });
+
+// The save plan for each activity `items`/`questions` produced, keyed by the
+// activity value itself. `save-to-itembank <activity>` is the ONLY consumer:
+// it looks its argument up here, so it can save only an activity this compile
+// actually built, and building one never writes. Keyed weakly by fresh
+// per-compile objects, so nothing is shared across invocations.
+const pendingSaves = new WeakMap<object, any>();
+
+const LEGACY_SAVE_MEMBER_ERROR =
+  "Error: save-to-itembank wraps the activity to save: `save-to-itembank items [...] {}`. " +
+  "As an items-list member it is only accepted as the literal `save-to-itembank true`.";
 const initQuestions = buildInitQuestions({ sdk, domain });
 const initAuthor = buildInitAuthor({ sdk, domain });
 const createAuthor = buildCreateAuthor({ sdk, domain, dataApi });
@@ -300,31 +313,23 @@ export class Transformer extends BaseTransformer {
           resume([...err, creds.error], undefined);
           return;
         }
-        const saveToItembank = members.save_to_itembank === true && !dryRun;
-        if (saveToItembank && !creds.fromOptions) {
-          resume([...err, `Error: save-to-itembank requires set-var "learnosity-key" and "learnosity-secret"; item bank writes are not permitted with the default credentials.`], undefined);
+        // A save flag that survived lowering was not the literal member form
+        // (e.g. assembled by another expression). Refuse it rather than
+        // guess: only `save-to-itembank <activity>` writes.
+        if (members.save_to_itembank !== undefined) {
+          resume([...err, LEGACY_SAVE_MEMBER_ERROR], undefined);
           return;
         }
-        let itemsResult;
+        let built;
         try {
-          itemsResult = await createItems({
-            items,
-            params: members.params,
-            id: options["lrn-id"],
-            saveToItembank,
-            key: creds.key,
-            secret: creds.secret,
-          });
+          built = await createItems({ items, params: members.params, id: options["lrn-id"] });
         } catch (e: any) {
-          // A failed item-bank write (e.g. Learnosity Data API rejects the
-          // signed request) must surface as a compile error, not an unhandled
-          // rejection: an uncaught throw here never calls resume, so the compile
-          // never resolves and the embedding view hangs on "Loading…" forever.
           resume([...err, `Error: ${String((e && e.message) || e)}`], undefined);
           return;
         }
         const continuation = toPlainObject(v1);
-        const val = { ...continuation, ...itemsResult };
+        const val = { ...continuation, ...built.activity };
+        pendingSaves.set(val, built.savePlan);
         resume(err, val);
       });
     });
@@ -386,34 +391,71 @@ export class Transformer extends BaseTransformer {
           resume([...err, creds.error], {});
           return;
         }
-        const saveToItembank = members.save_to_itembank === true && !dryRun;
-        if (saveToItembank && !creds.fromOptions) {
-          resume([...err, `Error: save-to-itembank requires set-var "learnosity-key" and "learnosity-secret"; item bank writes are not permitted with the default credentials.`], {});
+        if (members.save_to_itembank !== undefined) {
+          resume([...err, LEGACY_SAVE_MEMBER_ERROR], {});
           return;
         }
-        let questionsResult;
+        let built;
         try {
-          questionsResult = await createQuestions(questions, {
-            id: options["lrn-id"],
-            saveToItembank,
-            key: creds.key,
-            secret: creds.secret,
-          });
+          built = await createQuestions(questions, { id: options["lrn-id"] });
         } catch (e: any) {
-          // A failed item-bank write must surface as a compile error rather than
-          // an unhandled rejection (which would leave resume uncalled and hang
-          // the embedding view on "Loading…"). See the matching guard in ITEMS.
           resume([...err, `Error: ${String((e && e.message) || e)}`], {});
           return;
         }
         const continuation = toPlainObject(v1);
-        const val = { ...continuation, ...questionsResult };
+        const val = { ...continuation, ...built.activity };
+        pendingSaves.set(val, built.savePlan);
         resume(err, val);
       });
     });
   }
 
 
+
+  // The item-bank write. Its argument must be an activity `items` or
+  // `questions` built in this compile; the save plan comes from that build,
+  // never from program data, and nothing else in the language writes.
+  SAVE_TO_ITEMBANK(node: any, options: any, resume: any) {
+    this.visit(node.elts[0], options, async (e0: any, v0: any) => {
+      const err = ([] as any[]).concat(e0 || []);
+      if (err.length > 0) {
+        resume(err, undefined);
+        return;
+      }
+      const plan = v0 && typeof v0 === "object" ? pendingSaves.get(v0) : undefined;
+      if (!plan) {
+        resume([typeof v0 === "boolean" ? LEGACY_SAVE_MEMBER_ERROR
+          : "Error: save-to-itembank must wrap an activity built by `items [...] {}` or `questions [...] {}`."], undefined);
+        return;
+      }
+      // Generation-time verification: credentials are not injected, so
+      // validate structure only and skip the credential gate and the write.
+      if (options["lrn-id"] === VERIFY_ITEM_ID) {
+        resume(err, v0);
+        return;
+      }
+      const creds = resolveCredentials(options);
+      if (creds.error) {
+        resume([creds.error], undefined);
+        return;
+      }
+      if (!creds.fromOptions) {
+        resume([`Error: save-to-itembank requires set-var "learnosity-key" and "learnosity-secret"; item bank writes are not permitted with the default credentials.`], undefined);
+        return;
+      }
+      let itemBank;
+      try {
+        itemBank = await saveToItembankWrite(plan, { key: creds.key, secret: creds.secret });
+      } catch (e: any) {
+        // A failed write must surface as a compile error, not an unhandled
+        // rejection: an uncaught throw never calls resume, so the compile would
+        // never resolve and the embedding view would hang on "Loading…".
+        resume([`Error: ${String((e && e.message) || e)}`], undefined);
+        return;
+      }
+      resume(err, { ...v0, data: { ...v0.data, itemBank } });
+    });
+  }
 
   AUTHOR(node: any, options: any, resume: any) {
     this.visit(node.elts[0], options, async (e0: any, v0: any) => {
@@ -504,7 +546,22 @@ for (const [name, meta] of Object.entries(memberFields)) {
 }
 
 
-export const compiler = new Compiler({
+// Lowers the legacy save member before anything else — checker, permission
+// admission, transformer — sees the program (see save-lowering.ts).
+class L0176Compiler extends Compiler {
+  compile(code: any, data: any, config: any, resume: any, ...rest: any[]) {
+    let lowered;
+    try {
+      lowered = lowerLegacySave(code);
+    } catch (e: any) {
+      resume([{ message: `Error: ${String((e && e.message) || e)}`, from: -1, to: -1 }]);
+      return;
+    }
+    return (super.compile as any)(lowered, data, config, resume, ...rest);
+  }
+}
+
+export const compiler = new L0176Compiler({
   langID: "0176",
   version: "v0.0.1",
   Checker,

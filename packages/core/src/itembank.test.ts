@@ -1,5 +1,5 @@
 import { describe, test, expect } from "vitest";
-import { buildCreateItems } from "./items.js";
+import { buildCreateItems, buildSaveToItembank } from "./items.js";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 const Learnosity = require("learnosity-sdk-nodejs");
@@ -11,7 +11,7 @@ const Learnosity = require("learnosity-sdk-nodejs");
 describe("saving an item to the item bank", () => {
   const run = async () => {
     const calls: any[] = [];
-    const createItems = buildCreateItems({
+    const save = buildSaveToItembank({
       sdk: new Learnosity(),
       domain: "localhost",
       dataApi: async ({ route, request }: any) => {
@@ -19,16 +19,14 @@ describe("saving an item to the item bank", () => {
         return { meta: { status: true } };
       },
     });
-    await createItems({
+    const { savePlan } = await buildCreateItems()({
       items: [{ data: { questions: [
         { response_id: "ignored", type: "clozeformulaV2", stimulus: "Q1" },
         { response_id: "ignored", type: "mcq", stimulus: "Q2" },
       ] } }],
       id: "batch",
-      saveToItembank: true,
-      key: "k",
-      secret: "s".repeat(20),
     });
+    await save(savePlan, { key: "k", secret: "s".repeat(20) });
     return calls;
   };
 
@@ -54,5 +52,18 @@ describe("saving an item to the item bank", () => {
     expect(q.reference).toBe("artcompiler-clozeformulaV2-batch-0-0");
     expect(q.data.response_id).toBeUndefined();
     expect(q.data.stimulus).toBe("Q1");
+  });
+});
+
+describe("building never writes", () => {
+  test("createItems returns a plan and makes no provider call", async () => {
+    const built = await buildCreateItems()({
+      items: [{ data: { questions: [{ response_id: "x", type: "mcq", stimulus: "Q" }] } }],
+      id: "b",
+    });
+    expect(built.activity.type).toBe("questions");
+    expect(built.activity.data.itemBank).toBeUndefined();
+    expect(built.savePlan.itemRecords).toHaveLength(1);
+    expect(built.savePlan.itemRecords[0].status).toBe("unpublished");
   });
 });

@@ -86,22 +86,14 @@ const getDynamicContentData = (data: any) => {
   };
 };
 
-export const buildCreateItems = ({
-  sdk,
-  key,
-  secret,
-  domain,
-  dataApi,
-}: any) => async ({
+// Builds the render activity and, beside it, the plan an item-bank save would
+// write. Building never writes: the write is `save-to-itembank`'s alone (see
+// buildSaveToItembank), so no evaluation of `items` can reach the Data API.
+export const buildCreateItems = () => async ({
   items,
   params,
   id,
-  saveToItembank = false,
-  key: optKey,
-  secret: optSecret,
 }: any) => {
-  const effKey = optKey ?? key;
-  const effSecret = optSecret ?? secret;
   const batchId = id || "0";
 
   // Inherited (from an embedded L0179 custom question) overrides declared. When
@@ -144,72 +136,24 @@ export const buildCreateItems = ({
     return { record, questions };
   });
 
-  let itemBankResult;
-  if (saveToItembank) {
-    // An item record only *references* its widgets; it does not carry them. So
-    // the questions have to exist in the bank before the item that points at
-    // them, or Learnosity rejects the item with
-    //   30001 Widget (question / feature) reference ... was not found.
-    //   Create widget (question / feature) first.
-    // Rendering never needed this — the preview inlines the question data — so
-    // the items path wrote only the item and the gap stayed invisible until a
-    // real save.
-    //
-    // The bank stores a question as {type, reference, data}; `response_id` is
-    // the render envelope's key for the same question and is not part of the
-    // stored data, so it becomes the reference and is dropped from the payload.
-    const questionRecords = records.flatMap(({ questions }: any) =>
+  // What a save would write. An item record only *references* its widgets; it
+  // does not carry them, so the questions must exist in the bank before the
+  // item that points at them, or Learnosity rejects the item with
+  //   30001 Widget (question / feature) reference ... was not found.
+  // The bank stores a question as {type, reference, data}; `response_id` is
+  // the render envelope's key for the same question and is not part of the
+  // stored data, so it becomes the reference and is dropped from the payload.
+  // Saved items always land as drafts; publishing is an Author Site concern.
+  const savePlan = {
+    questionRecords: records.flatMap(({ questions }: any) =>
       questions.map(({ response_id, ...data }: any) => ({
         type: data.type,
         reference: response_id,
         data,
       })),
-    );
-    const questionsReq = sdk.init(
-      "data",
-      {
-        consumer_key: effKey,
-        domain,
-      },
-      effSecret,
-      {
-        questions: questionRecords,
-      },
-      "set",
-    );
-    await dataApi({
-      route: "/itembank/questions",
-      request: questionsReq,
-    });
-
-    // Saved items always land as drafts. Publishing is an Author Site
-    // concern — the Learnosity item bank UX toggles `status: "published"`.
-    const itemRecords = records.map(({ record }: any) => ({ ...record, status: "unpublished" }));
-    const itemsReq = sdk.init(
-      "data",
-      {
-        consumer_key: effKey,
-        domain,
-      },
-      effSecret,
-      {
-        items: itemRecords,
-      },
-      "set",
-    );
-    await dataApi({
-      route: "/itembank/items",
-      request: itemsReq,
-    });
-    // dataApi throws on non-2xx, so reaching here means the write succeeded.
-    // Surface a confirmation so callers (MCP, agents) can verify the save.
-    itemBankResult = {
-      saved: true,
-      references: itemRecords.map((r: any) => r.reference),
-      questionReferences: questionRecords.map((r: any) => r.reference),
-      savedAt: new Date().toISOString(),
-    };
-  }
+    ),
+    itemRecords: records.map(({ record }: any) => ({ ...record, status: "unpublished" })),
+  };
 
   // Rendering always goes through Questions API with inline question data, so
   // every item's questions flatten into one list. The item bank write (above)
@@ -225,9 +169,39 @@ export const buildCreateItems = ({
     session_id: uuid(),
   };
   if (dynamicContentData) data.dynamic_content_data = dynamicContentData;
-  if (itemBankResult) data.itemBank = itemBankResult;
-  return { type: "questions", data };
+  return { activity: { type: "questions", data }, savePlan };
 };
+
+// Performs an item-bank write from a save plan: questions first, then the
+// items that reference them (skipped when the plan has none, as for a bare
+// `questions` activity). Two sequential provider writes, so a failure after
+// the first leaves questions written without their items; callers surface the
+// error rather than retrying blindly.
+export const buildSaveToItembank = ({ sdk, domain, dataApi }: any) =>
+  async ({ questionRecords, itemRecords }: any, { key, secret }: any) => {
+    const write = async (route: string, body: any) => {
+      const request = sdk.init("data", { consumer_key: key, domain }, secret, body, "set");
+      await dataApi({ route, request });
+    };
+    await write("/itembank/questions", { questions: questionRecords });
+    if (itemRecords.length > 0) {
+      await write("/itembank/items", { items: itemRecords });
+    }
+    // dataApi throws on non-2xx, so reaching here means the writes succeeded.
+    // Surface a confirmation so callers (MCP, agents) can verify the save.
+    return itemRecords.length > 0
+      ? {
+        saved: true,
+        references: itemRecords.map((r: any) => r.reference),
+        questionReferences: questionRecords.map((r: any) => r.reference),
+        savedAt: new Date().toISOString(),
+      }
+      : {
+        saved: true,
+        references: questionRecords.map((r: any) => r.reference),
+        savedAt: new Date().toISOString(),
+      };
+  };
 
 export const buildInitItems = ({
   sdk,

@@ -79,7 +79,7 @@ which take a continuation record.
 | `model` | record or string | `data` (JSON-stringified) | custom |
 | `metadata` | list | `metadata` / `tags` | item, all question types |
 | `params` | record[] | `dynamic_content_data` | items list |
-| `save-to-itembank` | boolean | — (compiler flag) | items list, questions list |
+| `save-to-itembank` | activity | — (item-bank write) | wraps `items [...] {}` or `questions [...] {}` |
 
 #### Scoring
 
@@ -274,7 +274,6 @@ itself.
 | `row-titles-width` | `row_titles_width` |
 | `rubric-reference` | `rubric_reference` |
 | `sample-answer` | `sample_answer` |
-| `save-to-itembank` | `save_to_itembank` |
 | `score` | `score` |
 | `score-with-feedbackaide` | `score_with_feedbackaide` |
 | `scoring-type` | `scoring_type` |
@@ -309,7 +308,7 @@ init { "type": "items" }
 Builds one Learnosity item record per `item` entry and renders their questions.
 
 The list holds two kinds of thing: `item` entries, and members that belong to
-the program as a whole — `params` and `save-to-itembank`. The trailing record is
+the program as a whole — `params`. The trailing record is
 program metadata and travels onto the compiled output.
 
 ```
@@ -344,25 +343,29 @@ written to the bank as a new item rather than updated in place.
 
 By default `items` emits a preview: the items and their questions render
 inline through Questions API without being written to the Learnosity
-item bank. Put `save-to-itembank true` in the items list to persist them. Saved items always land as `status: "unpublished"`
+item bank. Wrap the activity in `save-to-itembank` to persist it:
+`save-to-itembank items [...] {}`. Saved items always land as `status: "unpublished"`
 (draft) — publishing is an Author Site concern, not a DSL one.
 
 Item-bank writes require caller-supplied Learnosity credentials, set with
 `set-var "learnosity-key" ...` and `set-var "learnosity-secret" ...` before
 `items`. The two must be supplied together (only one is an error). When
 present they sign every Learnosity request (preview and write); when absent,
-previews use the server's default credentials but `save-to-itembank true` is
+previews use the server's default credentials but `save-to-itembank` is
 an error — the default credentials may sign previews but never mutate the bank.
 
 ```
 set-var "lrn-id" "mitochondria-mcq"
 set-var "learnosity-key" get-val-public "learnosityKey"
 set-var "learnosity-secret" get-val-private "learnositySecret"
-items [
-  save-to-itembank true
+save-to-itembank items [
   item [questions [mcq [ ... ]] {}]
 ] {}
 ```
+
+The older member form, `items [save-to-itembank true ...] {}`, is still
+accepted and is rewritten to the wrapper before compiling. Any other way of
+setting the flag is an error.
 
 ### item
 
@@ -855,7 +858,7 @@ custom [
   in the same program all read the same upstream value.
 - Scoring is the deployed interaction's own concern (`scorer.js`).
   `valid-response` is not used with `custom`.
-- `save-to-itembank true` freezes the upstream value at compile time into
+- `save-to-itembank` freezes the upstream value at compile time into
   the saved item — the bank entry is a snapshot, not a live reference.
   Re-authoring the upstream after save does not update the bank entry.
 
