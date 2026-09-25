@@ -58,12 +58,23 @@ const initItems = buildInitItems({ sdk, domain });
 const createQuestions = buildCreateQuestions();
 const saveToItembankWrite = buildSaveToItembank({ sdk, domain, dataApi });
 
-// The save plan for each activity `items`/`questions` produced, keyed by the
-// activity value itself. `save-to-itembank <activity>` is the ONLY consumer:
-// it looks its argument up here, so it can save only an activity this compile
-// actually built, and building one never writes. Keyed weakly by fresh
-// per-compile objects, so nothing is shared across invocations.
-const pendingSaves = new WeakMap<object, any>();
+// Save plans belong to ONE invocation. The Compiler (a singleton reused across
+// requests) creates a fresh Transformer per compile; each Transformer gets its
+// own map from the activities it built to their save plans.
+// `save-to-itembank <activity>` is the ONLY consumer and looks its argument up
+// in its own Transformer's map, so it can save only an activity built by this
+// same compile — an activity object retained from another invocation is not
+// found. Building one never writes.
+const savePlansByInvocation = new WeakMap<object, WeakMap<object, any>>();
+
+function savePlansFor(transformer: object): WeakMap<object, any> {
+  let plans = savePlansByInvocation.get(transformer);
+  if (!plans) {
+    plans = new WeakMap();
+    savePlansByInvocation.set(transformer, plans);
+  }
+  return plans;
+}
 
 const LEGACY_SAVE_MEMBER_ERROR =
   "Error: save-to-itembank wraps the activity to save: `save-to-itembank items [...] {}`. " +
@@ -329,7 +340,7 @@ export class Transformer extends BaseTransformer {
         }
         const continuation = toPlainObject(v1);
         const val = { ...continuation, ...built.activity };
-        pendingSaves.set(val, built.savePlan);
+        savePlansFor(this).set(val, built.savePlan);
         resume(err, val);
       });
     });
@@ -404,7 +415,7 @@ export class Transformer extends BaseTransformer {
         }
         const continuation = toPlainObject(v1);
         const val = { ...continuation, ...built.activity };
-        pendingSaves.set(val, built.savePlan);
+        savePlansFor(this).set(val, built.savePlan);
         resume(err, val);
       });
     });
@@ -422,7 +433,7 @@ export class Transformer extends BaseTransformer {
         resume(err, undefined);
         return;
       }
-      const plan = v0 && typeof v0 === "object" ? pendingSaves.get(v0) : undefined;
+      const plan = v0 && typeof v0 === "object" ? savePlansFor(this).get(v0) : undefined;
       if (!plan) {
         resume([typeof v0 === "boolean" ? LEGACY_SAVE_MEMBER_ERROR
           : "Error: save-to-itembank must wrap an activity built by `items [...] {}` or `questions [...] {}`."], undefined);

@@ -6,7 +6,7 @@
 // these tests stub so every provider call is observable.
 import { describe, test, expect, vi, beforeEach, afterEach } from "vitest";
 import { parser } from "@graffiticode/parser";
-import { compiler, lexicon, lowerLegacySave } from "./index.js";
+import { compiler, lexicon, lowerLegacySave, Transformer } from "./index.js";
 
 const CREDS = 'set-var "learnosity-key" "k" set-var "learnosity-secret" "ssssssssssssssssssss"';
 const ITEM = "item [questions [mcq []] {}]";
@@ -144,6 +144,46 @@ describe("any other way of requesting a save is refused", () => {
   test("wrapping something that is not a built activity", async () => {
     const { err } = await compile(`set-var "lrn-id" "t" ${CREDS} save-to-itembank {type: "questions", data: {questions: []}}..`);
     expect(err.map((e) => e.message ?? e).join()).toMatch(/must wrap an activity/);
+    expect(routes).toEqual([]);
+  });
+});
+
+describe("a save plan belongs to the invocation that built it", () => {
+  // Build an activity in one Transformer (one compile), returning the actual
+  // activity object that transformer produced — not a rendered copy.
+  async function buildActivity() {
+    const code = await parser.parse(176, `set-var "lrn-id" "t" items [${ITEM}] {}..`, lexicon);
+    const t = new (Transformer as any)(code);
+    const options: any = { data: {}, config: {}, result: "" };
+    const activity = await new Promise<any>((resolve, reject) =>
+      t.transform(options, (err: any, val: any) => (err?.length ? reject(err) : resolve(val))));
+    return { t, activity };
+  }
+
+  // Run SAVE_TO_ITEMBANK on `t` with `activity` as its argument.
+  function saveWith(t: any, activity: any) {
+    t.RETAINED = (_n: any, _o: any, resume: any) => resume([], activity);
+    t.nodePool[9001] = { tag: "RETAINED", elts: [] };
+    t.nodePool[9002] = { tag: "SAVE_TO_ITEMBANK", elts: [9001] };
+    const options: any = { "lrn-id": "t", "learnosity-key": "k", "learnosity-secret": "s".repeat(20) };
+    return new Promise<{ err: any[]; val: any }>((resolve) =>
+      t.visit(9002, options, (err: any, val: any) => resolve({ err: err ?? [], val })));
+  }
+
+  test("the building invocation can save it", async () => {
+    const { t, activity } = await buildActivity();
+    const { err, val } = await saveWith(t, activity);
+    expect(err).toEqual([]);
+    expect(val.data.itemBank.saved).toBe(true);
+    expect(routes).toEqual(["/itembank/questions", "/itembank/items"]);
+  });
+
+  test("another invocation holding the same object cannot", async () => {
+    const { activity } = await buildActivity();
+    const code = await parser.parse(176, "1..", lexicon);
+    const other = new (Transformer as any)(code);
+    const { err } = await saveWith(other, activity);
+    expect(err.map((e: any) => e.message ?? e).join()).toMatch(/must wrap an activity/);
     expect(routes).toEqual([]);
   });
 });
