@@ -14,6 +14,14 @@ import {
 import { buildDataApi } from "./dataapi.js";
 import { buildCreateItems, buildInitItems, buildSaveToItembank } from "./items.js";
 import { lowerLegacySave } from "./save-lowering.js";
+import {
+  PROTECTED_FUNCTIONS,
+  IMPLICIT_PROTECTED_FUNCTIONS,
+  isBrokered,
+  brokeredSign,
+  brokeredSave,
+} from "./protection.js";
+import type { PolicyClient } from "@graffiticode/l0000";
 import { buildCreateQuestions, buildInitQuestions } from "./questions.js";
 import { buildInitAuthor, buildCreateAuthor } from "./author.js";
 import {
@@ -76,6 +84,10 @@ function savePlansFor(transformer: object): WeakMap<object, any> {
   return plans;
 }
 
+// Stable per-node key for occurrence ids: the same node in a retried compile of
+// the same program gets the same key.
+const occurrenceKey = (node: any) => `${node?.tag}@${node?.coord?.from ?? "-"}`;
+
 const LEGACY_SAVE_MEMBER_ERROR =
   "Error: save-to-itembank wraps the activity to save: `save-to-itembank items [...] {}`. " +
   "As an items-list member it is only accepted as the literal `save-to-itembank true`.";
@@ -130,11 +142,16 @@ function resolveCredentials(options: any): any {
 // (re)compile even when the assessment is unchanged — that churn is why the
 // Form keys its one-time Learnosity init on the stable question content rather
 // than object identity (see packages/view/src/components/form/contentKey.ts).
-async function signForRender(plain: any, options: any): Promise<any> {
+async function signForRender(plain: any, options: any, exec?: any): Promise<any> {
   // Only sign Learnosity render output: a `{ type, data }` activity that has
   // not already been signed. Leaves bare/non-Learnosity values untouched.
   if (!plain || typeof plain !== "object" || !plain.type || plain.request) {
     return plain;
+  }
+  // Brokered: the connection's credential signs, inside the broker.
+  if (isBrokered(exec)) {
+    const request = await brokeredSign(exec, plain, "prog");
+    return request ? { ...plain, request } : plain;
   }
   const creds = resolveCredentials(options);
   if (creds.error || !creds.key || !creds.secret) {
@@ -250,6 +267,14 @@ export class Transformer extends BaseTransformer {
     this.visit(node.elts[0], options, async (e0: any, v0: any) => {
       const plain = toPlainObject(v0);
       const err: any[] = [];
+      if (isBrokered(this.execContext)) {
+        try {
+          resume(err, await brokeredSign(this.execContext, plain, occurrenceKey(node)));
+        } catch (e: any) {
+          resume([`Error: ${String((e && e.message) || e)}`], undefined);
+        }
+        return;
+      }
       const creds = resolveCredentials(options);
       if (creds.error) {
         resume([creds.error], undefined);
@@ -445,6 +470,17 @@ export class Transformer extends BaseTransformer {
         resume(err, v0);
         return;
       }
+      // Brokered: the write happens in the broker, under the connection's
+      // credential, only in a save session policy resolved from an intent.
+      if (isBrokered(this.execContext)) {
+        try {
+          const itemBank = await brokeredSave(this.execContext, plan, occurrenceKey(node));
+          resume(err, { ...v0, data: { ...v0.data, itemBank } });
+        } catch (e: any) {
+          resume([`Error: ${String((e && e.message) || e)}`], undefined);
+        }
+        return;
+      }
       const creds = resolveCredentials(options);
       if (creds.error) {
         resume([creds.error], undefined);
@@ -491,8 +527,11 @@ export class Transformer extends BaseTransformer {
         return;
       }
       // Attach the signed Learnosity `request` (see signForRender).
-      const signed = await signForRender(val, options);
-      resume(err, signed);
+      try {
+        resume(err, await signForRender(val, options, this.execContext));
+      } catch (e: any) {
+        resume([`Error: ${String((e && e.message) || e)}`], undefined);
+      }
     });
   }
 }
@@ -558,9 +597,27 @@ for (const [name, meta] of Object.entries(memberFields)) {
 
 
 // Lowers the legacy save member before anything else — checker, permission
-// admission, transformer — sees the program (see save-lowering.ts).
+// admission, transformer — sees the program (see save-lowering.ts), then picks
+// the path: a compile that selects a connection is BROKERED (protected
+// functions admitted by policy, executed by the broker); one that does not
+// takes the legacy path. A selected connection on a server with no policy
+// client configured fails closed rather than falling back.
 class L0176Compiler extends Compiler {
-  compile(code: any, data: any, config: any, resume: any, ...rest: any[]) {
+  #brokered: Compiler | null = null;
+
+  setPolicyClient(policy: PolicyClient) {
+    this.#brokered = new Compiler({
+      langID: "0176",
+      version: "v0.0.1",
+      Checker,
+      Transformer,
+      protectedFunctions: PROTECTED_FUNCTIONS as any,
+      implicitProtectedFunctions: IMPLICIT_PROTECTED_FUNCTIONS as any,
+      policy,
+    });
+  }
+
+  compile(code: any, data: any, config: any, resume: any, identity?: any) {
     let lowered;
     try {
       lowered = lowerLegacySave(code);
@@ -568,7 +625,14 @@ class L0176Compiler extends Compiler {
       resume([{ message: `Error: ${String((e && e.message) || e)}`, from: -1, to: -1 }]);
       return;
     }
-    return (super.compile as any)(lowered, data, config, resume, ...rest);
+    if (identity?.connectionId) {
+      if (!this.#brokered) {
+        resume([{ message: "Error: connections are not available on this server.", from: -1, to: -1 }]);
+        return;
+      }
+      return this.#brokered.compile(lowered, data, config, resume, identity);
+    }
+    return super.compile(lowered, data, config, resume, identity);
   }
 }
 

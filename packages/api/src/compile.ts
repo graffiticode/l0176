@@ -6,10 +6,12 @@ export async function compile({
   code,
   data,
   config,
+  identity,
 }: {
   code?: any;
   data?: any;
   config?: any;
+  identity?: Record<string, any>;
   [k: string]: any;
 }) {
   if (!code || !data) {
@@ -42,6 +44,6 @@ export async function compile({
       } else {
         resolve({ data: out, errors: [], cache: false });
       }
-    }),
+    }, identity),
   );
 }

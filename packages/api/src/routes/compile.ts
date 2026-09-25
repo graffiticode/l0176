@@ -4,12 +4,29 @@ import { buildHttpHandler, parseAuthTokenFromRequest, optionsHandler } from "./u
 
 type CompileFn = (args: Record<string, any>) => Promise<any>;
 
+const NON_PRIVILEGED_MODES = ["read", "render", "verify", "corpus"];
+
 const buildPostCompileHandler = ({ compile }: { compile: CompileFn }) =>
   buildHttpHandler(async (req, res) => {
     const auth = (req as any).auth?.context ?? "";
     const authToken = parseAuthTokenFromRequest(req);
+    // The body is caller input: it carries the raw token in `auth` (verified
+    // above into req.auth.context), so it never overwrites the verified fields.
+    const { auth: _bodyAuth, authToken: _bodyAuthToken, identity: _bodyIdentity, ...body } = req.body ?? {};
+    // The invocation's identity. The uid comes only from the verified token,
+    // which policy re-verifies (userToken). The connection is a caller
+    // selection that policy checks. A privileged mode (save/author) is never
+    // taken from the body: policy resolves it from the console-issued intent.
+    const uid = typeof auth === "object" && typeof (auth as any)?.uid === "string" ? (auth as any).uid : null;
+    const identity = {
+      uid,
+      connectionId: typeof body.connectionId === "string" ? body.connectionId : null,
+      userToken: uid ? authToken : null,
+      intentToken: typeof body.intentToken === "string" ? body.intentToken : null,
+      mode: NON_PRIVILEGED_MODES.includes(body.mode) ? body.mode : undefined,
+    };
     try {
-      const data = await compile({ auth, authToken, lang: "0176", ...req.body });
+      const data = await compile({ ...body, auth, authToken, identity, lang: "0176" });
       res.set("Access-Control-Allow-Origin", "*");
       res.status(200).json(data);
     } catch (error: any) {
