@@ -1,3 +1,9 @@
+> **Archived — moved.** This repository is archived and read-only. L0176 now lives in the
+> Graffiticode monorepo at
+> [`languages/l0176`](https://github.com/graffiticode/graffiticode/tree/main/languages/l0176),
+> with this repository's history. Make changes there; the `l0176` service is released with
+> the monorepo's deploy CLI (`npm run deploy -- l0176`).
+
 # L0176
 
 [![License: MIT](https://img.shields.io/badge/Code-MIT-blue.svg)](packages/LICENSE)
